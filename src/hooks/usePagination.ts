@@ -68,7 +68,7 @@ export function usePagination(
       //    这是不含版头/版记时的最大可用空间。
       //    注意：getBoundingClientRect 受 zoom 影响，需要除以 zoom 得到未缩放值。
       let fullAvailable: number
-      const a4Content = a4Page?.querySelector('.a4-content') as HTMLElement | null
+      const a4Content = a4Page && a4Page.querySelector('.a4-content') as HTMLElement | null
       if (a4Content) {
         const rect = a4Content.getBoundingClientRect()
         const contentCs = getComputedStyle(a4Content)

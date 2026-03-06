@@ -11,7 +11,7 @@ import { buildDocument } from './docxBuilder'
 export async function downloadDocx(ast: GongwenAST, config: DocumentConfig): Promise<void> {
   const doc = buildDocument(ast, config)
   const blob = await Packer.toBlob(doc)
-  const fileName = ast.title?.content
+  const fileName = ast.title && ast.title.content
     ? `${ast.title.content}.docx`
     : '公文.docx'
   saveAs(blob, fileName)

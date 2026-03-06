@@ -3,17 +3,45 @@
   position: relative;
   width: 100%;
   max-width: 595px; /* A4 @ 72dpi */
-  aspect-ratio: 210 / 297;
   margin: 0 auto;
   background: white;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06),
+    0 0 0 1px rgba(0, 0, 0, 0.02);
   border-radius: 2px;
   overflow: hidden;
+  transition: box-shadow var(--transition-normal);
+}
+
+.a4-page:hover {
+  box-shadow: 
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05),
+    0 0 0 1px rgba(0, 0, 0, 0.03);
+}
+
+/* 使用 padding-bottom 模拟宽高比 (Chrome 78 兼容) */
+.a4-page::before {
+  content: '';
+  display: block;
+  padding-bottom: 141.43%; /* 297/210 = 1.4143 */
+}
+
+/* 子元素绝对定位填充容器 */
+.a4-page > .a4-content,
+.a4-page > .a4-content-viewport,
+.a4-page > .a4-footer-note {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
 }
 
 /* 多页间距 */
 .a4-page + .a4-page {
-  margin-top: 16px;
+  margin-top: 20px;
 }
 
 .a4-content {
@@ -142,7 +170,7 @@
 /* 空状态占位 */
 .a4-placeholder {
   text-align: center;
-  color: #d1d5db;
+  color: var(--color-text-muted);
   font-size: 14px;
   padding-top: 40%;
   margin: 0;
@@ -255,7 +283,7 @@
   right: var(--margin-right, 12.38%);
   font-family: 'Times New Roman', var(--page-number-font, '宋体'), serif;
   font-size: 14px;
-  color: #374151;
+  color: var(--color-text-secondary);
 }
 
 .a4-footer-odd {

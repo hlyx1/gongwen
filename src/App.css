@@ -3,29 +3,59 @@
   flex-direction: column;
   height: 83.33vh;
   overflow: hidden;
+  background: var(--color-bg-main);
 }
 
 .app-main {
   display: flex;
   flex: 1;
   min-height: 0;
+  padding: 12px;
+}
+
+.app-main > * + * {
+  margin-left: 12px;
 }
 
 .app-editor {
   flex: 1;
-  border-right: 1px solid #e5e7eb;
   min-width: 0;
+  background: var(--color-bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  transition: box-shadow var(--transition-normal);
+}
+
+.app-editor:hover {
+  box-shadow: var(--shadow-card-hover);
 }
 
 .app-detection {
-  width: 300px;
+  width: 320px;
   flex-shrink: 0;
-  border-right: 1px solid #e5e7eb;
-  overflow-y: auto;
+  background: var(--color-bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  transition: box-shadow var(--transition-normal);
+}
+
+.app-detection:hover {
+  box-shadow: var(--shadow-card-hover);
 }
 
 .app-preview {
   flex-shrink: 0;
   min-width: 680px;
   width: 680px;
+  background: var(--color-bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  transition: box-shadow var(--transition-normal);
+}
+
+.app-preview:hover {
+  box-shadow: var(--shadow-card-hover);
 }

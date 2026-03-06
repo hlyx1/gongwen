@@ -1,7 +1,10 @@
 /* 遮罩层 */
 .settings-overlay {
   position: fixed;
-  inset: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   background: rgba(0, 0, 0, 0.4);
   display: flex;
   align-items: center;
@@ -96,7 +99,8 @@
 /* 网格布局 */
 .settings-grid {
   display: grid;
-  gap: 10px 16px;
+  grid-row-gap: 10px;
+  grid-column-gap: 16px;
 }
 
 .settings-grid--2 {
@@ -115,7 +119,10 @@
 .settings-field {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+}
+
+.settings-field > * + * {
+  margin-top: 3px;
 }
 
 .settings-field-label {
@@ -168,7 +175,10 @@
 .settings-number-wrap {
   display: flex;
   align-items: center;
-  gap: 4px;
+}
+
+.settings-number-wrap > * + * {
+  margin-left: 4px;
 }
 
 .settings-number {
@@ -221,7 +231,10 @@
 .settings-options {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+}
+
+.settings-options > * + * {
+  margin-top: 10px;
 }
 
 .settings-sub-option {
@@ -290,10 +303,13 @@
 .settings-footer {
   display: flex;
   align-items: center;
-  gap: 10px;
   padding: 14px 20px;
   border-top: 1px solid #e5e7eb;
   flex-shrink: 0;
+}
+
+.settings-footer > * + * {
+  margin-left: 10px;
 }
 
 .settings-footer-spacer {
