@@ -136,6 +136,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
   const { config, updateConfig, resetConfig } = useDocumentConfig()
   const { customFonts, addFont, removeFont } = useCustomFonts()
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [showMarginHint, setShowMarginHint] = useState(false)
 
   const patch = (p: DeepPartial<DocumentConfig>) => updateConfig(p)
 
@@ -264,6 +265,28 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                 unit="cm"
                 onChange={(v) => patch({ margins: { right: v } })}
               />
+            </div>
+            <div className="settings-margin-hint">
+              <button
+                className="settings-margin-hint-toggle"
+                onClick={() => setShowMarginHint(!showMarginHint)}
+              >
+                <span className="settings-margin-hint-icon">!</span>
+                <span>关于页面上下边距设置的规范说明</span>
+                <span className={`settings-margin-hint-arrow ${showMarginHint ? 'settings-margin-hint-arrow--open' : ''}`}>▼</span>
+              </button>
+              {showMarginHint && (
+                <div className="settings-margin-hint-content">
+                  <p>GB/T 9704-2012 规定公文用纸天头（上白边）为37mm，此为纸张上边缘至版心上边缘的距离。</p>
+                  <p>部分用户将办公软件中的"上边距"设置为37mm，这与规范要求存在偏差。办公软件中的"上边距"是指版心上边缘至纸张上边缘的距离减去页眉高度后的剩余值。</p>
+                  <p>为规范电子公文格式，GB/T 33476.2-2016《党政机关电子公文格式规范 第2部分：显现》明确规定：</p>
+                  <ul>
+                    <li>上边距：34.58mm</li>
+                    <li>下边距：32.58mm</li>
+                  </ul>
+                  <p>建议按照 GB/T 33476.2-2016 的参数设置页面边距。</p>
+                </div>
+              )}
             </div>
           </section>
 
