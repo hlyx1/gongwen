@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { Editor } from './components/Editor/Editor'
 import { Preview } from './components/Preview/Preview'
 import { Toolbar } from './components/Toolbar/Toolbar'
+import { DetectionPanel } from './components/DetectionPanel'
 import { useDocumentParser } from './hooks/useDocumentParser'
 import { useDocumentConfig } from './contexts/DocumentConfigContext'
 import { downloadDocx } from './exporter'
@@ -93,6 +94,9 @@ function App() {
             onFileImport={handleImport}
             importing={importing}
           />
+        </div>
+        <div className="app-detection">
+          <DetectionPanel ast={ast} />
         </div>
         <div className="app-preview">
           <Preview ast={ast} />
