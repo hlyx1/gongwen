@@ -629,14 +629,6 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
 
         {/* 底部操作栏 */}
         <div className="settings-footer">
-          <a
-            className="settings-btn settings-btn--download"
-            href="https://github.com/hehecat/gongwen/releases/latest/download/gongwen.html"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            下载离线版
-          </a>
           <button
             className="settings-btn settings-btn--primary"
             onClick={() => setShowSaveDialog(true)}
