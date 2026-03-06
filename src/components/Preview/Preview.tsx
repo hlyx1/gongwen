@@ -73,6 +73,11 @@ export function Preview({ ast }: PreviewProps) {
       '--h2-size': `${config.headings.h2.fontSize}px`,
       '--h3-font': config.advanced.h3.fontFamily,
       '--page-number-font': config.specialOptions.pageNumberFont,
+      // 表格配置
+      '--table-font': config.table.fontFamily,
+      '--table-size': `${config.table.fontSize}px`,
+      '--table-line-height': `${config.table.lineSpacing}px`,
+      '--table-bold-header': config.table.boldHeader ? 'bold' : 'normal',
     } as CSSProperties
   }, [config])
 
