@@ -126,13 +126,13 @@
 }
 
 .toolbar-btn--import {
-  background: linear-gradient(135deg, #eff6ff, #dbeafe);
+  background: linear-gradient(135deg, var(--color-primary-bg), var(--color-primary-bg-alt));
   color: var(--color-primary);
-  border: 1px solid #bfdbfe;
+  border: 1px solid var(--color-primary-border);
 }
 
 .toolbar-btn--import:hover:not(:disabled) {
-  background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+  background: linear-gradient(135deg, var(--color-primary-bg-alt), var(--color-primary-border));
   border-color: var(--color-primary-light);
   transform: translateY(-1px);
   box-shadow: var(--shadow-sm);
@@ -156,11 +156,11 @@
   background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
   color: white;
   border: none;
-  box-shadow: 0 2px 4px rgba(30, 64, 175, 0.3);
+  box-shadow: 0 2px 4px var(--color-primary-shadow);
 }
 
 .toolbar-btn--export:hover:not(:disabled) {
   background: linear-gradient(135deg, var(--color-primary-dark), var(--color-primary));
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(30, 64, 175, 0.4);
+  box-shadow: 0 4px 8px var(--color-primary-shadow);
 }

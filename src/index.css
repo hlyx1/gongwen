@@ -15,9 +15,16 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  --color-primary: #1e40af;
-  --color-primary-light: #3b82f6;
-  --color-primary-dark: #1e3a8a;
+  --color-primary: #047857;
+  --color-primary-light: #10b981;
+  --color-primary-dark: #065f46;
+  --color-primary-bg: #ecfdf5;
+  --color-primary-bg-alt: #d1fae5;
+  --color-primary-border: #a7f3d0;
+  --color-primary-shadow: rgba(4, 120, 87, 0.3);
+  --color-primary-shadow-alt: rgba(16, 185, 129, 0.3);
+  --color-primary-overlay: rgba(4, 120, 87, 0.08);
+  --color-primary-overlay-alt: rgba(4, 120, 87, 0.04);
   --color-bg-main: #f1f5f9;
   --color-bg-card: #ffffff;
   --color-bg-hover: #f8fafc;
