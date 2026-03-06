@@ -17,7 +17,15 @@
   min-width: 0;
 }
 
+.app-detection {
+  width: 300px;
+  flex-shrink: 0;
+  border-right: 1px solid #e5e7eb;
+  overflow-y: auto;
+}
+
 .app-preview {
-  flex: 1;
-  min-width: 0;
+  flex-shrink: 0;
+  min-width: 680px;
+  width: 680px;
 }
