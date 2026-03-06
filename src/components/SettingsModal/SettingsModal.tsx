@@ -132,11 +132,77 @@ function TextField({
   )
 }
 
+/** 保存配置弹窗组件 */
+function SaveConfigDialog({
+  onConfirm,
+  onCancel,
+}: {
+  onConfirm: (name: string) => void
+  onCancel: () => void
+}) {
+  const [name, setName] = useState('')
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (name.trim()) {
+      onConfirm(name.trim())
+    }
+  }
+
+  return (
+    <div className="settings-dialog-overlay" onClick={onCancel}>
+      <div className="settings-dialog" onClick={(e) => e.stopPropagation()}>
+        <form onSubmit={handleSubmit}>
+          <div className="settings-dialog-header">
+            <h3 className="settings-dialog-title">保存配置</h3>
+          </div>
+          <div className="settings-dialog-body">
+            <label className="settings-field">
+              <span className="settings-field-label">配置名称</span>
+              <input
+                type="text"
+                className="settings-input"
+                value={name}
+                placeholder="请输入配置名称"
+                onChange={(e) => setName(e.target.value)}
+                autoFocus
+              />
+            </label>
+          </div>
+          <div className="settings-dialog-footer">
+            <button type="button" className="settings-btn settings-btn--cancel" onClick={onCancel}>
+              取消
+            </button>
+            <button
+              type="submit"
+              className="settings-btn settings-btn--save"
+              disabled={!name.trim()}
+            >
+              保存
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 export function SettingsModal({ onClose }: SettingsModalProps) {
-  const { config, updateConfig, resetConfig } = useDocumentConfig()
+  const {
+    config,
+    savedConfigs,
+    activeConfigId,
+    updateConfig,
+    switchConfig,
+    saveAsCustomConfig,
+    saveCurrentConfig,
+    deleteCustomConfig,
+  } = useDocumentConfig()
   const { customFonts, addFont, removeFont } = useCustomFonts()
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [showMarginHint, setShowMarginHint] = useState(false)
+  const [showSaveDialog, setShowSaveDialog] = useState(false)
+  const [showSaveSuccess, setShowSaveSuccess] = useState(false)
 
   const patch = (p: DeepPartial<DocumentConfig>) => updateConfig(p)
 
@@ -156,14 +222,63 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
     onRemoveCustomFont: removeFont,
   }
 
+  /** 处理保存配置 */
+  const handleSaveConfig = (name: string) => {
+    saveAsCustomConfig(name)
+    setShowSaveDialog(false)
+  }
+
+  /** 处理删除配置 */
+  const handleDeleteConfig = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    deleteCustomConfig(id)
+  }
+
+  /** 处理保存当前修改 */
+  const handleSaveCurrentConfig = () => {
+    saveCurrentConfig()
+    setShowSaveSuccess(true)
+    setTimeout(function () {
+      setShowSaveSuccess(false)
+    }, 2000)
+  }
+
   return (
     <div className="settings-overlay" onClick={onClose}>
       <div className="settings-modal" onClick={(e) => e.stopPropagation()}>
         {/* 顶部 */}
         <div className="settings-header">
-          <h2 className="settings-title">设置</h2>
+          <div className="settings-header-left">
+            <h2 className="settings-title">设置</h2>
+            <div className="settings-tabs">
+              <button
+                className={'settings-tab' + (activeConfigId === null ? ' settings-tab--active' : '')}
+                onClick={() => switchConfig(null)}
+              >
+                公文规范配置
+              </button>
+              {savedConfigs.map(function (cfg) {
+                return (
+                  <button
+                    key={cfg.id}
+                    className={'settings-tab' + (activeConfigId === cfg.id ? ' settings-tab--active' : '')}
+                    onClick={() => switchConfig(cfg.id)}
+                  >
+                    <span className="settings-tab-name">{cfg.name}</span>
+                    <span
+                      className="settings-tab-delete"
+                      onClick={(e) => handleDeleteConfig(cfg.id, e)}
+                      title="删除此配置"
+                    >
+                      x
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
           <button className="settings-close" onClick={onClose} aria-label="关闭">
-            ✕
+            x
           </button>
         </div>
 
@@ -273,7 +388,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
               >
                 <span className="settings-margin-hint-icon">!</span>
                 <span>关于页面上下边距设置的规范说明</span>
-                <span className={`settings-margin-hint-arrow ${showMarginHint ? 'settings-margin-hint-arrow--open' : ''}`}>▼</span>
+                <span className={'settings-margin-hint-arrow' + (showMarginHint ? ' settings-margin-hint-arrow--open' : '')}>v</span>
               </button>
               {showMarginHint && (
                 <div className="settings-margin-hint-content">
@@ -460,8 +575,8 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
               onClick={() => setShowAdvanced(!showAdvanced)}
             >
               <span>高级设置</span>
-              <span className={`settings-arrow ${showAdvanced ? 'settings-arrow--open' : ''}`}>
-                ▸
+              <span className={'settings-arrow' + (showAdvanced ? ' settings-arrow--open' : '')}>
+                &gt;
               </span>
             </button>
             {showAdvanced && (
@@ -474,37 +589,39 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                     ['h2', '二级标题'],
                     ['h3', '三级标题'],
                   ] as const
-                ).map(([key, label]) => (
-                  <div key={key} className="settings-advanced-row">
-                    <span className="settings-advanced-label">{label}</span>
-                    <div className="settings-grid settings-grid--3">
-                      <FontSelectField
-                        label="中文字体"
-                        value={config.advanced[key].fontFamily}
-                        {...fontFieldProps}
-                        onChange={(v) =>
-                          patch({ advanced: { [key]: { fontFamily: v } } })
-                        }
-                      />
-                      <FontSelectField
-                        label="英数字体"
-                        value={config.advanced[key].asciiFontFamily}
-                        {...asciiFontFieldProps}
-                        onChange={(v) =>
-                          patch({ advanced: { [key]: { asciiFontFamily: v } } })
-                        }
-                      />
-                      <SelectField
-                        label="字号"
-                        value={config.advanced[key].fontSize}
-                        options={FONT_SIZE_OPTIONS}
-                        onChange={(v) =>
-                          patch({ advanced: { [key]: { fontSize: Number(v) } } })
-                        }
-                      />
+                ).map(function ([key, label]) {
+                  return (
+                    <div key={key} className="settings-advanced-row">
+                      <span className="settings-advanced-label">{label}</span>
+                      <div className="settings-grid settings-grid--3">
+                        <FontSelectField
+                          label="中文字体"
+                          value={config.advanced[key].fontFamily}
+                          {...fontFieldProps}
+                          onChange={(v) =>
+                            patch({ advanced: { [key]: { fontFamily: v } } })
+                          }
+                        />
+                        <FontSelectField
+                          label="英数字体"
+                          value={config.advanced[key].asciiFontFamily}
+                          {...asciiFontFieldProps}
+                          onChange={(v) =>
+                            patch({ advanced: { [key]: { asciiFontFamily: v } } })
+                          }
+                        />
+                        <SelectField
+                          label="字号"
+                          value={config.advanced[key].fontSize}
+                          options={FONT_SIZE_OPTIONS}
+                          onChange={(v) =>
+                            patch({ advanced: { [key]: { fontSize: Number(v) } } })
+                          }
+                        />
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </section>
@@ -520,15 +637,41 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
           >
             下载离线版
           </a>
-          <div className="settings-footer-spacer" />
-          <button className="settings-btn settings-btn--reset" onClick={resetConfig}>
-            恢复默认
+          <button
+            className="settings-btn settings-btn--primary"
+            onClick={() => setShowSaveDialog(true)}
+          >
+            另存为自定义配置
           </button>
+          <button
+            className="settings-btn settings-btn--primary"
+            disabled={activeConfigId === null}
+            title={activeConfigId === null ? '公文规范配置不可修改，请另存为新配置' : ''}
+            onClick={handleSaveCurrentConfig}
+          >
+            保存当前修改
+          </button>
+          <div className="settings-footer-spacer" />
           <button className="settings-btn settings-btn--close" onClick={onClose}>
             关闭
           </button>
         </div>
       </div>
+
+      {/* 保存成功提示 */}
+      {showSaveSuccess && (
+        <div className="settings-toast">
+          保存成功
+        </div>
+      )}
+
+      {/* 保存配置弹窗 */}
+      {showSaveDialog && (
+        <SaveConfigDialog
+          onConfirm={handleSaveConfig}
+          onCancel={() => setShowSaveDialog(false)}
+        />
+      )}
     </div>
   )
 }
