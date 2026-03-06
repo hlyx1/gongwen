@@ -81,7 +81,7 @@ export function Preview({ ast }: PreviewProps) {
   return (
     <div className="preview-container">
       <div className="preview-header">
-        <span className="preview-label">预览</span>
+        <span className="preview-label">预览（浏览器样式仅供参考，请导出 Word 确认）</span>
         <span className="preview-hint">共 {pages.length} 页</span>
       </div>
       <div className="preview-scroll" style={cssVars}>

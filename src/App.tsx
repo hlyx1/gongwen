@@ -15,7 +15,7 @@ const STORAGE_KEY_TEXT = 'docx-editor-text'
 /** 从 localStorage 读取持久化的编辑区文本 */
 function loadText(): string {
   try {
-    return localStorage.getItem(STORAGE_KEY_TEXT) ?? ''
+    return localStorage.getItem(STORAGE_KEY_TEXT) || ''
   } catch {
     return ''
   }
@@ -82,9 +82,6 @@ function App() {
       <Toolbar
         ast={ast}
         onExport={handleExport}
-        onClear={handleClear}
-        onImport={handleImport}
-        importing={importing}
       />
       <div className="app-main">
         <div className="app-editor">
@@ -93,6 +90,7 @@ function App() {
             onChange={setText}
             onFileImport={handleImport}
             importing={importing}
+            onClear={handleClear}
           />
         </div>
         <div className="app-detection">

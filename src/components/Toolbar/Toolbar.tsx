@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState } from 'react'
 import type { GongwenAST } from '../../types/ast'
 import { SettingsModal } from '../SettingsModal/SettingsModal'
 import { StandardModal } from '../StandardModal/StandardModal'
@@ -7,32 +7,13 @@ import './Toolbar.css'
 interface ToolbarProps {
   ast: GongwenAST
   onExport: () => void
-  onClear: () => void
-  /** 文件导入回调 */
-  onImport: (file: File) => void
-  /** 是否正在导入中 */
-  importing?: boolean
 }
 
-export function Toolbar({ ast, onExport, onClear, onImport, importing }: ToolbarProps) {
+export function Toolbar({ ast, onExport }: ToolbarProps) {
   const hasContent = ast.title !== null || ast.body.length > 0
   const nodeCount = (ast.title ? 1 : 0) + ast.body.length
   const [showSettings, setShowSettings] = useState(false)
   const [showStandard, setShowStandard] = useState(false)
-
-  // 隐藏的 file input 引用
-  const fileInputRef = useRef<HTMLInputElement>(null)
-
-  const handleImportClick = useCallback(() => {
-    fileInputRef.current?.click()
-  }, [])
-
-  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) onImport(file)
-    // 重置 input 以允许连续选择同一文件
-    e.target.value = ''
-  }, [onImport])
 
   return (
     <div className="toolbar">
@@ -63,28 +44,6 @@ export function Toolbar({ ast, onExport, onClear, onImport, importing }: Toolbar
             <circle cx="8.5" cy="8.5" r="2.5" stroke="currentColor" strokeWidth="1.2" fill="none"/>
           </svg>
           <span>设置</span>
-        </button>
-        <button
-          className="toolbar-btn toolbar-btn--import"
-          onClick={handleImportClick}
-          disabled={importing}
-          title="导入 .docx 或 .txt 文件"
-        >
-          {importing ? '导入中…' : '导入'}
-        </button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".docx,.txt,.doc,.wps"
-          onChange={handleFileChange}
-          style={{ display: 'none' }}
-        />
-        <button
-          className="toolbar-btn toolbar-btn--clear"
-          onClick={onClear}
-          disabled={!hasContent}
-        >
-          清空
         </button>
         <button
           className="toolbar-btn toolbar-btn--export"
