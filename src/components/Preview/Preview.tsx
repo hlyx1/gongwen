@@ -88,8 +88,15 @@ export function Preview({ ast }: PreviewProps) {
         {/* 隐藏度量容器：渲染全部节点用于高度测量（与 A4Page 使用相同的 CSS 类和渲染逻辑） */}
         <div ref={measurerRef} className="a4-measurer" aria-hidden="true">
           <div className="a4-measurer-content">
-            {ast.title && (
-              <p className={NODE_CLASS_MAP[ast.title.type]}>{ast.title.content}</p>
+            {/* 渲染多段标题 */}
+            {ast.title.length > 0 && ast.title.map((titleNode, titleIndex) => (
+              <p key={`title-${titleIndex}`} className={NODE_CLASS_MAP[titleNode.type]}>
+                {titleNode.content}
+              </p>
+            ))}
+            {/* 标题后添加一个固定行距的空行 */}
+            {ast.title.length > 0 && (
+              <p className="a4-empty-line">{'\u200B'}</p>
             )}
             {ast.body.flatMap((node, index) => {
               const elements: React.ReactNode[] = []

@@ -318,8 +318,27 @@ export function buildDocument(ast: GongwenAST, config: DocumentConfig): Document
     ? ptToTwip(config.body.lineSpacing * 2)
     : 0
 
-  if (ast.title) {
-    children.push(nodeToParagraph(ast.title, config, titleSpacingBefore))
+  // 渲染多段标题
+  if (ast.title.length > 0) {
+    // 第一个标题段应用 spacingBefore（版头后的空行）
+    children.push(nodeToParagraph(ast.title[0], config, titleSpacingBefore))
+    // 后续标题段正常渲染
+    for (let i = 1; i < ast.title.length; i++) {
+      children.push(nodeToParagraph(ast.title[i], config))
+    }
+    // 标题后添加一个固定行距的空行
+    const bodyLineSpacing = ptToTwip(config.body.lineSpacing)
+    const bodyFont = {
+      ascii: 'Times New Roman',
+      eastAsia: config.body.fontFamily,
+      hAnsi: config.body.fontFamily,
+      cs: 'Times New Roman',
+    }
+    const bodyFontSize = config.body.fontSize * 2
+    children.push(new Paragraph({
+      spacing: { line: bodyLineSpacing, lineRule: LineRuleType.EXACT, before: 0, after: 0 },
+      children: [new TextRun({ font: bodyFont, size: bodyFontSize, text: '' })],
+    }))
   }
 
   for (let i = 0; i < ast.body.length; i++) {

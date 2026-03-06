@@ -179,7 +179,8 @@ export function renderAttachment(node: AttachmentNode): React.ReactNode {
 }
 
 interface A4PageProps {
-  title: DocumentNode | null
+  /** 公文标题数组（支持多段标题） */
+  title: DocumentNode[]
   body: DocumentNode[]
   pageNumber: number
   totalPages: number
@@ -265,8 +266,15 @@ export function A4Page({
         )}
         <div className="a4-content-viewport" style={{ height: `${clipHeight}px` }}>
           <div style={{ transform: `translateY(-${offsetY}px)` }}>
-            {title && (
-              <p className={NODE_CLASS_MAP[title.type]}>{title.content}</p>
+            {/* 渲染多段标题 */}
+            {title.length > 0 && title.map((titleNode, titleIndex) => (
+              <p key={`title-${titleIndex}`} className={NODE_CLASS_MAP[titleNode.type]}>
+                {titleNode.content}
+              </p>
+            ))}
+            {/* 标题后添加一个固定行距的空行 */}
+            {title.length > 0 && (
+              <p className="a4-empty-line">{'\u200B'}</p>
             )}
             {body.flatMap((node, index) => {
               const elements: React.ReactNode[] = []
@@ -315,7 +323,7 @@ export function A4Page({
               
               return elements
             })}
-            {!title && body.length === 0 && (
+            {title.length === 0 && body.length === 0 && (
               <p className="a4-placeholder">预览区域</p>
             )}
           </div>

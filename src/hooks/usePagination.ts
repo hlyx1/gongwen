@@ -23,7 +23,7 @@ export interface PageSlice {
  * 同时监听 ResizeObserver，窗口缩放时自动重新分页。
  */
 export function usePagination(
-  title: DocumentNode | null,
+  title: DocumentNode[],
   body: DocumentNode[],
   measurerRef: RefObject<HTMLDivElement | null>
 ): PageSlice[] {

@@ -4,6 +4,8 @@ import { detectNodeType, HEADING_1_RE, ATTACHMENT_RE, extractAttachmentItemsFrom
 
 /** 不应被识别为发文机关署名的结尾标点 */
 const SIGNATURE_EXCLUDE_ENDINGS = ['。', '：', ':', '；', ';', '！', '!', '？', '?', '，', ',']
+/** 标题段落的排除结尾标点（以这些标点结尾的段落不是标题） */
+const TITLE_EXCLUDE_ENDINGS = ['。', '，', ',', '；', ';', '：', ':', '！', '!', '？', '?', '、']
 /** 机关署名常见关键词（用于降低正文误判） */
 const SIGNATURE_ORG_HINTS = [
   '人民政府',
@@ -38,6 +40,16 @@ function isPossibleSignature(node: DocumentNode | undefined): boolean {
 /** 机关名称关键词检查（避免把普通短句识别为署名） */
 function hasSignatureOrgHint(text: string): boolean {
   return SIGNATURE_ORG_HINTS.some((hint) => text.includes(hint))
+}
+
+/**
+ * 检查段落是否可能是标题段落
+ * 条件：不以排除标点结尾
+ */
+function isPossibleTitleParagraph(text: string): boolean {
+  const trimmed = text.trim()
+  if (trimmed.length === 0) return false
+  return !TITLE_EXCLUDE_ENDINGS.some(ending => trimmed.endsWith(ending))
 }
 
 /** 构造单附件节点（保留原始文本，避免信息丢失） */
@@ -94,7 +106,7 @@ function parseAttachment(
       expectedIndex
     )
 
-    // 当前行存在“部分可识别 + 剩余文本”时，不应吞掉剩余文本
+    // 当前行存在"部分可识别 + 剩余文本"时，不应吞掉剩余文本
     // 首行异常回退为单附件；后续行异常则不消费该行，交由主循环继续解析
     if (remaining.trim() !== '') {
       if (lastConsumedIndex === currentIndex) {
@@ -174,17 +186,17 @@ function parseAttachment(
  *
  * 规则:
  * 1. 跳过空行
- * 2. 第一个非空行视为公文标题（DOCUMENT_TITLE）
+ * 2. 前 n 段不以标点符号结尾的段落视为公文标题（DOCUMENT_TITLE）
  * 3. 后续行通过正则检测类型
  * 4. 解析完成后识别发文机关署名：
- *    仅当 DATE 位于末尾，且 DATE 前一个段落满足“短句 + 机关关键词”时改为 SIGNATURE
+ *    仅当 DATE 位于末尾，且 DATE 前一个段落满足"短句 + 机关关键词"时改为 SIGNATURE
  */
 export function parseGongwen(text: string): GongwenAST {
   const lines = text.split('\n')
-  let title: DocumentNode | null = null
+  const title: DocumentNode[] = []
   const body: DocumentNode[] = []
 
-  let titleFound = false
+  let titlePhaseComplete = false
   let addresseeChecked = false
   let i = 0
 
@@ -200,12 +212,16 @@ export function parseGongwen(text: string): GongwenAST {
 
     const lineNumber = i + 1
 
-    // 首个非空行 → 公文标题
-    if (!titleFound) {
-      title = { type: NodeType.DOCUMENT_TITLE, content: trimmed, lineNumber }
-      titleFound = true
-      i++
-      continue
+    // 标题阶段：收集连续的不以标点结尾的段落
+    if (!titlePhaseComplete) {
+      // 检查是否可能是标题段落
+      if (isPossibleTitleParagraph(trimmed)) {
+        title.push({ type: NodeType.DOCUMENT_TITLE, content: trimmed, lineNumber })
+        i++
+        continue
+      }
+      // 遇到以标点结尾的段落，标题阶段结束
+      titlePhaseComplete = true
     }
 
     // 主送机关检测（标题后第一个非空行 + 冒号结尾，但不是附件说明）

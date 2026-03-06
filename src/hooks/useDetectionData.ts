@@ -365,14 +365,16 @@ export function useDetectionData(ast: GongwenAST): DetectionResult {
     var headingLevelWarning = checkHeadingLevel(ast.body)
     var headingNumberWarning = checkHeadingNumber(ast.body)
 
-    // 1. 公文标题
-    if (ast.title) {
+    // 1. 公文标题（支持多段标题）
+    if (ast.title.length > 0) {
+      // 多段标题用换行符连接显示
+      var titleContent = ast.title.map(function(node) { return node.content }).join('\n')
       points.push(
         createDetectionPoint(
           DetectionPointType.TITLE,
           DetectionStatus.DETECTED,
           '公文标题',
-          ast.title.content,
+          titleContent,
           {}
         )
       )
