@@ -73,7 +73,7 @@
   right: 0;
   bottom: 0;
   left: 0;
-  background: rgba(30, 64, 175, 0.08);
+  background: var(--color-primary-overlay);
   border: 2px dashed var(--color-primary-light);
   border-radius: var(--radius-lg);
   display: flex;
@@ -88,7 +88,7 @@
 }
 
 .editor-drop-overlay--importing {
-  background: rgba(30, 64, 175, 0.04);
+  background: var(--color-primary-overlay-alt);
   border-style: solid;
   border-color: var(--color-border);
   color: var(--color-text-secondary);
@@ -129,13 +129,13 @@
 }
 
 .editor-btn--import {
-  background: linear-gradient(135deg, #eff6ff, #dbeafe);
+  background: linear-gradient(135deg, var(--color-primary-bg), var(--color-primary-bg-alt));
   color: var(--color-primary);
-  border: 1px solid #bfdbfe;
+  border: 1px solid var(--color-primary-border);
 }
 
 .editor-btn--import:hover:not(:disabled) {
-  background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+  background: linear-gradient(135deg, var(--color-primary-bg-alt), var(--color-primary-border));
   border-color: var(--color-primary-light);
   transform: translateY(-1px);
   box-shadow: var(--shadow-sm);
@@ -156,15 +156,15 @@
 }
 
 .editor-btn--save {
-  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  background: linear-gradient(135deg, var(--color-primary-light), var(--color-success));
   color: white;
-  border: 1px solid #1d4ed8;
+  border: 1px solid var(--color-success);
 }
 
 .editor-btn--save:hover:not(:disabled) {
-  background: linear-gradient(135deg, #1d4ed8, #1e40af);
+  background: linear-gradient(135deg, var(--color-success), var(--color-primary));
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+  box-shadow: 0 4px 12px var(--color-primary-shadow-alt);
 }
 
 .editor-btn--history {
@@ -203,7 +203,7 @@
   display: flex;
   align-items: center;
   padding: 12px 24px;
-  background: linear-gradient(135deg, #059669, #047857);
+  background: linear-gradient(135deg, var(--color-success), var(--color-primary));
   color: white;
   border-radius: 8px;
   box-shadow: 0 8px 24px rgba(5, 150, 105, 0.35);

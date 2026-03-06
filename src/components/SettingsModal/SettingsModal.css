@@ -143,8 +143,8 @@
 
 .settings-select:focus {
   outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+  border-color: var(--color-primary-light);
+  box-shadow: 0 0 0 2px var(--color-primary-shadow-alt);
 }
 
 /* 文本输入 */
@@ -163,8 +163,8 @@
 
 .settings-input:focus {
   outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+  border-color: var(--color-primary-light);
+  box-shadow: 0 0 0 2px var(--color-primary-shadow-alt);
 }
 
 .settings-input::placeholder {
@@ -194,8 +194,8 @@
 
 .settings-number:focus {
   outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+  border-color: var(--color-primary-light);
+  box-shadow: 0 0 0 2px var(--color-primary-shadow-alt);
 }
 
 .settings-unit {
@@ -224,7 +224,7 @@
   width: 16px;
   height: 16px;
   cursor: pointer;
-  accent-color: #2563eb;
+  accent-color: var(--color-primary-light);
 }
 
 /* 选项组 */
@@ -414,7 +414,7 @@
 }
 
 .font-combo-item--selected {
-  color: #2563eb;
+  color: var(--color-primary-light);
   font-weight: 500;
 }
 
@@ -535,7 +535,7 @@
   top: 50%;
   width: 6px;
   height: 6px;
-  background: #dbeafe;
+  background: var(--color-primary-bg-alt);
   border-radius: 50%;
 }
 
@@ -546,7 +546,7 @@
   top: 50%;
   width: 6px;
   height: 6px;
-  background: #dbeafe;
+  background: var(--color-primary-bg-alt);
   border-radius: 50%;
 }
 
@@ -568,7 +568,7 @@
 }
 
 .settings-margin-hint-content a {
-  color: #2563eb;
+  color: var(--color-primary-light);
 }
 
 .settings-margin-hint-content a:hover {
@@ -695,12 +695,12 @@
 }
 
 .settings-tab--active {
-  background: #2563eb;
+  background: var(--color-primary-light);
   color: white;
 }
 
 .settings-tab--active:hover {
-  background: #1d4ed8;
+  background: var(--color-success);
   color: white;
 }
 
@@ -790,12 +790,12 @@
 }
 
 .settings-btn--save {
-  background: #2563eb;
+  background: var(--color-primary-light);
   color: white;
 }
 
 .settings-btn--save:hover {
-  background: #1d4ed8;
+  background: var(--color-success);
 }
 
 .settings-btn--save:disabled {
@@ -806,12 +806,12 @@
 /* ---- 主要按钮（蓝色） ---- */
 
 .settings-btn--primary {
-  background: #2563eb;
+  background: var(--color-primary-light);
   color: white;
 }
 
 .settings-btn--primary:hover {
-  background: #1d4ed8;
+  background: var(--color-success);
 }
 
 .settings-btn--primary:disabled {
@@ -827,7 +827,7 @@
   bottom: 80px;
   left: 50%;
   transform: translateX(-50%);
-  background: #10b981;
+  background: var(--color-success-light);
   color: white;
   padding: 10px 24px;
   border-radius: 8px;
