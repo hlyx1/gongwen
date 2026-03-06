@@ -1,6 +1,6 @@
-import type { DocumentNode, GongwenAST, AttachmentNode } from '../types/ast'
+import type { DocumentNode, GongwenAST, AttachmentNode, TableNode } from '../types/ast'
 import { NodeType } from '../types/ast'
-import { detectNodeType, HEADING_1_RE, ATTACHMENT_RE, extractAttachmentItemsFromLine } from './matchers'
+import { detectNodeType, HEADING_1_RE, ATTACHMENT_RE, extractAttachmentItemsFromLine, isTableRow, isTableSeparator, parseTableRow, getTableColumnCount } from './matchers'
 
 /** 不应被识别为发文机关署名的结尾标点 */
 const SIGNATURE_EXCLUDE_ENDINGS = ['。', '：', ':', '；', ';', '！', '!', '？', '?', '，', ',']
@@ -182,6 +182,48 @@ function parseAttachment(
 }
 
 /**
+ * 解析 Markdown 表格
+ *
+ * 格式：
+ * | 列1 | 列2 | 列3 |
+ * |-----|-----|-----|
+ * | 数据1 | 数据2 | 数据3 |
+ */
+function parseTable(
+  lines: string[],
+  currentIndex: number
+): { node: TableNode; nextIndex: number } {
+  const startLine = currentIndex
+  const headerCells = parseTableRow(lines[currentIndex])
+  const columnCount = headerCells.length
+
+  // 跳过分隔行
+  let i = currentIndex + 1
+  if (i < lines.length && isTableSeparator(lines[i])) {
+    i++
+  }
+
+  // 收集数据行
+  const rows: TableNode['rows'] = []
+  while (i < lines.length && isTableRow(lines[i])) {
+    rows.push({ cells: parseTableRow(lines[i]) })
+    i++
+  }
+
+  return {
+    node: {
+      type: NodeType.TABLE,
+      content: lines.slice(startLine, i).join('\n'),
+      lineNumber: startLine + 1,
+      header: { cells: headerCells },
+      rows,
+      columnCount,
+    },
+    nextIndex: i,
+  }
+}
+
+/**
  * 将纯文本解析为公文 AST（纯函数）
  *
  * 规则:
@@ -244,6 +286,18 @@ export function parseGongwen(text: string): GongwenAST {
       body.push(node)
       i = nextIndex
       continue
+    }
+
+    // 表格检测（必须检测连续的表格行）
+    if (isTableRow(trimmed)) {
+      // 检查下一行是否为分隔行或表格行（确保是完整表格）
+      const nextLine = i + 1 < lines.length ? lines[i + 1].trim() : ''
+      if (isTableSeparator(nextLine) || isTableRow(nextLine)) {
+        const { node, nextIndex } = parseTable(lines, i)
+        body.push(node)
+        i = nextIndex
+        continue
+      }
     }
 
     // 正则检测类型
