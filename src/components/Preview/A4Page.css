@@ -98,10 +98,9 @@
   font-weight: normal;
 }
 
-/* 三级标题 inline: 仿宋加粗（首句用） */
+/* 三级标题 inline: 仿宋（首句用） */
 .a4-h3-inline {
   font-family: var(--h3-font, 'FangSong_GB2312'), 'FangSong', 'STFangsong', serif;
-  font-weight: bold;
 }
 
 /* 四级标题 inline: 仿宋（首句用，与正文同字体但不缩进） */
