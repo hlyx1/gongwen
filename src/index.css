@@ -1,3 +1,12 @@
+/* 加载方正小标宋字体文件 */
+@font-face {
+  font-family: '方正小标宋_GBK';
+  src: url('/方正小标宋_GBK.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 * {
   box-sizing: border-box;
 }
