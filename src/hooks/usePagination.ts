@@ -84,19 +84,22 @@ export function usePagination(
       }
 
       // ③ 度量版头高度（首页渲染，含外边距；flex column 中 margin 不折叠）
+      //    注意：offsetHeight 受 zoom 影响（返回缩放后的值），需要除以 zoom 得到未缩放值。
       let headerHeight = 0
       const headerSection = scrollContainer.querySelector('.a4-header-section') as HTMLElement | null
       if (headerSection) {
         const hs = getComputedStyle(headerSection)
-        headerHeight = headerSection.offsetHeight
-          + parseFloat(hs.marginTop) + parseFloat(hs.marginBottom)
+        headerHeight = (headerSection.offsetHeight
+          + parseFloat(hs.marginTop) + parseFloat(hs.marginBottom)) / zoom
       }
 
       // ④ 度量版记高度（末页绝对定位于 .a4-page 底部，需预留空间防重叠）
+      //    注意：offsetHeight 受 zoom 影响（返回缩放后的值），需要除以 zoom 得到未缩放值。
+      //    版记在度量容器中渲染，优先从度量容器获取。
       let footerNoteHeight = 0
-      const footerNote = scrollContainer.querySelector('.a4-footer-note') as HTMLElement | null
+      const footerNote = el.querySelector('.a4-footer-note') as HTMLElement | null
       if (footerNote) {
-        footerNoteHeight = footerNote.offsetHeight
+        footerNoteHeight = footerNote.offsetHeight / zoom
       }
 
       // 首页可用高度 = 全量 - 版头占位

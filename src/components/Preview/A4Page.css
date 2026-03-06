@@ -29,14 +29,24 @@
 }
 
 /* 子元素绝对定位填充容器 */
-.a4-page > .a4-content,
-.a4-page > .a4-content-viewport,
-.a4-page > .a4-footer-note {
+.a4-page > .a4-content {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
+}
+
+/* 版记：绝对定位到页面底部，使用百分比控制位置和宽度 */
+.a4-page > .a4-footer-note {
+  position: absolute;
+  /* bottom 使用 y 轴百分比（相对页面高度 297mm），末条线与版心下边缘重合 */
+  bottom: var(--margin-bottom-y, 11.78%);
+  left: var(--margin-left, 13.33%);
+  right: var(--margin-right, 12.38%);
+  font-family: var(--body-font);
+  font-size: 14px;
+  line-height: 28px;
 }
 
 /* 多页间距 */
@@ -276,6 +286,15 @@
   position: relative;
 }
 
+/* 度量容器中的版记：正常流布局，用于度量高度 */
+.a4-footer-note--measurer {
+  position: relative;
+  bottom: auto;
+  left: auto;
+  right: auto;
+  margin-top: 20px;
+}
+
 /* 页脚: 页码区域 */
 .a4-footer {
   position: absolute;
@@ -347,18 +366,7 @@
   font-family: 'KaiTi_GB2312', 'KaiTi', 'STKaiti', serif;
 }
 
-/* ---- 版记（绝对定位，锚定最后一页版心底部） ---- */
-.a4-footer-note {
-  position: absolute;
-  /* bottom 使用 y 轴百分比（相对页面高度 297mm），末条线与版心下边缘重合 */
-  bottom: var(--margin-bottom-y, 11.78%);
-  left: var(--margin-left, 13.33%);
-  right: var(--margin-right, 12.38%);
-  font-family: var(--body-font);
-  font-size: 14px;
-  line-height: 28px;
-}
-
+/* ---- 版记子元素样式 ---- */
 .a4-footer-note-line-top {
   border-top: 1px solid #000;
 }
