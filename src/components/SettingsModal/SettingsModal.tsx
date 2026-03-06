@@ -407,10 +407,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
 
           {/* 区块 2: 标题格式 */}
           <section className="settings-section">
-            <h3 className="settings-section-title">
-              公文标题
-              <span className="font-tooltip-icon" title="所有字体选择均支持直接输入本机已安装的字体名称，预览和导出将使用您输入的字体。">?</span>
-            </h3>
+            <h3 className="settings-section-title">公文标题</h3>
             <div className="settings-grid settings-grid--3">
               <FontSelectField
                 label="字体"

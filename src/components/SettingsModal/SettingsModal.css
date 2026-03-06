@@ -310,15 +310,6 @@
   transition: background 0.15s;
 }
 
-.settings-btn--reset {
-  background: #fef2f2;
-  color: #dc2626;
-}
-
-.settings-btn--reset:hover {
-  background: #fee2e2;
-}
-
 .settings-btn--close {
   background: #f3f4f6;
   color: #374151;
