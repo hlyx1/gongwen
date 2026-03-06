@@ -138,6 +138,22 @@ export function Preview({ ast }: PreviewProps) {
               return elements
             })}
           </div>
+          {/* 隐藏版记：用于度量版记高度，始终渲染以便在分页计算时获取高度 */}
+          {config.footerNote.enabled && (
+            <div className="a4-footer-note a4-footer-note--measurer">
+              <div className="a4-footer-note-line-top"></div>
+              {config.footerNote.cc && (
+                <div className="a4-footer-note-cc">抄送：{config.footerNote.cc}</div>
+              )}
+              {(config.footerNote.printer || config.footerNote.printDate) && (
+                <div className="a4-footer-note-printer">
+                  <span>{config.footerNote.printer}</span>
+                  <span>{config.footerNote.printDate}{config.footerNote.printDate && '印发'}</span>
+                </div>
+              )}
+              <div className="a4-footer-note-line-bottom"></div>
+            </div>
+          )}
         </div>
 
         {/* 渲染分页后的多个 A4 页面（每页渲染完整内容流，通过 offsetY 裁剪） */}
