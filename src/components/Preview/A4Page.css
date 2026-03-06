@@ -95,7 +95,6 @@
   text-align: center;
   line-height: var(--title-line-height, 29px);
   margin: 0;
-  margin-bottom: var(--body-line-height, 29px);
 }
 
 /* 一级标题段落: 基础样式（含首句拆分时的段落容器） */
@@ -186,14 +185,14 @@
   margin: 0;
 }
 
-/* 主送机关: 顶格 仿宋，段前空一行 */
+/* 主送机关: 顶格 仿宋 */
 .a4-addressee {
   font-family: var(--body-font, 'FangSong_GB2312'), 'FangSong', 'STFangsong', serif;
   font-size: var(--body-size, 16px);
   text-indent: 0;
   text-align: justify;
   line-height: var(--body-line-height, 29px);
-  margin: var(--body-line-height, 29px) 0 0 0;
+  margin: 0;
 }
 
 /* 附件说明基础样式：左空二字，段前空一行 */

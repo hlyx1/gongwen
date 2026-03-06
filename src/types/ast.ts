@@ -49,6 +49,7 @@ export interface AttachmentNode extends DocumentNode {
 
 /** 完整公文 AST */
 export interface GongwenAST {
-  title: DocumentNode | null
+  /** 公文标题数组（支持多段标题，每段一行） */
+  title: DocumentNode[]
   body: DocumentNode[]
 }
