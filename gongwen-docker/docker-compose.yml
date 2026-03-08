@@ -1,0 +1,22 @@
+# 公文排版工具 - Docker Compose 配置
+# 使用方法：docker-compose up -d --build
+
+services:
+  gongwen:
+    build:
+      context: ..
+      dockerfile: gongwen-docker/Dockerfile
+    image: gongwen:latest
+    container_name: gongwen-web
+    ports:
+      - "88:80"
+    volumes:
+      # 挂载 nginx 配置文件
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
