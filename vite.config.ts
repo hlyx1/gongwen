@@ -51,6 +51,15 @@ export default defineConfig({
           }),
         ]),
   ],
+  // 目标浏览器：Chrome 78 内核兼容性
+  // 阻止 LightningCSS 使用 inset 等新 CSS 特性
+  build: {
+    cssTarget: 'chrome78',
+    target: 'chrome78',
+  },
+  css: {
+    devSourcemap: true,
+  },
   test: {
     globals: true,
     environment: 'node',

@@ -1,9 +1,6 @@
 # 依赖目录
 node_modules
 
-# 构建产物
-dist
-
 # 日志
 logs
 *.log
