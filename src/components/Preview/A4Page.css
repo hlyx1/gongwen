@@ -66,12 +66,18 @@
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
+  /* 旧版浏览器兼容性：确保内容从顶部开始排列 */
+  justify-content: flex-start;
+  align-content: flex-start;
 }
 
 /* 视窗裁剪容器：高度由 JS clipHeight 精确控制（已对齐到行边界），
    不设 max-height 避免 CSS 亚像素精度与 JS 计算冲突导致二次截断 */
 .a4-content-viewport {
   overflow: hidden;
+  /* 旧版浏览器 flex 兼容性修复 */
+  min-height: 0;
+  flex-shrink: 0;
 }
 
 /* 字符网格间距：微调 letter-spacing 使每行恰好 28 字 (GB/T 9704) */
@@ -325,6 +331,8 @@
 .a4-header-section {
   /* 红线之下空二行再出标题 */
   margin-bottom: calc(var(--body-line-height, 29px) * 2);
+  /* 旧版浏览器 flex 兼容性：防止被压缩 */
+  flex-shrink: 0;
 }
 
 .a4-header-org {
