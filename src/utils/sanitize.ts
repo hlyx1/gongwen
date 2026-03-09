@@ -108,11 +108,12 @@ function stripMarkdown(text: string): { text: string; count: number } {
     return indent
   })
 
-  // 11. 清理有序列表标记（1. 2. 等）
-  result = result.replace(/^(\s*)\d+\.\s+/gm, (_match, indent) => {
-    count++
-    return indent
-  })
+  // 11. 不清理有序列表标记（1. 2. 等）
+  // 公文中「1.」开头是标准的三级标题格式，不应清除
+  // result = result.replace(/^(\s*)\d+\.\s+/gm, (_match, indent) => {
+  //   count++
+  //   return indent
+  // })
 
   // 12. 清理水平线（--- *** ___）
   result = result.replace(/^(---|\*\*\*|___)$/gm, () => {
