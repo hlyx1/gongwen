@@ -20,6 +20,8 @@ export enum NodeType {
   SIGNATURE = 'SIGNATURE',
   /** 成文日期（"XXXX年X月X日"） */
   DATE = 'DATE',
+  /** 备注（成文日期后的括号内容，如"（联系人 小明 电话 10000000）"） */
+  REMARK = 'REMARK',
   /** Markdown 表格 */
   TABLE = 'TABLE',
 }

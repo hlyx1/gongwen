@@ -24,6 +24,9 @@ export const ATTACHMENT_RE = /^附件[：:]/
 // 成文日期：纯日期行（严格匹配整行）
 const DATE_RE = /^\d{4}年\d{1,2}月\d{1,2}日$/
 
+// 备注：被括号括起来的内容（全角或半角括号）
+export const REMARK_RE = /^[（(][^）)]+[）)]$/
+
 // 表格行：以 | 开头和结尾
 const TABLE_ROW_RE = /^\|.*\|$/
 

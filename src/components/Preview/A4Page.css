@@ -240,6 +240,16 @@
   text-indent: 0;
 }
 
+/* 附件说明文本：数字英文使用 Times New Roman */
+.a4-attachment-text {
+  font-family: 'Times New Roman', var(--body-font, 'FangSong_GB2312'), 'FangSong', 'STFangsong', serif;
+}
+
+/* 附件说明标点：英文句号使用仿宋 */
+.a4-attachment-punctuation {
+  font-family: var(--body-font, 'FangSong_GB2312'), 'FangSong', 'STFangsong', serif;
+}
+
 /* 成文日期: 右对齐 仿宋
  * 右空字数由 JS 动态设置（加盖印章右空四字，不加盖印章右空二字）
  * GB/T 9704: 7.3.5.1 加盖印章右空四字，7.3.5.2 不加盖印章右空二字
@@ -263,6 +273,18 @@
   font-size: var(--body-size, 16px);
   text-indent: 0;
   text-align: right;
+  line-height: var(--body-line-height, 29px);
+  margin: 0;
+}
+
+/* 备注: 成文日期后的括号内容，格式与正文相同但不缩进
+ * 备注前有两个固定行距的空行（由 JS 插入）
+ */
+.a4-remark {
+  font-family: var(--body-font, 'FangSong_GB2312'), 'FangSong', 'STFangsong', serif;
+  font-size: var(--body-size, 16px);
+  text-indent: 0;
+  text-align: left;
   line-height: var(--body-line-height, 29px);
   margin: 0;
 }

@@ -9,7 +9,7 @@ import type { GongwenAST, DocumentNode, AttachmentNode, TableNode } from '../typ
 import { NodeType } from '../types/ast'
 import type { DocumentConfig } from '../types/documentConfig'
 import { cmToTwip, ptToTwip } from '../types/documentConfig'
-import { getParagraphStyle, getRunStyle, getAttachmentParagraphStyle, getAttachmentRunStyle } from './styleFactory'
+import { getParagraphStyle, getRunStyle, getAttachmentParagraphStyle, getAttachmentRunStyle, getAttachmentPunctuationRunStyle } from './styleFactory'
 
 // ---- 无边框定义（用于版头表格） ----
 
@@ -94,6 +94,43 @@ function splitBoldFirstSentence(content: string, runStyle: Partial<IRunOptions>)
 }
 
 /**
+ * 拆分附件说明文本：标点（英文句号）使用仿宋，其他使用 Times New Roman
+ * 例如："1.xxx" 拆分为 ["1", "."] 样式分别为正文样式和标点样式
+ */
+function splitAttachmentText(
+  text: string,
+  runStyle: Partial<IRunOptions>,
+  punctuationStyle: Partial<IRunOptions>
+): TextRun[] {
+  const runs: TextRun[] = []
+  let currentText = ''
+  let currentStyle = runStyle
+
+  for (const char of text) {
+    // 英文句号使用标点样式（仿宋）
+    if (char === '.') {
+      // 先输出之前累积的文本
+      if (currentText) {
+        runs.push(new TextRun({ ...currentStyle, text: currentText }))
+        currentText = ''
+      }
+      // 输出标点
+      runs.push(new TextRun({ ...punctuationStyle, text: char }))
+    } else {
+      // 非标点字符，累积到当前文本
+      currentText += char
+    }
+  }
+
+  // 输出剩余文本
+  if (currentText) {
+    runs.push(new TextRun({ ...currentStyle, text: currentText }))
+  }
+
+  return runs
+}
+
+/**
  * 将附件说明节点转换为 DOCX 段落
  *
  * 单附件模式：附件：xxx
@@ -104,6 +141,7 @@ function splitBoldFirstSentence(content: string, runStyle: Partial<IRunOptions>)
 function attachmentToParagraphs(node: AttachmentNode, config: DocumentConfig): Paragraph[] {
   const paragraphs: Paragraph[] = []
   const runStyle = getAttachmentRunStyle(config)
+  const punctuationStyle = getAttachmentPunctuationRunStyle(config)
 
   if (!node.isMultiple) {
     // 单附件模式
@@ -130,7 +168,7 @@ function attachmentToParagraphs(node: AttachmentNode, config: DocumentConfig): P
             ...paragraphStyle,
             children: [
               new TextRun({ ...runStyle, text: '附件：' }),
-              new TextRun({ ...runStyle, text: `${item.index}.${item.name}` }),
+              ...splitAttachmentText(`${item.index}.${item.name}`, runStyle, punctuationStyle),
             ],
           })
         )
@@ -139,9 +177,7 @@ function attachmentToParagraphs(node: AttachmentNode, config: DocumentConfig): P
         paragraphs.push(
           new Paragraph({
             ...paragraphStyle,
-            children: [
-              new TextRun({ ...runStyle, text: `${item.index}.${item.name}` }),
-            ],
+            children: splitAttachmentText(`${item.index}.${item.name}`, runStyle, punctuationStyle),
           })
         )
       }
@@ -434,6 +470,25 @@ export function buildDocument(ast: GongwenAST, config: DocumentConfig): Document
     
     // 发文机关署名前插入 2 个空行
     if (node.type === NodeType.SIGNATURE) {
+      const bodyLineSpacing = ptToTwip(config.body.lineSpacing)
+      const bodyFont = {
+        ascii: 'Times New Roman',
+        eastAsia: config.body.fontFamily,
+        hAnsi: config.body.fontFamily,
+        cs: 'Times New Roman',
+      }
+      const bodyFontSize = config.body.fontSize * 2
+      
+      for (let j = 0; j < 2; j++) {
+        children.push(new Paragraph({
+          spacing: { line: bodyLineSpacing, lineRule: LineRuleType.EXACT, before: 0, after: 0 },
+          children: [new TextRun({ font: bodyFont, size: bodyFontSize, text: '' })],
+        }))
+      }
+    }
+    
+    // 备注前插入 2 个空行
+    if (node.type === NodeType.REMARK) {
       const bodyLineSpacing = ptToTwip(config.body.lineSpacing)
       const bodyFont = {
         ascii: 'Times New Roman',

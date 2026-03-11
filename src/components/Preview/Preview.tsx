@@ -115,6 +115,15 @@ export function Preview({ ast }: PreviewProps) {
                 }
               }
               
+              // 备注前插入 2 个空行
+              if (node.type === NodeType.REMARK) {
+                for (let j = 0; j < 2; j++) {
+                  elements.push(
+                    <p key={`empty-remark-${node.lineNumber}-${j}`} className="a4-empty-line">{'\u200B'}</p>
+                  )
+                }
+              }
+              
               if (node.type === NodeType.ATTACHMENT) {
                 elements.push(
                   <React.Fragment key={node.lineNumber}>

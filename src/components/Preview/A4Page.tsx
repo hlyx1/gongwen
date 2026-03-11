@@ -16,6 +16,7 @@ export const NODE_CLASS_MAP: Record<NodeType, string> = {
   [NodeType.ATTACHMENT]: 'a4-attachment',
   [NodeType.SIGNATURE]: 'a4-signature',
   [NodeType.DATE]: 'a4-date',
+  [NodeType.REMARK]: 'a4-remark',
   [NodeType.TABLE]: 'a4-table',
 }
 
@@ -138,6 +139,51 @@ export function renderBoldFirstSentence(content: string) {
 }
 
 /**
+ * 拆分附件说明文本：标点（英文句号）使用仿宋，其他使用 Times New Roman
+ * 例如："1.xxx" 拆分为 ["1", "."] 分别用不同样式
+ */
+function splitAttachmentTextForPreview(text: string): React.ReactNode {
+  const elements: React.ReactNode[] = []
+  let currentText = ''
+  let keyIndex = 0
+
+  for (const char of text) {
+    // 英文句号使用标点样式（仿宋）
+    if (char === '.') {
+      // 先输出之前累积的文本
+      if (currentText) {
+        elements.push(
+          <span key={keyIndex++} className="a4-attachment-text">
+            {currentText}
+          </span>
+        )
+        currentText = ''
+      }
+      // 输出标点
+      elements.push(
+        <span key={keyIndex++} className="a4-attachment-punctuation">
+          {char}
+        </span>
+      )
+    } else {
+      // 非标点字符，累积到当前文本
+      currentText += char
+    }
+  }
+
+  // 输出剩余文本
+  if (currentText) {
+    elements.push(
+      <span key={keyIndex++} className="a4-attachment-text">
+        {currentText}
+      </span>
+    )
+  }
+
+  return <>{elements}</>
+}
+
+/**
  * 渲染附件说明
  *
  * 单附件模式：附件：xxx
@@ -162,7 +208,7 @@ export function renderAttachment(node: AttachmentNode): React.ReactNode {
   const firstItem = node.items[0]
   elements.push(
     <p key="first" className="a4-attachment a4-attachment--multi-first">
-      附件：{firstItem.index}.{firstItem.name}
+      附件：{splitAttachmentTextForPreview(`${firstItem.index}.${firstItem.name}`)}
     </p>
   )
 
@@ -171,7 +217,7 @@ export function renderAttachment(node: AttachmentNode): React.ReactNode {
     const item = node.items[i]
     elements.push(
       <p key={i} className="a4-attachment-item a4-attachment-item--multi">
-        {item.index}.{item.name}
+        {splitAttachmentTextForPreview(`${item.index}.${item.name}`)}
       </p>
     )
   }
@@ -313,6 +359,15 @@ export function A4Page({
                 for (let j = 0; j < 2; j++) {
                   elements.push(
                     <p key={`empty-${node.lineNumber}-${j}`} className="a4-empty-line">{'\u200B'}</p>
+                  )
+                }
+              }
+              
+              // 备注前插入 2 个空行
+              if (node.type === NodeType.REMARK) {
+                for (let j = 0; j < 2; j++) {
+                  elements.push(
+                    <p key={`empty-remark-${node.lineNumber}-${j}`} className="a4-empty-line">{'\u200B'}</p>
                   )
                 }
               }

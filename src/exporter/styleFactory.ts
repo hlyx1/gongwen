@@ -154,6 +154,14 @@ export function getParagraphStyle(
         indent: { right: (config.specialOptions.hasStamp ? 4 : 2) * charWidthTwips },
       }
 
+    case NodeType.REMARK:
+      // 备注：与正文相同字体，但不缩进，左对齐
+      return {
+        alignment: AlignmentType.LEFT,
+        spacing: BASE_SPACING,
+        indent: { left: 0 },
+      }
+
     // 正文及所有标题级别：两端对齐 + 首行缩进
     default:
       return {
@@ -216,6 +224,7 @@ export function getRunStyle(type: NodeType, config: DocumentConfig): Partial<IRu
     case NodeType.PARAGRAPH:
     case NodeType.DATE:
     case NodeType.SIGNATURE:
+    case NodeType.REMARK:
     default:
       return {
         font: font(config.body.fontFamily),
@@ -276,10 +285,25 @@ export function getAttachmentParagraphStyle(
 }
 
 /**
- * 附件说明文本样式：使用纯中文字体
- * 西文字符（数字、点号等）也使用中文字体
+ * 附件说明文本样式：数字英文使用 Times New Roman，中文使用仿宋
+ * 与正文保持一致的字体口径
  */
 export function getAttachmentRunStyle(config: DocumentConfig): Partial<IRunOptions> {
+  const bodyFontSize = config.body.fontSize * 2
+  const availableTwips = 11906 - cmToTwip(config.margins.left) - cmToTwip(config.margins.right)
+  const charSpacing = Math.floor(availableTwips / CHARS_PER_LINE - config.body.fontSize * 20)
+
+  return {
+    font: font(config.body.fontFamily),
+    size: bodyFontSize,
+    characterSpacing: charSpacing,
+  }
+}
+
+/**
+ * 附件说明标点样式：标点（序号后的英文句号）使用仿宋
+ */
+export function getAttachmentPunctuationRunStyle(config: DocumentConfig): Partial<IRunOptions> {
   const bodyFontSize = config.body.fontSize * 2
   const availableTwips = 11906 - cmToTwip(config.margins.left) - cmToTwip(config.margins.right)
   const charSpacing = Math.floor(availableTwips / CHARS_PER_LINE - config.body.fontSize * 20)

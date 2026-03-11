@@ -1,6 +1,6 @@
 import type { DocumentNode, GongwenAST, AttachmentNode, TableNode } from '../types/ast'
 import { NodeType } from '../types/ast'
-import { detectNodeType, HEADING_1_RE, ATTACHMENT_RE, extractAttachmentItemsFromLine, isTableRow, isTableSeparator, parseTableRow } from './matchers'
+import { detectNodeType, HEADING_1_RE, ATTACHMENT_RE, REMARK_RE, extractAttachmentItemsFromLine, isTableRow, isTableSeparator, parseTableRow } from './matchers'
 
 /** 不应被识别为发文机关署名的结尾标点 */
 const SIGNATURE_EXCLUDE_ENDINGS = ['。', '：', ':', '；', ';', '！', '!', '？', '?', '，', ',']
@@ -257,12 +257,14 @@ export function parseGongwen(text: string): GongwenAST {
     // 标题阶段：收集连续的不以标点结尾的段落
     if (!titlePhaseComplete) {
       // 检查是否可能是标题段落
-      if (isPossibleTitleParagraph(trimmed)) {
+      // 注意：附件说明不以标点结尾，但不应被识别为标题
+      // 一级标题也不应被识别为公文标题
+      if (isPossibleTitleParagraph(trimmed) && !ATTACHMENT_RE.test(trimmed) && !HEADING_1_RE.test(trimmed)) {
         title.push({ type: NodeType.DOCUMENT_TITLE, content: trimmed, lineNumber })
         i++
         continue
       }
-      // 遇到以标点结尾的段落，标题阶段结束
+      // 遇到以标点结尾的段落、附件说明或一级标题，标题阶段结束
       titlePhaseComplete = true
     }
 
@@ -306,9 +308,19 @@ export function parseGongwen(text: string): GongwenAST {
     i++
   }
 
-  // 识别发文机关署名：仅处理末尾成文日期，降低误判
+  // 识别备注：成文日期后紧跟的括号内容
+  // 备注必须满足：被括号括起来、单独成一段、上一个段是成文日期
+  for (let j = 0; j < body.length - 1; j++) {
+    if (body[j].type !== NodeType.DATE) continue
+    const nextNode = body[j + 1]
+    if (nextNode.type === NodeType.PARAGRAPH && REMARK_RE.test(nextNode.content.trim())) {
+      body[j + 1] = { ...nextNode, type: NodeType.REMARK }
+    }
+  }
+
+  // 识别发文机关署名：成文日期前满足"短句 + 机关关键词"的段落
   for (let j = 1; j < body.length; j++) {
-    if (body[j].type !== NodeType.DATE || j !== body.length - 1) continue
+    if (body[j].type !== NodeType.DATE) continue
     if (isPossibleSignature(body[j - 1]) && hasSignatureOrgHint(body[j - 1].content)) {
       body[j - 1] = { ...body[j - 1], type: NodeType.SIGNATURE }
     }

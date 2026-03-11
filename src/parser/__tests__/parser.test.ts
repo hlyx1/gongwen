@@ -59,13 +59,13 @@ describe('detectNodeType', () => {
 describe('parseGongwen', () => {
   it('空文本返回空 AST', () => {
     const ast = parseGongwen('')
-    expect(ast.title).toBeNull()
+    expect(ast.title).toHaveLength(0)
     expect(ast.body).toHaveLength(0)
   })
 
   it('仅空行返回空 AST', () => {
     const ast = parseGongwen('\n\n  \n')
-    expect(ast.title).toBeNull()
+    expect(ast.title).toHaveLength(0)
     expect(ast.body).toHaveLength(0)
   })
 
@@ -114,7 +114,7 @@ describe('parseGongwen', () => {
   })
 
   it('正确记录行号', () => {
-    const text = '标题\n\n一、正文第一节\n内容段落'
+    const text = '标题\n\n一、正文第一节。\n内容段落。'
     const ast = parseGongwen(text)
 
     expect(ast.title.length).toBe(1)
@@ -362,19 +362,24 @@ describe('发文机关署名识别', () => {
     const text = [
       '标题',
       '',
+      '正文内容。',
+      '',
       '国务院办公厅',
       '2025年10月21日',
     ].join('\n')
     const ast = parseGongwen(text)
 
-    expect(ast.body).toHaveLength(2)
-    expect(ast.body[0].type).toBe(NodeType.SIGNATURE)
-    expect(ast.body[1].type).toBe(NodeType.DATE)
+    expect(ast.body).toHaveLength(3)
+    expect(ast.body[0].type).toBe(NodeType.PARAGRAPH)
+    expect(ast.body[1].type).toBe(NodeType.SIGNATURE)
+    expect(ast.body[2].type).toBe(NodeType.DATE)
   })
 
-  it('日期非末尾时不识别 SIGNATURE', () => {
+  it('日期非末尾时也识别 SIGNATURE', () => {
     const text = [
       '标题',
+      '',
+      '正文内容。',
       '',
       '国务院办公厅',
       '2025年10月21日',
@@ -383,13 +388,16 @@ describe('发文机关署名识别', () => {
     const ast = parseGongwen(text)
 
     expect(ast.body[0].type).toBe(NodeType.PARAGRAPH)
-    expect(ast.body[1].type).toBe(NodeType.DATE)
-    expect(ast.body[2].type).toBe(NodeType.HEADING_1)
+    expect(ast.body[1].type).toBe(NodeType.SIGNATURE)
+    expect(ast.body[2].type).toBe(NodeType.DATE)
+    expect(ast.body[3].type).toBe(NodeType.HEADING_1)
   })
 
   it('普通短句不应误识别为 SIGNATURE', () => {
     const text = [
       '标题',
+      '',
+      '正文内容。',
       '',
       '请认真执行',
       '2025年10月21日',
@@ -397,6 +405,95 @@ describe('发文机关署名识别', () => {
     const ast = parseGongwen(text)
 
     expect(ast.body[0].type).toBe(NodeType.PARAGRAPH)
-    expect(ast.body[1].type).toBe(NodeType.DATE)
+    expect(ast.body[1].type).toBe(NodeType.PARAGRAPH)
+    expect(ast.body[2].type).toBe(NodeType.DATE)
+  })
+})
+
+// ---- 备注识别测试 ----
+describe('备注识别', () => {
+  it('成文日期后的括号内容识别为 REMARK', () => {
+    const text = [
+      '标题',
+      '',
+      '正文内容。',
+      '国务院办公厅',
+      '2025年10月21日',
+      '（联系人 小明 电话 10000000）',
+    ].join('\n')
+    const ast = parseGongwen(text)
+
+    expect(ast.body).toHaveLength(4)
+    expect(ast.body[0].type).toBe(NodeType.PARAGRAPH)
+    expect(ast.body[1].type).toBe(NodeType.SIGNATURE)
+    expect(ast.body[2].type).toBe(NodeType.DATE)
+    expect(ast.body[3].type).toBe(NodeType.REMARK)
+    expect(ast.body[3].content).toBe('（联系人 小明 电话 10000000）')
+  })
+
+  it('半角括号的备注也能识别', () => {
+    const text = [
+      '标题',
+      '',
+      '正文内容。',
+      '国务院办公厅',
+      '2025年10月21日',
+      '(联系人 小明 电话 10000000)',
+    ].join('\n')
+    const ast = parseGongwen(text)
+
+    expect(ast.body[3].type).toBe(NodeType.REMARK)
+    expect(ast.body[3].content).toBe('(联系人 小明 电话 10000000)')
+  })
+
+  it('非成文日期后的括号内容不识别为 REMARK', () => {
+    const text = [
+      '标题',
+      '',
+      '正文内容。',
+      '（这是正文中的括号内容）',
+      '一、总体要求',
+    ].join('\n')
+    const ast = parseGongwen(text)
+
+    expect(ast.body[0].type).toBe(NodeType.PARAGRAPH)
+    expect(ast.body[1].type).toBe(NodeType.PARAGRAPH)
+    expect(ast.body[2].type).toBe(NodeType.HEADING_1)
+  })
+
+  it('备注不影响发文机关署名识别', () => {
+    const text = [
+      '标题',
+      '',
+      '正文内容。',
+      '国务院办公厅',
+      '2025年10月21日',
+      '（联系人 小明 电话 10000000）',
+    ].join('\n')
+    const ast = parseGongwen(text)
+
+    // 发文机关署名仍应被正确识别
+    expect(ast.body[1].type).toBe(NodeType.SIGNATURE)
+    expect(ast.body[1].content).toBe('国务院办公厅')
+  })
+
+  it('备注后还有其他内容时，发文机关署名仍被识别', () => {
+    const text = [
+      '标题',
+      '',
+      '正文内容。',
+      '国务院办公厅',
+      '2025年10月21日',
+      '（联系人 小明 电话 10000000）',
+      '一、后续说明',
+    ].join('\n')
+    const ast = parseGongwen(text)
+
+    // 即使日期后面有非备注内容，署名仍应被识别
+    expect(ast.body[0].type).toBe(NodeType.PARAGRAPH)
+    expect(ast.body[1].type).toBe(NodeType.SIGNATURE)
+    expect(ast.body[2].type).toBe(NodeType.DATE)
+    expect(ast.body[3].type).toBe(NodeType.REMARK)
+    expect(ast.body[4].type).toBe(NodeType.HEADING_1)
   })
 })

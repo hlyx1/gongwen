@@ -145,5 +145,6 @@ export var NODE_TO_DETECTION_MAP: Record<NodeType, DetectionPointType | null> = 
   [NodeType.ATTACHMENT]: DetectionPointType.ATTACHMENT,
   [NodeType.SIGNATURE]: DetectionPointType.SIGNATURE,
   [NodeType.DATE]: DetectionPointType.DATE,
+  [NodeType.REMARK]: null,
   [NodeType.TABLE]: null,
 }
