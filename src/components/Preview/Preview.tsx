@@ -1,6 +1,7 @@
 import React, { useRef, useMemo, type CSSProperties } from 'react'
 import { NodeType } from '../../types/ast'
 import type { GongwenAST, DocumentNode, AttachmentNode } from '../../types/ast'
+import type { AIProofreadResult } from '../../types/aiProofread'
 import { useDocumentConfig } from '../../contexts/DocumentConfigContext'
 import { cmToPagePercent, CHARS_PER_LINE } from '../../types/documentConfig'
 import { usePagination } from '../../hooks/usePagination'
@@ -10,6 +11,8 @@ import './Preview.css'
 
 interface PreviewProps {
   ast: GongwenAST
+  /** AI校对结果映射，key 为 sentenceId */
+  aiProofreadResults?: Map<string, AIProofreadResult>
 }
 
 /**
@@ -37,7 +40,7 @@ function getNodeStyle(
   return undefined
 }
 
-export function Preview({ ast }: PreviewProps) {
+export function Preview({ ast, aiProofreadResults }: PreviewProps) {
   const measurerRef = useRef<HTMLDivElement>(null)
   const { config } = useDocumentConfig()
   const pages = usePagination(ast.title, ast.body, measurerRef)
@@ -85,10 +88,6 @@ export function Preview({ ast }: PreviewProps) {
 
   return (
     <div className="preview-container">
-      <div className="preview-header">
-        <span className="preview-label">预览（浏览器样式仅供参考，请导出 Word 确认）</span>
-        <span className="preview-hint">共 {pages.length} 页</span>
-      </div>
       <div className="preview-scroll" style={cssVars}>
         {/* 隐藏度量容器：渲染全部节点用于高度测量（与 A4Page 使用相同的 CSS 类和渲染逻辑） */}
         <div ref={measurerRef} className="a4-measurer" aria-hidden="true">
@@ -194,6 +193,7 @@ export function Preview({ ast }: PreviewProps) {
             isFirstPage={index === 0}
             isLastPage={index === pages.length - 1}
             hasStamp={config.specialOptions.hasStamp}
+            aiProofreadResults={aiProofreadResults}
           />
         ))}
       </div>

@@ -1,4 +1,4 @@
-# AI审核功能规格文档
+# AI校对功能规格文档
 
 ## 为什么
 用户在排版公文时，需要AI帮助逐句审核文本，发现语法、用词、逻辑等问题。系统应将清理后的文本逐句发送给大模型进行审核，在前端高亮有问题的句子并展示AI建议，由用户自行决定是否修改。
@@ -8,9 +8,9 @@
 - 新增文本分块器，支持长文本分批发送
 - 新增流式解析器，实时解析AI返回的Markdown表格
 - 新增AI服务配置（仅通过.env文件配置，对用户完全隐藏，不提交到git）
-- 新增AI审核按钮
+- 新增AI校对按钮
 - 新增预览区句子高亮功能
-- 新增检测点面板AI审核结果展示
+- 新增检测点面板AI校对结果展示
 - 新增审核设置弹窗（固定提示词+用户自定义检查项）
 - 新增.env配置文件（.env.development 和 .env.production，均不提交到git）
 
@@ -20,9 +20,9 @@
   - `src/utils/textBlockSplitter.ts` - 文本分块器
   - `src/utils/aiResponseParser.ts` - AI响应解析器
   - `src/services/aiServiceConfig.ts` - AI服务配置（内部使用）
-  - `src/services/aiProofreadService.ts` - AI审核服务
-  - `src/hooks/useAIProofread.ts` - AI审核Hook
-  - `src/components/AIProofreadButton/` - AI审核按钮组件
+  - `src/services/aiProofreadService.ts` - AI校对服务
+  - `src/hooks/useAIProofread.ts` - AI校对Hook
+  - `src/components/AIProofreadButton/` - AI校对按钮组件
   - `src/components/AIProofreadSettings/` - 审核设置弹窗
   - `src/types/aiProofread.ts` - 类型定义
   - `.env.development` - 测试环境配置（不提交到git）
@@ -30,8 +30,8 @@
   - `.env.example` - 环境变量示例文件（提交到git）
 - 修改文件：
   - `src/components/Preview/Preview.tsx` - 添加高亮展示
-  - `src/components/DetectionPanel/` - 添加AI审核结果展示
-  - `src/contexts/DocumentConfigContext.tsx` - 添加AI审核配置
+  - `src/components/DetectionPanel/` - 添加AI校对结果展示
+  - `src/contexts/DocumentConfigContext.tsx` - 添加AI校对配置
   - `vite.config.ts` - 添加环境变量支持
   - `.gitignore` - 添加.env文件忽略
 
@@ -78,15 +78,15 @@
 ### 需求5：前端展示
 系统应在预览区黄色高亮有问题的句子，鼠标悬停显示AI建议。
 在检测点面板按文章顺序展示所有问题。
-按钮显示格式：`AI审核 正在检测(45/128)`或`AI审核 发现3处问题`。
+按钮显示格式：`AI校对 正在检测(45/128)`或`AI校对 发现3处问题`。
 
 #### 场景：检测中
 - **当** 正在接收AI响应
-- **则** 按钮显示`AI审核 正在检测(x/n)`，x为已处理句子数
+- **则** 按钮显示`AI校对 正在检测(x/n)`，x为已处理句子数
 
 #### 场景：检测完成
 - **当** 所有块处理完成
-- **则** 按钮显示`AI审核 发现N处问题`或`AI审核 无问题`
+- **则** 按钮显示`AI校对 发现N处问题`或`AI校对 无问题`
 
 ### 需求6：AI服务配置（.env环境变量，对用户隐藏，不提交git）
 系统应从.env环境变量文件读取AI服务配置，对用户完全隐藏，不可修改，且不提交到git仓库。
@@ -101,7 +101,7 @@
 
 #### 场景：配置缺失
 - **当** .env文件配置不完整或缺失
-- **则** AI审核按钮禁用，显示"AI服务未配置"
+- **则** AI校对按钮禁用，显示"AI服务未配置"
 - **当** 用户点击禁用的按钮
 - **则** 提示"请联系管理员配置AI服务"
 
@@ -300,7 +300,7 @@ function buildPrompt(
 
 ```
 ┌─────────────────────────────────────────┐
-│  AI审核设置                    [X]      │
+│  AI校对设置                    [X]      │
 ├─────────────────────────────────────────┤
 │                                         │
 │  【固定提示词】（不可更改）                │
@@ -470,7 +470,7 @@ interface AIProofreadBlockRequest {
 | VITE_AI_TEMPERATURE | number | 否 | 0.3 | 温度参数 |
 | VITE_AI_MAX_TOKENS | number | 否 | 4096 | 最大token数 |
 
-### AI审核配置（用户可修改，存储在localStorage）
+### AI校对配置（用户可修改，存储在localStorage）
 
 | 配置项 | 类型 | 必填 | 默认值 | 说明 |
 |--------|------|------|--------|------|
@@ -485,7 +485,7 @@ interface AIProofreadBlockRequest {
 - 对用户完全隐藏
 - 前端无法修改
 - **不提交到git仓库**（保护API密钥）
-- 配置缺失时AI审核按钮禁用
+- 配置缺失时AI校对按钮禁用
 
 ### 用户可修改配置
 - 仅包含审核参数和自定义检查项
@@ -498,4 +498,6 @@ interface AIProofreadBlockRequest {
 ```
 固定提示词前缀（基础检查项）
 + 用户自定义检查项（可选）
-+ 固定提示词后缀（输出
++ 固定提示词后缀（输出格式要求）
++ 待审核句子列表
+```

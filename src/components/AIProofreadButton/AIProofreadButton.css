@@ -1,0 +1,79 @@
+.ai-proofread-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  background-color: var(--color-primary);
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  outline: none;
+  position: relative;
+}
+
+.ai-proofread-button:hover {
+  background-color: var(--color-primary-light);
+}
+
+.ai-proofread-button:active {
+  background-color: var(--color-primary-dark);
+}
+
+.ai-proofread-button--disabled {
+  background-color: #d9d9d9;
+  color: rgba(0, 0, 0, 0.25);
+  cursor: not-allowed;
+}
+
+.ai-proofread-button--disabled:hover {
+  background-color: #d9d9d9;
+}
+
+.ai-proofread-button--loading {
+  background-color: var(--color-success-light);
+  cursor: wait;
+}
+
+.ai-proofread-button--loading:hover {
+  background-color: var(--color-success-light);
+}
+
+.ai-proofread-button--error {
+  background-color: var(--color-error);
+}
+
+.ai-proofread-button--error:hover {
+  background-color: var(--color-error-light);
+}
+
+.ai-proofread-button--has-issues {
+  background-color: var(--color-warning);
+}
+
+.ai-proofread-button--has-issues:hover {
+  background-color: var(--color-warning-light);
+}
+
+.ai-proofread-button__text {
+  white-space: nowrap;
+}
+
+.ai-proofread-button__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  margin-left: 8px;
+  background-color: var(--color-error);
+  color: #ffffff;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 20px;
+}

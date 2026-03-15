@@ -47,6 +47,38 @@ npm run build:single   # 单文件离线构建，生成 dist/index.html（约 1M
 npm run preview        # 本地预览构建产物
 ```
 
+## Docker 部署
+
+### 快速部署
+
+```bash
+cd gongwen-docker
+docker-compose up -d --build
+```
+
+访问 `http://localhost:88` 即可使用。
+
+### 启用 AI 审核功能
+
+如需启用 AI 审核功能，在 `gongwen-docker` 目录下创建 `.env` 文件：
+
+```bash
+VITE_AI_BASE_URL=https://api.openai.com/v1/chat/completions
+VITE_AI_MODEL=gpt-4o
+VITE_AI_API_KEY=your-api-key-here
+```
+
+然后重新构建：
+
+```bash
+docker-compose up -d --build
+```
+
+**注意**：
+- AI 配置在构建时注入，修改后需重新构建镜像
+- `.env` 文件包含敏感信息，切勿提交到 Git
+- 详细配置说明请参阅 [gongwen-docker/README.md](gongwen-docker/README.md)
+
 ## 项目结构
 
 ```
