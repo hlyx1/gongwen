@@ -124,6 +124,8 @@ export interface SavedConfig {
 export interface ConfigStorage {
   activeConfigId: string | null
   savedConfigs: SavedConfig[]
+  /** AI 校对配置（可选，用于向后兼容） */
+  aiProofreadConfig?: import('./aiProofread').AIProofreadConfig
 }
 
 // ---- 默认值 (GB/T 9704 国标) ----

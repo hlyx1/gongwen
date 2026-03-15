@@ -26,13 +26,20 @@ docker
 # 测试覆盖率
 coverage
 
-# 环境变量文件
+# 环境变量文件（构建时通过 ARG 传入，不使用本地文件）
 .env
 .env.local
 .env.*.local
+# 注意：不忽略 .env.production，因为构建时会生成
+# 但由于我们通过 ARG 生成，所以也忽略本地 .env.production
+.env.development
+.env.production
 
 # TypeScript 缓存
 *.tsbuildinfo
 
 # Trae 配置
 .trae
+
+# 构建产物（多阶段构建会重新生成）
+dist

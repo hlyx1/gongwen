@@ -1,11 +1,21 @@
 # 公文排版工具 - Docker Compose 配置
-# 使用方法：docker-compose up -d --build
+# 使用方法：
+#   基础部署：docker-compose up -d --build
+#   带 AI 配置：创建 .env 文件后执行 docker-compose up -d --build
 
 services:
   gongwen:
     build:
       context: ..
       dockerfile: gongwen-docker/Dockerfile
+      args:
+        # AI 服务配置通过构建参数传入
+        # 优先级：环境变量 > .env 文件 > 默认空值
+        VITE_AI_BASE_URL: ${VITE_AI_BASE_URL:-}
+        VITE_AI_MODEL: ${VITE_AI_MODEL:-}
+        VITE_AI_API_KEY: ${VITE_AI_API_KEY:-}
+        VITE_AI_TEMPERATURE: ${VITE_AI_TEMPERATURE:-0.3}
+        VITE_AI_MAX_TOKENS: ${VITE_AI_MAX_TOKENS:-4096}
     image: gongwen:latest
     container_name: gongwen-web
     ports:

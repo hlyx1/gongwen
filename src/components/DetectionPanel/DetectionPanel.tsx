@@ -8,10 +8,17 @@ import {
 } from '../../types/detection'
 import { useDetectionData } from '../../hooks/useDetectionData'
 import type { GongwenAST } from '../../types/ast'
+import type { AIProofreadState, AIProofreadResult } from '../../types/aiProofread'
 import './DetectionPanel.css'
 
 interface DetectionPanelProps {
   ast: GongwenAST
+  /** AI 审核状态 */
+  aiProofreadState?: AIProofreadState
+  /** AI 服务是否已配置 */
+  isAIConfigured?: boolean
+  /** 定位句子回调 */
+  onLocateSentence?: (sentenceId: string) => void
 }
 
 /** 状态颜色映射 */
@@ -240,8 +247,196 @@ function DetectionPointCard({ point }: { point: DetectionPoint }) {
   )
 }
 
+/** AI 审核问题项组件 */
+function AIIssueItem({ 
+  result, 
+  index,
+  onLocate 
+}: { 
+  result: AIProofreadResult
+  index: number
+  onLocate?: (sentenceId: string) => void 
+}) {
+  function handleClick() {
+    if (onLocate) {
+      onLocate(result.sentenceId)
+    }
+  }
+
+  return (
+    <div 
+      className="ai-issue-item"
+      onClick={handleClick}
+      role="button"
+      tabIndex={0}
+      onKeyPress={function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          handleClick()
+        }
+      }}
+    >
+      <div className="ai-issue-header">
+        <span className="ai-issue-index">{index + 1}.</span>
+        <span className="ai-issue-location">[第{result.seqNum}句]</span>
+      </div>
+      <div className="ai-issue-original">{result.originalText}</div>
+      <div className="ai-issue-suggestion">
+        <span className="ai-issue-suggestion-label">建议：</span>
+        <span className="ai-issue-suggestion-text">{result.suggestion}</span>
+      </div>
+    </div>
+  )
+}
+
+/** AI 审核板块组件 */
+function AIProofreadSection({ 
+  state, 
+  isConfigured,
+  onLocateSentence 
+}: { 
+  state?: AIProofreadState
+  isConfigured?: boolean
+  onLocateSentence?: (sentenceId: string) => void
+}) {
+  // 未配置 AI 服务时显示提示
+  if (!isConfigured) {
+    return (
+      <div className="detection-item">
+        <div className="detection-trunk">
+          <div className="detection-trunk-line" style={{ backgroundColor: '#999999' }} />
+          <div className="detection-branch" style={{ backgroundColor: '#999999' }} />
+          <div className="detection-trunk-line--continue" style={{ backgroundColor: '#999999' }} />
+        </div>
+        <div className="detection-card detection-card--missing" style={{ borderColor: '#999999' }}>
+          <div className="detection-card-header" style={{ borderBottomColor: '#999999' }}>
+            <StatusIcon status={DetectionStatus.MISSING} />
+            <span className="detection-card-label" style={{ color: '#999999' }}>AI审核</span>
+          </div>
+          <div className="detection-card-content">
+            <div className="ai-not-configured">
+              <img src="/警告.svg" alt="" width="16" height="16" />
+              <span>请联系管理员配置AI服务</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // 无状态时不显示
+  if (!state) {
+    return null
+  }
+
+  // 收集有问题的结果，按序号排序
+  var issues: AIProofreadResult[] = []
+  state.results.forEach(function(result) {
+    if (result.hasIssue) {
+      issues.push(result)
+    }
+  })
+  issues.sort(function(a, b) {
+    return a.seqNum - b.seqNum
+  })
+
+  var status = DetectionStatus.DETECTED
+  var statusColor = '#047857'
+  
+  // 根据状态确定颜色（使用主题色绿色）
+  if (state.status === 'loading') {
+    statusColor = '#047857'
+  } else if (state.status === 'error') {
+    status = DetectionStatus.WARNING
+    statusColor = '#dc2626'
+  } else if (issues.length > 0) {
+    status = DetectionStatus.WARNING
+    statusColor = '#dc2626'
+  }
+
+  return (
+    <div className="detection-item">
+      <div className="detection-trunk">
+        <div className="detection-trunk-line" style={{ backgroundColor: statusColor }} />
+        <div className="detection-branch" style={{ backgroundColor: statusColor }} />
+        <div className="detection-trunk-line--continue" style={{ backgroundColor: statusColor }} />
+      </div>
+      <div 
+        className={'detection-card' + (issues.length > 0 ? ' detection-card--warning' : '')}
+        style={{ borderColor: statusColor }}
+      >
+        <div className="detection-card-header" style={{ borderBottomColor: statusColor }}>
+          <StatusIcon status={status} />
+          <span className="detection-card-label" style={{ color: statusColor }}>AI审核</span>
+        </div>
+        <div className="detection-card-content">
+          {/* 统计信息 */}
+          <div className="ai-stats">
+            <div className="ai-stats-row">
+              <span className="ai-stats-label">已检测：</span>
+              <span className="ai-stats-value">{state.processedSentences}</span>
+              <span className="ai-stats-sep">/</span>
+              <span className="ai-stats-value">{state.totalSentences}</span>
+              <span className="ai-stats-label">句</span>
+            </div>
+            <div className="ai-stats-row">
+              <span className="ai-stats-label">发现问题：</span>
+              <span className="ai-stats-value ai-stats-value--warning">{issues.length}</span>
+              <span className="ai-stats-label">处</span>
+            </div>
+          </div>
+
+          {/* 加载中状态 */}
+          {state.status === 'loading' && (
+            <div className="ai-loading">
+              <div className="ai-loading-spinner"></div>
+              <span>正在审核中...</span>
+            </div>
+          )}
+
+          {/* 错误状态 */}
+          {state.status === 'error' && state.error && (
+            <div className="ai-error">
+              <img src="/警告.svg" alt="" width="14" height="14" />
+              <span>{state.error}</span>
+            </div>
+          )}
+
+          {/* 问题列表 */}
+          {state.status === 'success' && issues.length > 0 && (
+            <div className="ai-issues-list">
+              {issues.map(function(result, index) {
+                return (
+                  <AIIssueItem 
+                    key={result.sentenceId}
+                    result={result}
+                    index={index}
+                    onLocate={onLocateSentence}
+                  />
+                )
+              })}
+            </div>
+          )}
+
+          {/* 无问题提示 */}
+          {state.status === 'success' && issues.length === 0 && (
+            <div className="ai-no-issues">
+              <img src="/正确.svg" alt="" width="16" height="16" />
+              <span>未发现问题</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /** 检测面板主组件 */
-export function DetectionPanel({ ast }: DetectionPanelProps) {
+export function DetectionPanel(props: DetectionPanelProps) {
+  var ast = props.ast
+  var aiProofreadState = props.aiProofreadState
+  var isAIConfigured = props.isAIConfigured
+  var onLocateSentence = props.onLocateSentence
+
   var result = useDetectionData(ast)
   var points = result.points
 
@@ -256,6 +451,12 @@ export function DetectionPanel({ ast }: DetectionPanelProps) {
             />
           )
         })}
+        {/* AI 审核板块 */}
+        <AIProofreadSection 
+          state={aiProofreadState}
+          isConfigured={isAIConfigured}
+          onLocateSentence={onLocateSentence}
+        />
       </div>
     </div>
   )

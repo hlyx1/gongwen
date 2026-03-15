@@ -295,3 +295,238 @@
   color: var(--color-text-secondary);
   line-height: 1.5;
 }
+
+/* ========== AI 审核板块样式 ========== */
+
+/* AI 统计信息 */
+.ai-stats {
+  display: flex;
+  flex-direction: column;
+}
+
+.ai-stats > * + * {
+  margin-top: 6px;
+}
+
+.ai-stats-row {
+  display: flex;
+  align-items: center;
+}
+
+.ai-stats-label {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.ai-stats-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0 4px;
+}
+
+.ai-stats-value--warning {
+  color: var(--color-error);
+}
+
+.ai-stats-sep {
+  font-size: 12px;
+  color: var(--color-border-hover);
+  margin: 0 2px;
+}
+
+/* AI 未配置提示 */
+.ai-not-configured {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  background: linear-gradient(to right, var(--color-primary-bg), #ffffff);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-primary-border);
+}
+
+.ai-not-configured > * + * {
+  margin-left: 8px;
+}
+
+.ai-not-configured span {
+  font-size: 13px;
+  color: var(--color-primary-dark);
+}
+
+/* AI 加载中状态 */
+.ai-loading {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  margin-top: 10px;
+  background: linear-gradient(to right, var(--color-primary-bg), #ffffff);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-primary-border);
+}
+
+.ai-loading > * + * {
+  margin-left: 10px;
+}
+
+.ai-loading span {
+  font-size: 13px;
+  color: var(--color-primary);
+}
+
+/* 加载动画 */
+.ai-loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--color-primary-border);
+  border-top-color: var(--color-success);
+  border-radius: 50%;
+  animation: ai-spin 0.8s linear infinite;
+}
+
+@keyframes ai-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* AI 错误状态 */
+.ai-error {
+  display: flex;
+  align-items: flex-start;
+  padding: 10px 12px;
+  margin-top: 10px;
+  background: linear-gradient(to right, #fef2f2, #ffffff);
+  border-radius: var(--radius-sm);
+  border: 1px solid #fecaca;
+}
+
+.ai-error > * + * {
+  margin-left: 8px;
+}
+
+.ai-error span {
+  font-size: 12px;
+  color: var(--color-error);
+  line-height: 1.5;
+}
+
+/* AI 无问题提示 */
+.ai-no-issues {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  margin-top: 10px;
+  background: linear-gradient(to right, var(--color-primary-bg), #ffffff);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-primary-border);
+}
+
+.ai-no-issues > * + * {
+  margin-left: 8px;
+}
+
+.ai-no-issues span {
+  font-size: 13px;
+  color: var(--color-success);
+}
+
+/* AI 问题列表 */
+.ai-issues-list {
+  margin-top: 12px;
+}
+
+.ai-issues-list > * + * {
+  margin-top: 10px;
+}
+
+/* AI 问题项 */
+.ai-issue-item {
+  padding: 10px 12px;
+  background: linear-gradient(to right, #fffbeb, #ffffff);
+  border-radius: var(--radius-sm);
+  border: 1px solid #fde68a;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.ai-issue-item:hover {
+  background: linear-gradient(to right, #fef3c7, #fffbeb);
+  border-color: var(--color-warning-light);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.ai-issue-item:focus {
+  outline: 2px solid var(--color-warning);
+  outline-offset: 2px;
+}
+
+/* 问题项头部 */
+.ai-issue-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.ai-issue-header > * + * {
+  margin-left: 6px;
+}
+
+.ai-issue-index {
+  font-size: 12px;
+  font-weight: 600;
+  color: #92400e;
+}
+
+.ai-issue-location {
+  font-size: 11px;
+  color: #b45309;
+  background: #fef3c7;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+}
+
+/* 问题项原文 */
+.ai-issue-original {
+  font-size: 13px;
+  color: #78350f;
+  line-height: 1.5;
+  margin-bottom: 8px;
+  padding-left: 18px;
+  position: relative;
+}
+
+.ai-issue-original::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  width: 4px;
+  height: 4px;
+  background: var(--color-warning-light);
+  border-radius: 50%;
+}
+
+/* 问题项建议 */
+.ai-issue-suggestion {
+  display: flex;
+  align-items: flex-start;
+  padding: 8px 10px;
+  background: #ffffff;
+  border-radius: var(--radius-sm);
+  border: 1px solid #fde68a;
+}
+
+.ai-issue-suggestion-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-success);
+  flex-shrink: 0;
+}
+
+.ai-issue-suggestion-text {
+  font-size: 12px;
+  color: var(--color-primary);
+  line-height: 1.5;
+  margin-left: 4px;
+}

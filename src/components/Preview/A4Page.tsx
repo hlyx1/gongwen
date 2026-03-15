@@ -1,6 +1,7 @@
-import React, { type CSSProperties } from 'react'
+import React, { type CSSProperties, useState, useCallback } from 'react'
 import { NodeType } from '../../types/ast'
 import type { DocumentNode, AttachmentNode, TableNode } from '../../types/ast'
+import type { AIProofreadResult } from '../../types/aiProofread'
 import type { HeaderConfig, FooterNoteConfig } from '../../types/documentConfig'
 import './A4Page.css'
 
@@ -281,6 +282,8 @@ interface A4PageProps {
    * - false: 成文日期右空二字 (GB/T 9704 7.3.5.2)
    */
   hasStamp: boolean
+  /** AI校对结果映射，key 为 sentenceId */
+  aiProofreadResults?: Map<string, AIProofreadResult>
 }
 
 export function A4Page({
@@ -297,7 +300,407 @@ export function A4Page({
   isFirstPage,
   isLastPage,
   hasStamp,
+  aiProofreadResults,
 }: A4PageProps) {
+  /** 悬停浮层状态 */
+  const [hoveredResult, setHoveredResult] = useState<AIProofreadResult | null>(null)
+  /** 浮层位置 */
+  const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 })
+
+  /**
+   * 处理鼠标悬停事件
+   * 显示AI建议浮层
+   */
+  const handleMouseEnter = useCallback((result: AIProofreadResult, event: React.MouseEvent) => {
+    const rect = (event.target as HTMLElement).getBoundingClientRect()
+    const containerRect = (event.currentTarget as HTMLElement).closest('.a4-content-viewport')
+    if (containerRect) {
+      const containerRectBox = containerRect.getBoundingClientRect()
+      setTooltipPosition({
+        top: rect.bottom - containerRectBox.top + 4,
+        left: rect.left - containerRectBox.left,
+      })
+    } else {
+      setTooltipPosition({
+        top: rect.bottom + 4,
+        left: rect.left,
+      })
+    }
+    setHoveredResult(result)
+  }, [])
+
+  /**
+   * 处理鼠标离开事件
+   * 隐藏AI建议浮层
+   */
+  const handleMouseLeave = useCallback(() => {
+    setHoveredResult(null)
+  }, [])
+
+  /**
+   * 将文本按句子拆分，并为有问题的句子添加高亮
+   * 句子以句号、问号、感叹号、分号、省略号结尾
+   * sentenceId 格式：nodeType-lineNumber-localSeq（与 sentenceSplitter.ts 一致）
+   */
+  function renderTextWithHighlight(content: string, node: DocumentNode): React.ReactNode {
+    // 如果没有校对结果，直接返回原文
+    if (!aiProofreadResults || aiProofreadResults.size === 0) {
+      return content
+    }
+
+    // 按句子拆分文本（以句号、问号、感叹号、分号、省略号结尾）
+    const sentenceEndRegex = /[^。！？；…]*[。！？；…]|[^。！？；…]+/g
+    const sentences: Array<{ text: string; index: number }> = []
+    let match
+    let lastIndex = 0
+
+    while ((match = sentenceEndRegex.exec(content)) !== null) {
+      const text = match[0].trim()
+      if (text.length > 0) {
+        sentences.push({ text: text, index: match.index })
+      }
+      lastIndex = sentenceEndRegex.lastIndex
+    }
+
+    // 如果没有拆分出句子，直接返回原文
+    if (sentences.length === 0) {
+      return content
+    }
+
+    // 为每个句子查找对应的校对结果
+    const elements: React.ReactNode[] = []
+    let sentenceSeqInNode = 1
+
+    sentences.forEach(function(sentence, idx) {
+      // 生成句子ID，格式：nodeType-lineNumber-localSeq（与 sentenceSplitter.ts 一致）
+      const sentenceId = node.type + '-' + node.lineNumber + '-' + sentenceSeqInNode
+      const result = aiProofreadResults.get(sentenceId)
+
+      if (result && result.hasIssue) {
+        // 有问题的句子，添加高亮
+        elements.push(
+          <span
+            key={idx}
+            className="a4-highlight-sentence"
+            onMouseEnter={function(e) { handleMouseEnter(result, e) }}
+            onMouseLeave={handleMouseLeave}
+          >
+            {sentence.text}
+          </span>
+        )
+      } else {
+        elements.push(<span key={idx}>{sentence.text}</span>)
+      }
+      sentenceSeqInNode++
+    })
+
+    return <>{elements}</>
+  }
+
+  /**
+   * 渲染带高亮的标题内容
+   * 针对一级标题的特殊处理：首句黑体，其余仿宋
+   * sentenceId 格式：nodeType-lineNumber-localSeq（与 sentenceSplitter.ts 一致）
+   */
+  function renderHeading1WithHighlight(content: string, node: DocumentNode): React.ReactNode {
+    const idx = content.indexOf('。')
+    if (idx === -1 || idx === content.length - 1) {
+      // 整句或无句号
+      if (!aiProofreadResults || aiProofreadResults.size === 0) {
+        return <span className="a4-h1-inline">{content}</span>
+      }
+      const sentenceId = node.type + '-' + node.lineNumber + '-1'
+      const result = aiProofreadResults.get(sentenceId)
+      if (result && result.hasIssue) {
+        return (
+          <span
+            className="a4-h1-inline a4-highlight-sentence"
+            onMouseEnter={function(e) { handleMouseEnter(result, e) }}
+            onMouseLeave={handleMouseLeave}
+          >
+            {content}
+          </span>
+        )
+      }
+      return <span className="a4-h1-inline">{content}</span>
+    }
+
+    // 拆分为首句和剩余部分
+    const firstSentence = content.slice(0, idx + 1)
+    const rest = content.slice(idx + 1)
+
+    // 渲染首句
+    let firstSentenceElement: React.ReactNode
+    if (!aiProofreadResults || aiProofreadResults.size === 0) {
+      firstSentenceElement = <span className="a4-h1-inline">{firstSentence}</span>
+    } else {
+      const sentenceId = node.type + '-' + node.lineNumber + '-1'
+      const result = aiProofreadResults.get(sentenceId)
+      if (result && result.hasIssue) {
+        firstSentenceElement = (
+          <span
+            className="a4-h1-inline a4-highlight-sentence"
+            onMouseEnter={function(e) { handleMouseEnter(result, e) }}
+            onMouseLeave={handleMouseLeave}
+          >
+            {firstSentence}
+          </span>
+        )
+      } else {
+        firstSentenceElement = <span className="a4-h1-inline">{firstSentence}</span>
+      }
+    }
+
+    // 渲染剩余部分（可能有多个句子）
+    const restElement = renderTextWithHighlight(rest, node)
+
+    return (
+      <>
+        {firstSentenceElement}
+        <span className="a4-paragraph-inline">{restElement}</span>
+      </>
+    )
+  }
+
+  /**
+   * 渲染带高亮的二级标题内容
+   * sentenceId 格式：nodeType-lineNumber-localSeq（与 sentenceSplitter.ts 一致）
+   */
+  function renderHeading2WithHighlight(content: string, node: DocumentNode): React.ReactNode {
+    const idx = content.indexOf('。')
+    if (idx === -1 || idx === content.length - 1) {
+      if (!aiProofreadResults || aiProofreadResults.size === 0) {
+        return <span className="a4-h2-inline">{content}</span>
+      }
+      const sentenceId = node.type + '-' + node.lineNumber + '-1'
+      const result = aiProofreadResults.get(sentenceId)
+      if (result && result.hasIssue) {
+        return (
+          <span
+            className="a4-h2-inline a4-highlight-sentence"
+            onMouseEnter={function(e) { handleMouseEnter(result, e) }}
+            onMouseLeave={handleMouseLeave}
+          >
+            {content}
+          </span>
+        )
+      }
+      return <span className="a4-h2-inline">{content}</span>
+    }
+
+    const firstSentence = content.slice(0, idx + 1)
+    const rest = content.slice(idx + 1)
+
+    let firstSentenceElement: React.ReactNode
+    if (!aiProofreadResults || aiProofreadResults.size === 0) {
+      firstSentenceElement = <span className="a4-h2-inline">{firstSentence}</span>
+    } else {
+      const sentenceId = node.type + '-' + node.lineNumber + '-1'
+      const result = aiProofreadResults.get(sentenceId)
+      if (result && result.hasIssue) {
+        firstSentenceElement = (
+          <span
+            className="a4-h2-inline a4-highlight-sentence"
+            onMouseEnter={function(e) { handleMouseEnter(result, e) }}
+            onMouseLeave={handleMouseLeave}
+          >
+            {firstSentence}
+          </span>
+        )
+      } else {
+        firstSentenceElement = <span className="a4-h2-inline">{firstSentence}</span>
+      }
+    }
+
+    const restElement = renderTextWithHighlight(rest, node)
+
+    return (
+      <>
+        {firstSentenceElement}
+        <span className="a4-paragraph-inline">{restElement}</span>
+      </>
+    )
+  }
+
+  /**
+   * 渲染带高亮的三级标题内容
+   * sentenceId 格式：nodeType-lineNumber-localSeq（与 sentenceSplitter.ts 一致）
+   */
+  function renderHeading3WithHighlight(content: string, node: DocumentNode): React.ReactNode {
+    const idx = content.indexOf('。')
+    if (idx === -1 || idx === content.length - 1) {
+      if (!aiProofreadResults || aiProofreadResults.size === 0) {
+        return <span className="a4-h3-inline">{content}</span>
+      }
+      const sentenceId = node.type + '-' + node.lineNumber + '-1'
+      const result = aiProofreadResults.get(sentenceId)
+      if (result && result.hasIssue) {
+        return (
+          <span
+            className="a4-h3-inline a4-highlight-sentence"
+            onMouseEnter={function(e) { handleMouseEnter(result, e) }}
+            onMouseLeave={handleMouseLeave}
+          >
+            {content}
+          </span>
+        )
+      }
+      return <span className="a4-h3-inline">{content}</span>
+    }
+
+    const firstSentence = content.slice(0, idx + 1)
+    const rest = content.slice(idx + 1)
+
+    let firstSentenceElement: React.ReactNode
+    if (!aiProofreadResults || aiProofreadResults.size === 0) {
+      firstSentenceElement = <span className="a4-h3-inline">{firstSentence}</span>
+    } else {
+      const sentenceId = node.type + '-' + node.lineNumber + '-1'
+      const result = aiProofreadResults.get(sentenceId)
+      if (result && result.hasIssue) {
+        firstSentenceElement = (
+          <span
+            className="a4-h3-inline a4-highlight-sentence"
+            onMouseEnter={function(e) { handleMouseEnter(result, e) }}
+            onMouseLeave={handleMouseLeave}
+          >
+            {firstSentence}
+          </span>
+        )
+      } else {
+        firstSentenceElement = <span className="a4-h3-inline">{firstSentence}</span>
+      }
+    }
+
+    const restElement = renderTextWithHighlight(rest, node)
+
+    return (
+      <>
+        {firstSentenceElement}
+        <span className="a4-paragraph-inline">{restElement}</span>
+      </>
+    )
+  }
+
+  /**
+   * 渲染带高亮的四级标题内容
+   * sentenceId 格式：nodeType-lineNumber-localSeq（与 sentenceSplitter.ts 一致）
+   */
+  function renderHeading4WithHighlight(content: string, node: DocumentNode): React.ReactNode {
+    const idx = content.indexOf('。')
+    if (idx === -1 || idx === content.length - 1) {
+      if (!aiProofreadResults || aiProofreadResults.size === 0) {
+        return <span className="a4-h4-inline">{content}</span>
+      }
+      const sentenceId = node.type + '-' + node.lineNumber + '-1'
+      const result = aiProofreadResults.get(sentenceId)
+      if (result && result.hasIssue) {
+        return (
+          <span
+            className="a4-h4-inline a4-highlight-sentence"
+            onMouseEnter={function(e) { handleMouseEnter(result, e) }}
+            onMouseLeave={handleMouseLeave}
+          >
+            {content}
+          </span>
+        )
+      }
+      return <span className="a4-h4-inline">{content}</span>
+    }
+
+    const firstSentence = content.slice(0, idx + 1)
+    const rest = content.slice(idx + 1)
+
+    let firstSentenceElement: React.ReactNode
+    if (!aiProofreadResults || aiProofreadResults.size === 0) {
+      firstSentenceElement = <span className="a4-h4-inline">{firstSentence}</span>
+    } else {
+      const sentenceId = node.type + '-' + node.lineNumber + '-1'
+      const result = aiProofreadResults.get(sentenceId)
+      if (result && result.hasIssue) {
+        firstSentenceElement = (
+          <span
+            className="a4-h4-inline a4-highlight-sentence"
+            onMouseEnter={function(e) { handleMouseEnter(result, e) }}
+            onMouseLeave={handleMouseLeave}
+          >
+            {firstSentence}
+          </span>
+        )
+      } else {
+        firstSentenceElement = <span className="a4-h4-inline">{firstSentence}</span>
+      }
+    }
+
+    const restElement = renderTextWithHighlight(rest, node)
+
+    return (
+      <>
+        {firstSentenceElement}
+        <span className="a4-paragraph-inline">{restElement}</span>
+      </>
+    )
+  }
+
+  /**
+   * 渲染带高亮的正文内容（首句加粗模式）
+   * sentenceId 格式：nodeType-lineNumber-localSeq（与 sentenceSplitter.ts 一致）
+   */
+  function renderBoldFirstSentenceWithHighlight(content: string, node: DocumentNode): React.ReactNode {
+    const idx = content.indexOf('。')
+    if (idx === -1 || idx === content.length - 1) {
+      if (!aiProofreadResults || aiProofreadResults.size === 0) {
+        return <span className="a4-bold-first">{content}</span>
+      }
+      const sentenceId = node.type + '-' + node.lineNumber + '-1'
+      const result = aiProofreadResults.get(sentenceId)
+      if (result && result.hasIssue) {
+        return (
+          <span
+            className="a4-bold-first a4-highlight-sentence"
+            onMouseEnter={function(e) { handleMouseEnter(result, e) }}
+            onMouseLeave={handleMouseLeave}
+          >
+            {content}
+          </span>
+        )
+      }
+      return <span className="a4-bold-first">{content}</span>
+    }
+
+    const firstSentence = content.slice(0, idx + 1)
+    const rest = content.slice(idx + 1)
+
+    let firstSentenceElement: React.ReactNode
+    if (!aiProofreadResults || aiProofreadResults.size === 0) {
+      firstSentenceElement = <span className="a4-bold-first">{firstSentence}</span>
+    } else {
+      const sentenceId = node.type + '-' + node.lineNumber + '-1'
+      const result = aiProofreadResults.get(sentenceId)
+      if (result && result.hasIssue) {
+        firstSentenceElement = (
+          <span
+            className="a4-bold-first a4-highlight-sentence"
+            onMouseEnter={function(e) { handleMouseEnter(result, e) }}
+            onMouseLeave={handleMouseLeave}
+          >
+            {firstSentence}
+          </span>
+        )
+      } else {
+        firstSentenceElement = <span className="a4-bold-first">{firstSentence}</span>
+      }
+    }
+
+    const restElement = renderTextWithHighlight(rest, node)
+
+    return (
+      <>
+        {firstSentenceElement}
+        {restElement}
+      </>
+    )
+  }
   /**
    * 计算节点的动态样式
    * - SIGNATURE: 以成文日期为基准居中
@@ -398,16 +801,16 @@ export function A4Page({
                     style={getNodeStyle(node, index)}
                   >
                     {node.type === NodeType.HEADING_1
-                      ? renderHeading1(node.content)
+                      ? renderHeading1WithHighlight(node.content, node)
                       : node.type === NodeType.HEADING_2
-                        ? renderHeading2(node.content)
+                        ? renderHeading2WithHighlight(node.content, node)
                         : node.type === NodeType.HEADING_3
-                          ? renderHeading3(node.content)
+                          ? renderHeading3WithHighlight(node.content, node)
                           : node.type === NodeType.HEADING_4
-                            ? renderHeading4(node.content)
+                            ? renderHeading4WithHighlight(node.content, node)
                             : (boldFirstSentence && node.type === NodeType.PARAGRAPH)
-                              ? renderBoldFirstSentence(node.content)
-                              : node.content}
+                              ? renderBoldFirstSentenceWithHighlight(node.content, node)
+                              : renderTextWithHighlight(node.content, node)}
                   </p>
                 )
               }
@@ -418,6 +821,28 @@ export function A4Page({
               <p className="a4-placeholder">预览区域</p>
             )}
           </div>
+          {/* AI校对建议浮层 */}
+          {hoveredResult && (
+            <div
+              className="a4-tooltip"
+              style={{
+                top: tooltipPosition.top,
+                left: tooltipPosition.left,
+              }}
+            >
+              <div className="a4-tooltip-header">AI 校对建议</div>
+              <div className="a4-tooltip-content">
+                <div className="a4-tooltip-row">
+                  <span className="a4-tooltip-label">原文：</span>
+                  <span className="a4-tooltip-original">{hoveredResult.originalText}</span>
+                </div>
+                <div className="a4-tooltip-row">
+                  <span className="a4-tooltip-label">建议：</span>
+                  <span className="a4-tooltip-suggestion">{hoveredResult.suggestion}</span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
       {/* 版记：绝对定位到最后一页底部，末条线与版心下边缘重合 */}

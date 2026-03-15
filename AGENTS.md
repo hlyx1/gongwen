@@ -253,6 +253,63 @@ npm run lint
 - 仅考虑 1920×1080 桌面分辨率
 - 不考虑移动端适配
 
+## CSS 变量规范
+
+**重要**: 所有颜色、阴影、圆角、过渡时间等样式值必须使用 `src/index.css` 中定义的 CSS 变量，禁止硬编码颜色值。
+
+### 可用变量列表
+
+| 变量名 | 用途 | 示例值 |
+|--------|------|--------|
+| `--color-primary` | 主色调（绿色） | `#047857` |
+| `--color-primary-light` | 主色调浅色 | `#10b981` |
+| `--color-primary-dark` | 主色调深色 | `#065f46` |
+| `--color-primary-bg` | 主色调背景 | `#ecfdf5` |
+| `--color-primary-border` | 主色调边框 | `#a7f3d0` |
+| `--color-success` | 成功状态 | `#059669` |
+| `--color-success-light` | 成功状态浅色 | `#10b981` |
+| `--color-warning` | 警告状态 | `#d97706` |
+| `--color-warning-light` | 警告状态浅色 | `#f59e0b` |
+| `--color-error` | 错误状态 | `#dc2626` |
+| `--color-error-light` | 错误状态浅色 | `#ef4444` |
+| `--color-text-primary` | 主要文字 | `#0f172a` |
+| `--color-text-secondary` | 次要文字 | `#64748b` |
+| `--color-text-muted` | 弱化文字 | `#94a3b8` |
+| `--color-border` | 边框颜色 | `#e2e8f0` |
+| `--color-border-hover` | 边框悬停 | `#cbd5e1` |
+| `--color-bg-main` | 主背景 | `#f1f5f9` |
+| `--color-bg-card` | 卡片背景 | `#ffffff` |
+| `--radius-sm` | 小圆角 | `6px` |
+| `--radius-md` | 中圆角 | `8px` |
+| `--radius-lg` | 大圆角 | `12px` |
+| `--transition-fast` | 快速过渡 | `0.15s ease` |
+| `--transition-normal` | 正常过渡 | `0.2s ease` |
+
+### 使用示例
+
+```css
+/* 正确：使用 CSS 变量 */
+.my-button {
+  background-color: var(--color-primary);
+  color: #ffffff;
+  border-radius: var(--radius-md);
+}
+
+.my-button:hover {
+  background-color: var(--color-primary-light);
+}
+
+/* 错误：硬编码颜色值 */
+.my-button {
+  background-color: #047857;  /* 禁止 */
+  color: #ffffff;
+}
+```
+
+### 添加新变量
+
+如需添加新的 CSS 变量，请在 `src/index.css` 的 `:root` 中定义，并更新此文档。
+
 ## 国标规范
 
 ### GB/T 9704-2012 主要参数
