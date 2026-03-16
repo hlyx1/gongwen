@@ -173,6 +173,7 @@ export function useAIProofread(): UseAIProofreadReturn {
       sendAllBlocksStreaming(
         blocks,
         config.customCheckItems,
+        config.customExampleItems,
         sentenceMap,
         config.maxConcurrentRequests,
         handleResult,

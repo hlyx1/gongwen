@@ -18,6 +18,11 @@ export function getAIServiceConfig(): AIServiceConfig | null {
   const apiKey = import.meta.env.VITE_AI_API_KEY;
   const temperatureStr = import.meta.env.VITE_AI_TEMPERATURE;
   const maxTokensStr = import.meta.env.VITE_AI_MAX_TOKENS;
+  const topPStr = import.meta.env.VITE_AI_TOP_P;
+  const topKStr = import.meta.env.VITE_AI_TOP_K;
+  const minPStr = import.meta.env.VITE_AI_MIN_P;
+  const presencePenaltyStr = import.meta.env.VITE_AI_PRESENCE_PENALTY;
+  const repetitionPenaltyStr = import.meta.env.VITE_AI_REPETITION_PENALTY;
 
   // 验证必填项
   // 必须同时存在 baseUrl、model、apiKey 且为非空字符串
@@ -50,12 +55,57 @@ export function getAIServiceConfig(): AIServiceConfig | null {
     }
   }
 
+  let topP = 0.95;
+  if (topPStr && typeof topPStr === 'string') {
+    const parsed = parseFloat(topPStr);
+    if (!isNaN(parsed)) {
+      topP = parsed;
+    }
+  }
+
+  let topK = 20;
+  if (topKStr && typeof topKStr === 'string') {
+    const parsed = parseInt(topKStr, 10);
+    if (!isNaN(parsed)) {
+      topK = parsed;
+    }
+  }
+
+  let minP = 0.0;
+  if (minPStr && typeof minPStr === 'string') {
+    const parsed = parseFloat(minPStr);
+    if (!isNaN(parsed)) {
+      minP = parsed;
+    }
+  }
+
+  let presencePenalty = 1.5;
+  if (presencePenaltyStr && typeof presencePenaltyStr === 'string') {
+    const parsed = parseFloat(presencePenaltyStr);
+    if (!isNaN(parsed)) {
+      presencePenalty = parsed;
+    }
+  }
+
+  let repetitionPenalty = 1.0;
+  if (repetitionPenaltyStr && typeof repetitionPenaltyStr === 'string') {
+    const parsed = parseFloat(repetitionPenaltyStr);
+    if (!isNaN(parsed)) {
+      repetitionPenalty = parsed;
+    }
+  }
+
   return {
     baseUrl: baseUrl.trim(),
     model: model.trim(),
     apiKey: apiKey.trim(),
     temperature: temperature,
     maxTokens: maxTokens,
+    topP: topP,
+    topK: topK,
+    minP: minP,
+    presencePenalty: presencePenalty,
+    repetitionPenalty: repetitionPenalty,
   };
 }
 

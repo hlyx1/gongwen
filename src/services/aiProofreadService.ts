@@ -7,6 +7,7 @@
 import type {
   SentenceBlock,
   CustomCheckItem,
+  CustomExampleItem,
   AIProofreadResult,
   OpenAIChatRequest,
 } from '../types/aiProofread';
@@ -25,14 +26,27 @@ export var BUILTIN_CHECK_ITEMS = [
 ];
 
 /**
+ * 系统内置示例
+ */
+var BUILTIN_EXAMPLES: CustomExampleItem[] = [
+  { originalText: '请各部门做好工作部暑', suggestion: '"部暑"→"部署"："暑"为错别字' },
+  { originalText: '会议截止日期是明天下午三点。', suggestion: '"截止"→"截至"："截止"是动词，不能带时间点，"截至"是介词，带时间点' },
+  { originalText: '公司决定提高员工的水平。', suggestion: '"水平"→"工作水平"：宾语缺失："提高"需搭配具体对象' },
+  { originalText: '本着以节约资源为原则，我们制定了新方案。', suggestion: '"本着以节约资源为原则"→"本着节约资源的原则"："本着"与"以……为"杂糅，二者只能选其一' },
+  { originalText: '2026年3月15日', suggestion: '无' },
+];
+
+/**
  * 构建完整提示词
  * @param block 句子块
  * @param customCheckItems 用户添加的检查项列表（每项为字符串）
+ * @param customExampleItems 用户添加的示例行列表
  * @returns 完整提示词字符串
  */
 export function buildPrompt(
   block: SentenceBlock,
-  customCheckItems: CustomCheckItem[]
+  customCheckItems: CustomCheckItem[],
+  customExampleItems: CustomExampleItem[]
 ): string {
   var prompt = 
     '你是一个文章审核员，对于给定被分割为若干个纠错单元的文章，你需要进行以纠错单元为单位的审核。\n' +
@@ -69,13 +83,23 @@ export function buildPrompt(
     '# 输出示例\n' +
     '\n' +
     '| 序号 | 原句 | 建议 |\n' +
-    '| --- | --- | --- |\n' +
-    '| 1 | 请各部门做好工作部暑 | "部暑"→"部署"："暑"为错别字 |\n' +
-    '| 2 | 会议截止日期是明天下午三点。 | "截止"→"截至"："截止"是动词，不能带时间点，"截至"是介词，带时间点 |\n' +
-    '| 3 | 公司决定提高员工的水平。 | "水平"→"工作水平"：宾语缺失："提高"需搭配具体对象 |\n' +
-    '| 4 | 本着以节约资源为原则，我们制定了新方案。 |"本着以节约资源为原则"→"本着节约资源的原则"："本着"与"以……为"杂糅，二者只能选其一 |\n' +
-    '| 5 | 2025 年 8 月 5 日  | 无 |\n' +
-    '\n' +
+    '| --- | --- | --- |';
+
+  // 添加内置示例
+  for (var bi = 0; bi < BUILTIN_EXAMPLES.length; bi++) {
+    var builtinItem = BUILTIN_EXAMPLES[bi];
+    prompt += '\n| ' + (bi + 1) + ' | ' + builtinItem.originalText + ' | ' + builtinItem.suggestion + ' |';
+  }
+
+  // 添加用户自定义示例行
+  for (var j = 0; j < customExampleItems.length; j++) {
+    var exampleItem = customExampleItems[j];
+    if (exampleItem.originalText && exampleItem.originalText.trim().length > 0) {
+      prompt += '\n| ' + (j + BUILTIN_EXAMPLES.length + 1) + ' | ' + exampleItem.originalText + ' | ' + (exampleItem.suggestion || '无') + ' |';
+    }
+  }
+
+  prompt += '\n\n' +
     '# 工作原则\n' +
     '\n' +
     '- 表格必须逐句生成，**绝不跳过任何纠错单元**，每个纠错单元占表格一行。\n' +
@@ -97,6 +121,7 @@ export function buildPrompt(
  * 发送单个句子块的流式请求
  * @param block 句子块
  * @param customCheckItems 自定义检查项列表
+ * @param customExampleItems 自定义示例行列表
  * @param sentenceMap 序号到 sentenceId 的映射
  * @param onResult 每解析出一行就调用的回调函数
  * @param onRawResponse 可选，收到完整响应时的回调（用于调试）
@@ -105,6 +130,7 @@ export function buildPrompt(
 export function sendBlockStreaming(
   block: SentenceBlock,
   customCheckItems: CustomCheckItem[],
+  customExampleItems: CustomExampleItem[],
   sentenceMap: Map<number, string>,
   onResult: (result: AIProofreadResult) => void,
   onRawResponse?: (rawResponse: string, blockIndex: number) => void,
@@ -119,7 +145,7 @@ export function sendBlockStreaming(
     }
 
     // 构建提示词
-    var prompt = buildPrompt(block, customCheckItems);
+    var prompt = buildPrompt(block, customCheckItems, customExampleItems);
 
     // 构建请求体
     var requestBody: OpenAIChatRequest = {
@@ -133,6 +159,11 @@ export function sendBlockStreaming(
       temperature: config.temperature,
       max_tokens: config.maxTokens,
       stream: true,
+      top_p: config.topP,
+      top_k: config.topK,
+      min_p: config.minP,
+      presence_penalty: config.presencePenalty,
+      repetition_penalty: config.repetitionPenalty,
     };
 
     // 发送请求
@@ -274,6 +305,7 @@ export function sendBlockStreaming(
  * 发送所有句子块的流式请求（带并发控制）
  * @param blocks 句子块数组
  * @param customCheckItems 自定义检查项列表
+ * @param customExampleItems 自定义示例行列表
  * @param sentenceMap 序号到 sentenceId 的映射
  * @param maxConcurrent 最大并发数，默认3
  * @param onResult 每解析出一行就调用的回调函数
@@ -283,6 +315,7 @@ export function sendBlockStreaming(
 export function sendAllBlocksStreaming(
   blocks: SentenceBlock[],
   customCheckItems: CustomCheckItem[],
+  customExampleItems: CustomExampleItem[],
   sentenceMap: Map<number, string>,
   maxConcurrent: number,
   onResult: (result: AIProofreadResult) => void,
@@ -355,7 +388,7 @@ export function sendAllBlocksStreaming(
     ): void {
       var block = blocks[blockIndex];
 
-      sendBlockStreaming(block, customCheckItems, sentenceMap, wrappedOnResult, handleRawResponse, blockIndex)
+      sendBlockStreaming(block, customCheckItems, customExampleItems, sentenceMap, wrappedOnResult, handleRawResponse, blockIndex)
         .then(function () {
           // 成功完成
           processed++;

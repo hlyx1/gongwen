@@ -76,7 +76,8 @@
 /* 两列布局 */
 .ai-settings-body--twocol {
   display: flex;
-  overflow-y: visible;
+  overflow: hidden;
+  min-height: 0;
 }
 
 .ai-settings-section--left {
@@ -85,7 +86,6 @@
   padding-right: 16px;
   border-right: 1px solid #e5e7eb;
   overflow-y: auto;
-  max-height: calc(80vh - 140px);
 }
 
 .ai-settings-section--right {
@@ -93,7 +93,6 @@
   min-width: 0;
   padding-left: 16px;
   overflow-y: auto;
-  max-height: calc(80vh - 140px);
 }
 
 /* 区块 */
@@ -141,45 +140,48 @@
   margin: 8px 0 0;
 }
 
-/* 系统内置检查项 */
-.ai-settings-builtin-items {
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+/* 系统内置检查项 - 紧凑版 */
+.ai-settings-builtin-compact {
+  background: var(--color-primary-bg);
+  border: 1px solid var(--color-primary-border);
   border-radius: 6px;
-  padding: 12px;
-  margin-bottom: 12px;
-}
-
-.ai-settings-builtin-label {
+  padding: 8px 12px;
+  margin-bottom: 10px;
   font-size: 12px;
-  color: #6b7280;
-  margin-bottom: 8px;
 }
 
-.ai-settings-builtin-list {
+.ai-settings-builtin-label-compact {
+  color: var(--color-primary);
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.ai-settings-builtin-list-compact {
   margin: 0;
-  padding-left: 0;
-  list-style: none;
+  padding-left: 20px;
+  list-style: decimal;
 }
 
-.ai-settings-builtin-item {
-  font-size: 13px;
+.ai-settings-builtin-item-compact {
+  font-size: 12px;
   color: #374151;
-  padding: 4px 0;
-  padding-left: 16px;
-  position: relative;
+  padding: 1px 0;
+  line-height: 1.4;
 }
 
-.ai-settings-builtin-item::before {
-  content: '-';
-  position: absolute;
-  left: 0;
-  color: #9ca3af;
+.ai-settings-builtin-text {
+  color: #374151;
 }
 
-/* 用户添加检查项区域 */
-.ai-settings-custom-area {
-  margin-top: 12px;
+/* 用户添加检查项区域 - 紧凑版 */
+.ai-settings-custom-area--compact {
+  margin-bottom: 10px;
+}
+
+.ai-settings-textarea--compact {
+  min-height: auto;
+  padding: 6px 8px;
+  font-size: 12px;
 }
 
 .ai-settings-custom-label {
@@ -510,4 +512,131 @@
 
 .ai-settings-dialog-footer > * + * {
   margin-left: 8px;
+}
+
+/* ---- 示例行样式 ---- */
+
+.ai-settings-example-list {
+  margin-bottom: 10px;
+}
+
+.ai-settings-example-list-header {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.ai-settings-example-list--builtin {
+  margin-bottom: 12px;
+}
+
+.ai-settings-example-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  margin-bottom: 4px;
+  font-size: 12px;
+}
+
+.ai-settings-example-item:last-child {
+  margin-bottom: 0;
+}
+
+.ai-settings-example-item--builtin {
+  background: var(--color-primary-bg);
+  border-color: var(--color-primary-border);
+}
+
+.ai-settings-example-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  color: #374151;
+  overflow: hidden;
+}
+
+.ai-settings-example-original {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ai-settings-example-arrow {
+  flex-shrink: 0;
+  margin: 0 6px;
+  color: #9ca3af;
+  font-size: 11px;
+}
+
+.ai-settings-example-suggestion {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #6b7280;
+}
+
+.ai-settings-example-delete {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  border-radius: 4px;
+  color: #9ca3af;
+  font-size: 12px;
+  cursor: pointer;
+  margin-left: 8px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.ai-settings-example-delete:hover {
+  color: #dc2626;
+  background: #fef2f2;
+}
+
+.ai-settings-example-add {
+  display: flex;
+  align-items: center;
+}
+
+.ai-settings-example-add > * + * {
+  margin-left: 8px;
+}
+
+.ai-settings-example-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.ai-settings-btn--add-small {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  background: white;
+  color: var(--color-primary-light);
+  border: 1px solid var(--color-primary-light);
+  font-size: 12px;
+}
+
+.ai-settings-btn--add-small:hover:not(:disabled) {
+  background: var(--color-primary-bg-alt);
+}
+
+.ai-settings-btn--add-small:disabled {
+  color: #9ca3af;
+  border-color: #d1d5db;
+  cursor: not-allowed;
 }

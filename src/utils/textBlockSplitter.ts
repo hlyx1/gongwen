@@ -124,9 +124,6 @@ function findOptimalSplitPoints(
       remainingChars = remainingChars + sentenceLengths[j];
     }
     
-    // 计算剩余块的平均目标字符数
-    var remainingTargetChars = remainingBlocks > 0 ? remainingChars / remainingBlocks : remainingChars;
-    
     // 判断是否应该在此处分割
     // 条件：当前累计接近目标，且剩余句子足够分配到剩余块
     if (remainingSentences >= remainingBlocks) {

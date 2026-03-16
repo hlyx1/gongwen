@@ -8,7 +8,6 @@ import { AIProofreadSettings } from './components/AIProofreadSettings/AIProofrea
 import { useDocumentParser } from './hooks/useDocumentParser'
 import { useDocumentConfig } from './contexts/DocumentConfigContext'
 import { useAIProofread } from './hooks/useAIProofread'
-import type { FullProofreadConfig } from './hooks/useAIProofread'
 import { isAIServiceConfigured } from './services/aiServiceConfig'
 import { downloadDocx } from './exporter'
 import { sanitizeText } from './utils/sanitize'
@@ -36,11 +35,12 @@ const STORAGE_KEY_AI_CONFIG = 'ai-proofread-config'
 /** 从 localStorage 读取 AI 配置 */
 function loadAIConfig(): AIProofreadConfig {
   try {
-    var saved = localStorage.getItem(STORAGE_KEY_AI_CONFIG)
+    const saved = localStorage.getItem(STORAGE_KEY_AI_CONFIG)
     if (saved) {
-      var parsed = JSON.parse(saved)
+      const parsed = JSON.parse(saved)
       return {
         customCheckItems: parsed.customCheckItems || [],
+        customExampleItems: parsed.customExampleItems || [],
       }
     }
   } catch {
@@ -166,6 +166,7 @@ function App() {
   const handleStartAIProofread = useCallback(function() {
     startProofread(ast, {
       customCheckItems: aiConfig.customCheckItems,
+      customExampleItems: aiConfig.customExampleItems,
       maxCharsPerRequest: AI_PROOFREAD_INTERNAL_CONFIG.maxCharsPerRequest,
       maxConcurrentRequests: AI_PROOFREAD_INTERNAL_CONFIG.maxConcurrentRequests,
     })

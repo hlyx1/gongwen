@@ -16,6 +16,11 @@ services:
         VITE_AI_API_KEY: ${VITE_AI_API_KEY:-}
         VITE_AI_TEMPERATURE: ${VITE_AI_TEMPERATURE:-0.3}
         VITE_AI_MAX_TOKENS: ${VITE_AI_MAX_TOKENS:-4096}
+        VITE_AI_TOP_P: ${VITE_AI_TOP_P:-0.95}
+        VITE_AI_TOP_K: ${VITE_AI_TOP_K:-20}
+        VITE_AI_MIN_P: ${VITE_AI_MIN_P:-0.0}
+        VITE_AI_PRESENCE_PENALTY: ${VITE_AI_PRESENCE_PENALTY:-1.5}
+        VITE_AI_REPETITION_PENALTY: ${VITE_AI_REPETITION_PENALTY:-1.0}
     image: gongwen:latest
     container_name: gongwen-web
     ports:

@@ -5,16 +5,28 @@
  */
 
 import { useState, type ChangeEvent } from 'react'
-import type { AIProofreadConfig } from '../../types/aiProofread'
+import type { AIProofreadConfig, CustomExampleItem } from '../../types/aiProofread'
 import { BUILTIN_CHECK_ITEMS } from '../../services/aiProofreadService'
 import './AIProofreadSettings.css'
 
 /**
+ * 系统内置示例
+ */
+var BUILTIN_EXAMPLES: CustomExampleItem[] = [
+  { originalText: '请各部门做好工作部暑', suggestion: '"部暑"→"部署"："暑"为错别字' },
+  { originalText: '会议截止日期是明天下午三点。', suggestion: '"截止"→"截至"："截止"是动词，不能带时间点，"截至"是介词，带时间点' },
+  { originalText: '公司决定提高员工的水平。', suggestion: '"水平"→"工作水平"：宾语缺失："提高"需搭配具体对象' },
+  { originalText: '本着以节约资源为原则，我们制定了新方案。', suggestion: '"本着以节约资源为原则"→"本着节约资源的原则"："本着"与"以……为"杂糅，二者只能选其一' },
+  { originalText: '2026年3月15日', suggestion: '无' },
+]
+
+/**
  * 构建完整提示词（用于预览）
  * @param customCheckItems 用户添加的检查项
+ * @param customExampleItems 用户添加的示例行
  * @returns 完整提示词字符串
  */
-function buildFullPrompt(customCheckItems: string[]): string {
+function buildFullPrompt(customCheckItems: string[], customExampleItems: CustomExampleItem[]): string {
   var prompt = 
     '你是一个文章审核员，对于给定被分割为若干个纠错单元的文章，你需要进行以纠错单元为单位的审核。\n' +
     '\n' +
@@ -50,13 +62,23 @@ function buildFullPrompt(customCheckItems: string[]): string {
     '# 输出示例\n' +
     '\n' +
     '| 序号 | 原句 | 建议 |\n' +
-    '| --- | --- | --- |\n' +
-    '| 1 | 请各部门做好工作部暑 | "部暑"→"部署"："暑"为错别字 |\n' +
-    '| 2 | 会议截止日期是明天下午三点。 | "截止"→"截至"："截止"是动词，不能带时间点，"截至"是介词，带时间点 |\n' +
-    '| 3 | 公司决定提高员工的水平。 | "水平"→"工作水平"：宾语缺失："提高"需搭配具体对象 |\n' +
-    '| 4 | 本着以节约资源为原则，我们制定了新方案。 |"本着以节约资源为原则"→"本着节约资源的原则"："本着"与"以……为"杂糅，二者只能选其一 |\n' +
-    '| 5 | 2025 年 8 月 5 日  | 无 |\n' +
-    '\n' +
+    '| --- | --- | --- |'
+
+  // 添加内置示例
+  for (var bi = 0; bi < BUILTIN_EXAMPLES.length; bi++) {
+    var builtinItem = BUILTIN_EXAMPLES[bi]
+    prompt += '\n| ' + (bi + 1) + ' | ' + builtinItem.originalText + ' | ' + builtinItem.suggestion + ' |'
+  }
+
+  // 添加用户自定义示例行
+  for (var j = 0; j < customExampleItems.length; j++) {
+    var exampleItem = customExampleItems[j]
+    if (exampleItem.originalText && exampleItem.originalText.trim().length > 0) {
+      prompt += '\n| ' + (j + BUILTIN_EXAMPLES.length + 1) + ' | ' + exampleItem.originalText + ' | ' + (exampleItem.suggestion || '无') + ' |'
+    }
+  }
+
+  prompt += '\n\n' +
     '# 工作原则\n' +
     '\n' +
     '- 表格必须逐句生成，**绝不跳过任何纠错单元**，每个纠错单元占表格一行。\n' +
@@ -88,6 +110,20 @@ export function AIProofreadSettings(props: AIProofreadSettingsProps) {
   var customCheckText = _useState[0]
   var setCustomCheckText = _useState[1]
 
+  // 本地状态：用户添加的示例行列表
+  var _useState3 = useState<CustomExampleItem[]>(config.customExampleItems.slice())
+  var customExampleItems = _useState3[0]
+  var setCustomExampleItems = _useState3[1]
+
+  // 本地状态：新示例输入
+  var _useState4 = useState('')
+  var newExampleOriginal = _useState4[0]
+  var setNewExampleOriginal = _useState4[1]
+
+  var _useState5 = useState('')
+  var newExampleSuggestion = _useState5[0]
+  var setNewExampleSuggestion = _useState5[1]
+
   // 当外部 config 变化时同步状态
   var _useState2 = useState(config)
   var lastConfig = _useState2[0]
@@ -96,6 +132,7 @@ export function AIProofreadSettings(props: AIProofreadSettingsProps) {
   if (config !== lastConfig) {
     setLastConfig(config)
     setCustomCheckText(config.customCheckItems.join('\n'))
+    setCustomExampleItems(config.customExampleItems.slice())
   }
 
   // 如果弹窗未打开，不渲染
@@ -119,11 +156,40 @@ export function AIProofreadSettings(props: AIProofreadSettingsProps) {
   }
 
   /**
+   * 添加示例行
+   */
+  function handleAddExample() {
+    if (newExampleOriginal.trim().length > 0) {
+      var newItem: CustomExampleItem = {
+        originalText: newExampleOriginal.trim(),
+        suggestion: newExampleSuggestion.trim(),
+      }
+      setCustomExampleItems(customExampleItems.concat([newItem]))
+      setNewExampleOriginal('')
+      setNewExampleSuggestion('')
+    }
+  }
+
+  /**
+   * 删除示例行
+   */
+  function handleDeleteExample(index: number) {
+    var newItems: CustomExampleItem[] = []
+    for (var i = 0; i < customExampleItems.length; i++) {
+      if (i !== index) {
+        newItems.push(customExampleItems[i])
+      }
+    }
+    setCustomExampleItems(newItems)
+  }
+
+  /**
    * 处理保存
    */
   function handleSave() {
     onSave({
       customCheckItems: parseCustomCheckItems(customCheckText),
+      customExampleItems: customExampleItems,
     })
   }
 
@@ -133,11 +199,14 @@ export function AIProofreadSettings(props: AIProofreadSettingsProps) {
   function handleCancel() {
     // 重置为原始配置
     setCustomCheckText(config.customCheckItems.join('\n'))
+    setCustomExampleItems(config.customExampleItems.slice())
+    setNewExampleOriginal('')
+    setNewExampleSuggestion('')
     onClose()
   }
 
   // 构建预览提示词
-  var previewPrompt = buildFullPrompt(parseCustomCheckItems(customCheckText))
+  var previewPrompt = buildFullPrompt(parseCustomCheckItems(customCheckText), customExampleItems)
 
   return (
     <div className="ai-settings-overlay" onClick={handleCancel}>
@@ -157,31 +226,106 @@ export function AIProofreadSettings(props: AIProofreadSettingsProps) {
             <h3 className="ai-settings-section-title">检查项</h3>
             
             {/* 系统内置检查项 */}
-            <div className="ai-settings-builtin-items">
-              <div className="ai-settings-builtin-label">系统内置：</div>
-              <ul className="ai-settings-builtin-list">
+            <div className="ai-settings-builtin-compact">
+              <div className="ai-settings-builtin-label-compact">系统内置：</div>
+              <ol className="ai-settings-builtin-list-compact">
                 {BUILTIN_CHECK_ITEMS.map(function (item, index) {
                   return (
-                    <li key={index} className="ai-settings-builtin-item">
+                    <li key={index} className="ai-settings-builtin-item-compact">
                       {item}
                     </li>
                   )
                 })}
-              </ul>
+              </ol>
             </div>
             
             {/* 用户添加的检查项 */}
-            <div className="ai-settings-custom-area">
-              <div className="ai-settings-custom-label">添加更多检查项（每行一个）：</div>
+            <div className="ai-settings-custom-area ai-settings-custom-area--compact">
+              <div className="ai-settings-custom-label">添加检查项（每行一个）：</div>
               <textarea
-                className="ai-settings-textarea ai-settings-textarea--large"
+                className="ai-settings-textarea ai-settings-textarea--compact"
                 value={customCheckText}
-                placeholder={'示例：\n检查是否包含敏感词汇\n检查是否有政治性错误\n检查称谓是否规范'}
+                placeholder={'示例：检查是否包含敏感词汇'}
                 onChange={function (e: ChangeEvent<HTMLTextAreaElement>) {
                   setCustomCheckText(e.target.value)
                 }}
-                rows={8}
+                rows={2}
               />
+            </div>
+            
+            {/* 示例行 */}
+            <div className="ai-settings-custom-area">
+              <div className="ai-settings-custom-label">示例行：</div>
+              
+              {/* 内置示例列表 */}
+              <div className="ai-settings-example-list ai-settings-example-list--builtin">
+                <div className="ai-settings-example-list-header">系统内置：</div>
+                {BUILTIN_EXAMPLES.map(function (item, index) {
+                  return (
+                    <div key={index} className="ai-settings-example-item ai-settings-example-item--builtin">
+                      <div className="ai-settings-example-content">
+                        <span className="ai-settings-example-original">{item.originalText}</span>
+                        <span className="ai-settings-example-arrow">→</span>
+                        <span className="ai-settings-example-suggestion">{item.suggestion}</span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+              
+              {/* 用户添加的示例列表 */}
+              {customExampleItems.length > 0 && (
+                <div className="ai-settings-example-list ai-settings-example-list--custom">
+                  <div className="ai-settings-example-list-header">用户添加：</div>
+                  {customExampleItems.map(function (item, index) {
+                    return (
+                      <div key={index} className="ai-settings-example-item">
+                        <div className="ai-settings-example-content">
+                          <span className="ai-settings-example-original">{item.originalText}</span>
+                          <span className="ai-settings-example-arrow">→</span>
+                          <span className="ai-settings-example-suggestion">{item.suggestion || '无'}</span>
+                        </div>
+                        <button
+                          className="ai-settings-example-delete"
+                          onClick={function () { handleDeleteExample(index) }}
+                          aria-label="删除"
+                        >
+                          x
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+              
+              {/* 添加新示例 */}
+              <div className="ai-settings-example-add">
+                <input
+                  type="text"
+                  className="ai-settings-input ai-settings-example-input"
+                  value={newExampleOriginal}
+                  placeholder="原句"
+                  onChange={function (e: ChangeEvent<HTMLInputElement>) {
+                    setNewExampleOriginal(e.target.value)
+                  }}
+                />
+                <input
+                  type="text"
+                  className="ai-settings-input ai-settings-example-input"
+                  value={newExampleSuggestion}
+                  placeholder="建议（无问题填「无」）"
+                  onChange={function (e: ChangeEvent<HTMLInputElement>) {
+                    setNewExampleSuggestion(e.target.value)
+                  }}
+                />
+                <button
+                  className="ai-settings-btn ai-settings-btn--add-small"
+                  onClick={handleAddExample}
+                  disabled={newExampleOriginal.trim().length === 0}
+                >
+                  添加
+                </button>
+              </div>
             </div>
           </section>
 

@@ -352,14 +352,12 @@ export function A4Page({
     const sentenceEndRegex = /[^。！？；…]*[。！？；…]|[^。！？；…]+/g
     const sentences: Array<{ text: string; index: number }> = []
     let match
-    let lastIndex = 0
 
     while ((match = sentenceEndRegex.exec(content)) !== null) {
       const text = match[0].trim()
       if (text.length > 0) {
         sentences.push({ text: text, index: match.index })
       }
-      lastIndex = sentenceEndRegex.lastIndex
     }
 
     // 如果没有拆分出句子，直接返回原文

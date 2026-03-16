@@ -59,12 +59,25 @@ export interface AIProofreadResult {
 export type CustomCheckItem = string
 
 /**
+ * 自定义示例项
+ * 用户可添加的示例行
+ */
+export interface CustomExampleItem {
+  /** 原句 */
+  originalText: string;
+  /** 建议 */
+  suggestion: string;
+}
+
+/**
  * AI 校对配置
  * 用户可修改的配置项（仅自定义检查项）
  */
 export interface AIProofreadConfig {
   /** 自定义检查项列表（每项为一行文本） */
   customCheckItems: CustomCheckItem[];
+  /** 自定义示例行列表 */
+  customExampleItems: CustomExampleItem[];
 }
 
 /**
@@ -110,6 +123,16 @@ export interface AIServiceConfig {
   temperature: number;
   /** 最大 token 数 */
   maxTokens: number;
+  /** Top-p 采样参数 */
+  topP: number;
+  /** Top-k 采样参数 */
+  topK: number;
+  /** Min-p 采样参数 */
+  minP: number;
+  /** 存在惩罚参数 */
+  presencePenalty: number;
+  /** 重复惩罚参数 */
+  repetitionPenalty: number;
 }
 
 /**
@@ -130,6 +153,16 @@ export interface OpenAIChatRequest {
   max_tokens: number;
   /** 是否流式输出 */
   stream: boolean;
+  /** Top-p 采样参数 */
+  top_p?: number;
+  /** Top-k 采样参数 */
+  top_k?: number;
+  /** Min-p 采样参数 */
+  min_p?: number;
+  /** 存在惩罚参数 */
+  presence_penalty?: number;
+  /** 重复惩罚参数 */
+  repetition_penalty?: number;
 }
 
 /**
@@ -163,4 +196,5 @@ export interface OpenAIStreamResponse {
  */
 export const DEFAULT_AI_PROOFREAD_CONFIG: AIProofreadConfig = {
   customCheckItems: [],
+  customExampleItems: [],
 };
