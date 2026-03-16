@@ -304,28 +304,12 @@ export function A4Page({
 }: A4PageProps) {
   /** 悬停浮层状态 */
   const [hoveredResult, setHoveredResult] = useState<AIProofreadResult | null>(null)
-  /** 浮层位置 */
-  const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 })
 
   /**
    * 处理鼠标悬停事件
-   * 显示AI建议浮层
+   * 显示AI建议浮层（固定显示在A4纸左上角）
    */
-  const handleMouseEnter = useCallback((result: AIProofreadResult, event: React.MouseEvent) => {
-    const rect = (event.target as HTMLElement).getBoundingClientRect()
-    const containerRect = (event.currentTarget as HTMLElement).closest('.a4-content-viewport')
-    if (containerRect) {
-      const containerRectBox = containerRect.getBoundingClientRect()
-      setTooltipPosition({
-        top: rect.bottom - containerRectBox.top + 4,
-        left: rect.left - containerRectBox.left,
-      })
-    } else {
-      setTooltipPosition({
-        top: rect.bottom + 4,
-        left: rect.left,
-      })
-    }
+  const handleMouseEnter = useCallback(function(result: AIProofreadResult) {
     setHoveredResult(result)
   }, [])
 
@@ -333,9 +317,33 @@ export function A4Page({
    * 处理鼠标离开事件
    * 隐藏AI建议浮层
    */
-  const handleMouseLeave = useCallback(() => {
+  const handleMouseLeave = useCallback(function() {
     setHoveredResult(null)
   }, [])
+
+  /**
+   * 渲染带高亮的公文标题
+   * 公文标题通常作为一个整体处理，sentenceId 格式：DOCUMENT_TITLE-lineNumber-1
+   */
+  function renderTitleWithHighlight(content: string, node: DocumentNode): React.ReactNode {
+    if (!aiProofreadResults || aiProofreadResults.size === 0) {
+      return content
+    }
+    const sentenceId = node.type + '-' + node.lineNumber + '-1'
+    const result = aiProofreadResults.get(sentenceId)
+    if (result && result.hasIssue) {
+      return (
+        <span
+          className="a4-highlight-sentence"
+          onMouseEnter={function() { handleMouseEnter(result) }}
+          onMouseLeave={handleMouseLeave}
+        >
+          {content}
+        </span>
+      )
+    }
+    return content
+  }
 
   /**
    * 将文本按句子拆分，并为有问题的句子添加高亮
@@ -380,7 +388,7 @@ export function A4Page({
           <span
             key={idx}
             className="a4-highlight-sentence"
-            onMouseEnter={function(e) { handleMouseEnter(result, e) }}
+            onMouseEnter={function() { handleMouseEnter(result) }}
             onMouseLeave={handleMouseLeave}
           >
             {sentence.text}
@@ -413,7 +421,7 @@ export function A4Page({
         return (
           <span
             className="a4-h1-inline a4-highlight-sentence"
-            onMouseEnter={function(e) { handleMouseEnter(result, e) }}
+            onMouseEnter={function() { handleMouseEnter(result) }}
             onMouseLeave={handleMouseLeave}
           >
             {content}
@@ -438,7 +446,7 @@ export function A4Page({
         firstSentenceElement = (
           <span
             className="a4-h1-inline a4-highlight-sentence"
-            onMouseEnter={function(e) { handleMouseEnter(result, e) }}
+            onMouseEnter={function() { handleMouseEnter(result) }}
             onMouseLeave={handleMouseLeave}
           >
             {firstSentence}
@@ -476,7 +484,7 @@ export function A4Page({
         return (
           <span
             className="a4-h2-inline a4-highlight-sentence"
-            onMouseEnter={function(e) { handleMouseEnter(result, e) }}
+            onMouseEnter={function() { handleMouseEnter(result) }}
             onMouseLeave={handleMouseLeave}
           >
             {content}
@@ -499,7 +507,7 @@ export function A4Page({
         firstSentenceElement = (
           <span
             className="a4-h2-inline a4-highlight-sentence"
-            onMouseEnter={function(e) { handleMouseEnter(result, e) }}
+            onMouseEnter={function() { handleMouseEnter(result) }}
             onMouseLeave={handleMouseLeave}
           >
             {firstSentence}
@@ -536,7 +544,7 @@ export function A4Page({
         return (
           <span
             className="a4-h3-inline a4-highlight-sentence"
-            onMouseEnter={function(e) { handleMouseEnter(result, e) }}
+            onMouseEnter={function() { handleMouseEnter(result) }}
             onMouseLeave={handleMouseLeave}
           >
             {content}
@@ -559,7 +567,7 @@ export function A4Page({
         firstSentenceElement = (
           <span
             className="a4-h3-inline a4-highlight-sentence"
-            onMouseEnter={function(e) { handleMouseEnter(result, e) }}
+            onMouseEnter={function() { handleMouseEnter(result) }}
             onMouseLeave={handleMouseLeave}
           >
             {firstSentence}
@@ -596,7 +604,7 @@ export function A4Page({
         return (
           <span
             className="a4-h4-inline a4-highlight-sentence"
-            onMouseEnter={function(e) { handleMouseEnter(result, e) }}
+            onMouseEnter={function() { handleMouseEnter(result) }}
             onMouseLeave={handleMouseLeave}
           >
             {content}
@@ -619,7 +627,7 @@ export function A4Page({
         firstSentenceElement = (
           <span
             className="a4-h4-inline a4-highlight-sentence"
-            onMouseEnter={function(e) { handleMouseEnter(result, e) }}
+            onMouseEnter={function() { handleMouseEnter(result) }}
             onMouseLeave={handleMouseLeave}
           >
             {firstSentence}
@@ -656,7 +664,7 @@ export function A4Page({
         return (
           <span
             className="a4-bold-first a4-highlight-sentence"
-            onMouseEnter={function(e) { handleMouseEnter(result, e) }}
+            onMouseEnter={function() { handleMouseEnter(result) }}
             onMouseLeave={handleMouseLeave}
           >
             {content}
@@ -679,7 +687,7 @@ export function A4Page({
         firstSentenceElement = (
           <span
             className="a4-bold-first a4-highlight-sentence"
-            onMouseEnter={function(e) { handleMouseEnter(result, e) }}
+            onMouseEnter={function() { handleMouseEnter(result) }}
             onMouseLeave={handleMouseLeave}
           >
             {firstSentence}
@@ -745,7 +753,7 @@ export function A4Page({
             {/* 渲染多段标题 */}
             {title.length > 0 && title.map((titleNode, titleIndex) => (
               <p key={`title-${titleIndex}`} className={NODE_CLASS_MAP[titleNode.type]}>
-                {titleNode.content}
+                {renderTitleWithHighlight(titleNode.content, titleNode)}
               </p>
             ))}
             {/* 标题后添加一个固定行距的空行 */}
@@ -819,30 +827,24 @@ export function A4Page({
               <p className="a4-placeholder">预览区域</p>
             )}
           </div>
-          {/* AI校对建议浮层 */}
-          {hoveredResult && (
-            <div
-              className="a4-tooltip"
-              style={{
-                top: tooltipPosition.top,
-                left: tooltipPosition.left,
-              }}
-            >
-              <div className="a4-tooltip-header">AI 校对建议</div>
-              <div className="a4-tooltip-content">
-                <div className="a4-tooltip-row">
-                  <span className="a4-tooltip-label">原文：</span>
-                  <span className="a4-tooltip-original">{hoveredResult.originalText}</span>
-                </div>
-                <div className="a4-tooltip-row">
-                  <span className="a4-tooltip-label">建议：</span>
-                  <span className="a4-tooltip-suggestion">{hoveredResult.suggestion}</span>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
+      {/* AI校对建议浮层：固定显示在A4纸左上角 */}
+      {hoveredResult && (
+        <div className="a4-tooltip">
+          <div className="a4-tooltip-header">AI 校对建议</div>
+          <div className="a4-tooltip-content">
+            <div className="a4-tooltip-row">
+              <span className="a4-tooltip-label">原文：</span>
+              <span className="a4-tooltip-original">{hoveredResult.originalText}</span>
+            </div>
+            <div className="a4-tooltip-row">
+              <span className="a4-tooltip-label">建议：</span>
+              <span className="a4-tooltip-suggestion">{hoveredResult.suggestion}</span>
+            </div>
+          </div>
+        </div>
+      )}
       {/* 版记：绝对定位到最后一页底部，末条线与版心下边缘重合 */}
       {isLastPage && footerNoteConfig.enabled && (
         <div className="a4-footer-note">

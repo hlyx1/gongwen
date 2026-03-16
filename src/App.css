@@ -67,7 +67,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 18px;
+  padding: 8px 12px;
   background: linear-gradient(to right, #f8fafc, #ffffff);
   border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
@@ -84,15 +84,15 @@
 }
 
 .app-preview-header-right > * + * {
-  margin-left: 8px;
+  margin-left: 6px;
 }
 
 .preview-label {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--color-text-primary);
   position: relative;
-  padding-left: 12px;
+  padding-left: 10px;
 }
 
 .preview-label::before {
@@ -102,7 +102,7 @@
   top: 50%;
   transform: translateY(-50%);
   width: 3px;
-  height: 14px;
+  height: 12px;
   background: linear-gradient(to bottom, var(--color-primary), var(--color-primary-light));
   border-radius: 2px;
 }
@@ -112,12 +112,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 8px 16px;
+  padding: 5px 10px;
   background-color: transparent;
   color: var(--color-primary);
   border: 1px solid var(--color-primary);
   border-radius: var(--radius-md);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   transition: all var(--transition-fast);
@@ -131,7 +131,7 @@
 }
 
 .ai-settings-btn > * + * {
-  margin-left: 6px;
+  margin-left: 4px;
 }
 
 /* 预览内容区域 */
