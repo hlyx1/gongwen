@@ -8,7 +8,7 @@ import { AIProofreadSettings } from './components/AIProofreadSettings/AIProofrea
 import { useDocumentParser } from './hooks/useDocumentParser'
 import { useDocumentConfig } from './contexts/DocumentConfigContext'
 import { useAIProofread } from './hooks/useAIProofread'
-import { isAIServiceConfigured } from './services/aiServiceConfig'
+import { isAIServiceConfigured, getAIServiceConfig } from './services/aiServiceConfig'
 import { downloadDocx } from './exporter'
 import { sanitizeText } from './utils/sanitize'
 import { importFile } from './utils/fileImporter'
@@ -63,6 +63,31 @@ function App() {
   var aiProofreadState = aiProofreadHook.state
   var startProofread = aiProofreadHook.startProofread
   var isAIConfigured = isAIServiceConfigured()
+
+  // 调试：打印 AI 配置信息到控制台（使用 ref 确保只打印一次）
+  var hasLoggedRef = useRef(false)
+  if (!hasLoggedRef.current) {
+    hasLoggedRef.current = true
+    var debugAIConfig = getAIServiceConfig()
+    if (debugAIConfig !== null) {
+      console.log('%c[AI服务配置] 配置已就绪', 'color: green; font-weight: bold')
+      console.log('  API 地址:', debugAIConfig.baseUrl)
+      console.log('  模型:', debugAIConfig.model)
+      console.log('  温度:', debugAIConfig.temperature)
+      console.log('  最大 Token:', debugAIConfig.maxTokens)
+      console.log('  Top-P:', debugAIConfig.topP)
+      console.log('  Top-K:', debugAIConfig.topK)
+      console.log('  Min-P:', debugAIConfig.minP)
+      console.log('  存在惩罚:', debugAIConfig.presencePenalty)
+      console.log('  重复惩罚:', debugAIConfig.repetitionPenalty)
+    } else {
+      console.log('%c[AI服务配置] 未配置或配置不完整', 'color: red; font-weight: bold')
+      console.log('  请检查 .env.production 文件中的以下必填项:')
+      console.log('  - VITE_AI_BASE_URL')
+      console.log('  - VITE_AI_MODEL')
+      console.log('  - VITE_AI_API_KEY')
+    }
+  }
 
   // 自动净化：解析前预处理，编辑器保留原文不干扰输入
   const sanitized = useMemo(() => sanitizeText(text).text, [text])
