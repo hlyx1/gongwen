@@ -35,6 +35,21 @@ export function createInitialParserState(): ParserState {
 }
 
 /**
+ * 移除 AI 思考内容
+ * 查找 </thinking> 标签，忽略其之前的所有内容
+ * @param content 原始内容
+ * @returns 移除思考内容后的结果
+ */
+function removeThinkingContent(content: string): string {
+  var thinkingEndIndex = content.indexOf('</think>');
+  if (thinkingEndIndex !== -1) {
+    return content.substring(thinkingEndIndex + '</think>'.length);
+  }
+  return content;
+}
+
+
+/**
  * 解析表格行
  * 将表格行文本解析为列数据数组
  * @param line 表格行文本
@@ -128,6 +143,9 @@ export function parseStreamingLine(
 ): { result: AIProofreadResult | null; newState: ParserState } {
   // 将新行添加到缓冲区
   var newBuffer = state.buffer + line;
+
+  // 移除 AI 思考内容
+  newBuffer = removeThinkingContent(newBuffer);
 
   // 查找完整的行（以换行符结束）
   var newlineIndex = newBuffer.indexOf('\n');
@@ -277,8 +295,11 @@ export function flushParser(
     return { result: null };
   }
 
+  // 移除 AI 思考内容
+  var buffer = removeThinkingContent(state.buffer);
+
   // 尝试解析缓冲区中的最后一行
-  var columns = parseTableRow(state.buffer);
+  var columns = parseTableRow(buffer);
 
   // 如果不是有效的表格行，返回空
   if (columns === null || columns.length < 3) {
