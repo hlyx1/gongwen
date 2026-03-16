@@ -35,3 +35,4 @@ gongwen-latest.tar
 
 # Docker 部署配置（包含敏感信息，不提交git）
 gongwen-docker/.env
+*.tar

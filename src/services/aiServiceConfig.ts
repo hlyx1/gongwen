@@ -7,6 +7,39 @@
 import type { AIServiceConfig } from '../types/aiProofread';
 
 /**
+ * 自动补全 API URL 路径
+ * 如果用户只配置了基础地址（如 http://143.147.10.31:8002），
+ * 自动补充完整的 API 路径 /v1/chat/completions
+ * @param url 用户配置的 URL
+ * @returns 补全后的完整 URL
+ */
+function normalizeBaseUrl(url: string): string {
+  // 去除首尾空白
+  var trimmedUrl = url.trim();
+
+  // 去除末尾的斜杠，保持 URL 格式规范
+  while (trimmedUrl.length > 0 && trimmedUrl.charAt(trimmedUrl.length - 1) === '/') {
+    trimmedUrl = trimmedUrl.substring(0, trimmedUrl.length - 1);
+  }
+
+  // 检查是否已经包含完整的 chat/completions 路径
+  if (trimmedUrl.indexOf('/chat/completions') !== -1) {
+    return trimmedUrl;
+  }
+
+  // 检查是否已经有 /v1 前缀
+  var finalUrl = trimmedUrl;
+  if (trimmedUrl.indexOf('/v1') === -1) {
+    finalUrl = trimmedUrl + '/v1';
+  }
+
+  // 补全 chat/completions 路径
+  finalUrl = finalUrl + '/chat/completions';
+
+  return finalUrl;
+}
+
+/**
  * 从环境变量获取 AI 服务配置
  * 验证必填项，如果不完整则返回 null
  * @returns AI 服务配置对象或 null
@@ -96,7 +129,7 @@ export function getAIServiceConfig(): AIServiceConfig | null {
   }
 
   return {
-    baseUrl: baseUrl.trim(),
+    baseUrl: normalizeBaseUrl(baseUrl),
     model: model.trim(),
     apiKey: apiKey.trim(),
     temperature: temperature,
