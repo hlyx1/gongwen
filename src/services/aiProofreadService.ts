@@ -28,7 +28,7 @@ export var BUILTIN_CHECK_ITEMS = [
 /**
  * 系统内置示例
  */
-var BUILTIN_EXAMPLES: CustomExampleItem[] = [
+export var BUILTIN_EXAMPLES: CustomExampleItem[] = [
   { originalText: '请各部门做好工作部暑', suggestion: '"部暑"→"部署"："暑"为错别字' },
   { originalText: '会议截止日期是明天下午三点。', suggestion: '"截止"→"截至"："截止"是动词，不能带时间点，"截至"是介词，带时间点' },
   { originalText: '公司决定提高员工的水平。', suggestion: '"水平"→"工作水平"：宾语缺失："提高"需搭配具体对象' },
@@ -37,14 +37,13 @@ var BUILTIN_EXAMPLES: CustomExampleItem[] = [
 ];
 
 /**
- * 构建完整提示词
- * @param block 句子块
+ * 构建提示词模板（公共部分）
+ * 用于生成提示词的主体结构，可被 buildPrompt 和设置预览复用
  * @param customCheckItems 用户添加的检查项列表（每项为字符串）
  * @param customExampleItems 用户添加的示例行列表
- * @returns 完整提示词字符串
+ * @returns 提示词模板字符串（不包含待审核的句子列表）
  */
-export function buildPrompt(
-  block: SentenceBlock,
+export function buildPromptTemplate(
   customCheckItems: CustomCheckItem[],
   customExampleItems: CustomExampleItem[]
 ): string {
@@ -73,7 +72,7 @@ export function buildPrompt(
     '\n' +
     '以 **Markdown 表格**格式输出，表格包含三列：序号、原句、建议。\n' +
     '\n' +
-    '- **序号**：必须填写为"1"、"2"等，按序号顺序严格递增。\n' +
+    '- **序号**：必须填写为收到的纠错单元序号，按序号顺序严格递增。注意，序号可能不会从1开始。\n' +
     '- **原句**：直接重复原句内容。\n' +
     '- **建议**：\n' +
     '\n' +
@@ -102,10 +101,28 @@ export function buildPrompt(
   prompt += '\n\n' +
     '# 工作原则\n' +
     '\n' +
-    '- 表格必须逐句生成，**绝不跳过任何纠错单元**，每个纠错单元占表格一行。\n' +
+    '- 表格必须逐句生成，**绝不跳过任何纠错单元**，每个纠错单元占表格一行。注意，纠错单元序号可能不会从1开始。严格按照收到的序号标记输出。\n' +
     '- 提供的文本大部分地方无错，修正建议需简洁准确。\n' +
     '- 名字之间的多余空格不是问题，只是为了排版对齐。但是除名字之外的空格一般是存在问题。\n' +
     '- 确保表格对齐清晰，无需额外说明或代码块。\n';
+
+  return prompt;
+}
+
+/**
+ * 构建完整提示词
+ * @param block 句子块
+ * @param customCheckItems 用户添加的检查项列表（每项为字符串）
+ * @param customExampleItems 用户添加的示例行列表
+ * @returns 完整提示词字符串
+ */
+export function buildPrompt(
+  block: SentenceBlock,
+  customCheckItems: CustomCheckItem[],
+  customExampleItems: CustomExampleItem[]
+): string {
+  // 使用公共模板构建主体
+  var prompt = buildPromptTemplate(customCheckItems, customExampleItems);
 
   // 添加待审核的句子列表（使用标签格式）
   prompt += '\n';

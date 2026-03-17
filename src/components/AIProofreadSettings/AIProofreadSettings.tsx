@@ -6,88 +6,8 @@
 
 import { useState, type ChangeEvent } from 'react'
 import type { AIProofreadConfig, CustomExampleItem } from '../../types/aiProofread'
-import { BUILTIN_CHECK_ITEMS } from '../../services/aiProofreadService'
+import { BUILTIN_CHECK_ITEMS, BUILTIN_EXAMPLES, buildPromptTemplate } from '../../services/aiProofreadService'
 import './AIProofreadSettings.css'
-
-/**
- * 系统内置示例
- */
-var BUILTIN_EXAMPLES: CustomExampleItem[] = [
-  { originalText: '请各部门做好工作部暑', suggestion: '"部暑"→"部署"："暑"为错别字' },
-  { originalText: '会议截止日期是明天下午三点。', suggestion: '"截止"→"截至"："截止"是动词，不能带时间点，"截至"是介词，带时间点' },
-  { originalText: '公司决定提高员工的水平。', suggestion: '"水平"→"工作水平"：宾语缺失："提高"需搭配具体对象' },
-  { originalText: '本着以节约资源为原则，我们制定了新方案。', suggestion: '"本着以节约资源为原则"→"本着节约资源的原则"："本着"与"以……为"杂糅，二者只能选其一' },
-  { originalText: '2026年3月15日', suggestion: '无' },
-]
-
-/**
- * 构建完整提示词（用于预览）
- * @param customCheckItems 用户添加的检查项
- * @param customExampleItems 用户添加的示例行
- * @returns 完整提示词字符串
- */
-function buildFullPrompt(customCheckItems: string[], customExampleItems: CustomExampleItem[]): string {
-  var prompt = 
-    '你是一个文章审核员，对于给定被分割为若干个纠错单元的文章，你需要进行以纠错单元为单位的审核。\n' +
-    '\n' +
-    '# 工作流程\n' +
-    '\n' +
-    '从第一个纠错单元开始，逐个纠错单元分析是否存在以下问题：\n' +
-    '\n' +
-    '1. 错别字、漏字、重复字\n' +
-    '2. 谓语、宾语缺失\n' +
-    '3. 句式杂糅\n' +
-    '4. 其他明显错误的情况'
-
-  // 添加用户自定义检查项（追加到序号列表）
-  for (var i = 0; i < customCheckItems.length; i++) {
-    var item = customCheckItems[i]
-    if (item && item.trim().length > 0) {
-      prompt += '\n' + (i + 5) + '. ' + item.trim()
-    }
-  }
-
-  prompt += '\n\n' +
-    '# 输出要求\n' +
-    '\n' +
-    '以 **Markdown 表格**格式输出，表格包含三列：序号、原句、建议。\n' +
-    '\n' +
-    '- **序号**：必须填写为"1"、"2"等，按序号顺序严格递增。\n' +
-    '- **原句**：直接重复原句内容。\n' +
-    '- **建议**：\n' +
-    '\n' +
-    '  - 若无问题：填写 `无`。\n' +
-    '  - 若发现问题：格式为 `"旧文本"→"新文本"：原因`\n' +
-    '\n' +
-    '# 输出示例\n' +
-    '\n' +
-    '| 序号 | 原句 | 建议 |\n' +
-    '| --- | --- | --- |'
-
-  // 添加内置示例
-  for (var bi = 0; bi < BUILTIN_EXAMPLES.length; bi++) {
-    var builtinItem = BUILTIN_EXAMPLES[bi]
-    prompt += '\n| ' + (bi + 1) + ' | ' + builtinItem.originalText + ' | ' + builtinItem.suggestion + ' |'
-  }
-
-  // 添加用户自定义示例行
-  for (var j = 0; j < customExampleItems.length; j++) {
-    var exampleItem = customExampleItems[j]
-    if (exampleItem.originalText && exampleItem.originalText.trim().length > 0) {
-      prompt += '\n| ' + (j + BUILTIN_EXAMPLES.length + 1) + ' | ' + exampleItem.originalText + ' | ' + (exampleItem.suggestion || '无') + ' |'
-    }
-  }
-
-  prompt += '\n\n' +
-    '# 工作原则\n' +
-    '\n' +
-    '- 表格必须逐句生成，**绝不跳过任何纠错单元**，每个纠错单元占表格一行。\n' +
-    '- 提供的文本大部分地方无错，修正建议需简洁准确。\n' +
-    '- 名字之间的多余空格不是问题，只是为了排版对齐。但是除名字之外的空格一般是存在问题。\n' +
-    '- 确保表格对齐清晰，无需额外说明或代码块。\n'
-
-  return prompt
-}
 
 interface AIProofreadSettingsProps {
   isOpen: boolean
@@ -206,7 +126,7 @@ export function AIProofreadSettings(props: AIProofreadSettingsProps) {
   }
 
   // 构建预览提示词
-  var previewPrompt = buildFullPrompt(parseCustomCheckItems(customCheckText), customExampleItems)
+  var previewPrompt = buildPromptTemplate(parseCustomCheckItems(customCheckText), customExampleItems)
 
   return (
     <div className="ai-settings-overlay" onClick={handleCancel}>
