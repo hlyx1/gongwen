@@ -209,8 +209,8 @@ export function sendBlockStreaming(
             if (result.done) {
               // 刷新解析器，处理缓冲区中剩余的数据
               var flushResult = flushParser(parserState, sentenceMap);
-              if (flushResult.result !== null) {
-                onResult(flushResult.result);
+              for (var fi = 0; fi < flushResult.results.length; fi++) {
+                onResult(flushResult.results[fi]);
               }
               // 调试：输出完整的响应文本
               if (onRawResponse && blockIndex !== undefined) {
@@ -243,8 +243,8 @@ export function sendBlockStreaming(
                 if (data === '[DONE]') {
                   // 刷新解析器，处理缓冲区中剩余的数据
                   var flushResult2 = flushParser(parserState, sentenceMap);
-                  if (flushResult2.result !== null) {
-                    onResult(flushResult2.result);
+                  for (var fi2 = 0; fi2 < flushResult2.results.length; fi2++) {
+                    onResult(flushResult2.results[fi2]);
                   }
                   // 调试：输出完整的响应文本
                   if (onRawResponse && blockIndex !== undefined) {

@@ -19,6 +19,8 @@ export interface ParserState {
   headerFound: boolean;
   /** 当前行的列数据 */
   currentRow: string[];
+  /** 是否已跳过思考内容（找到 </think> 标签） */
+  thinkingEnded: boolean;
 }
 
 /**
@@ -31,23 +33,9 @@ export function createInitialParserState(): ParserState {
     inTable: false,
     headerFound: false,
     currentRow: [],
+    thinkingEnded: false,
   };
 }
-
-/**
- * 移除 AI 思考内容
- * 查找 </thinking> 标签，忽略其之前的所有内容
- * @param content 原始内容
- * @returns 移除思考内容后的结果
- */
-function removeThinkingContent(content: string): string {
-  var thinkingEndIndex = content.indexOf('</think>');
-  if (thinkingEndIndex !== -1) {
-    return content.substring(thinkingEndIndex + '</think>'.length);
-  }
-  return content;
-}
-
 
 /**
  * 解析表格行
@@ -144,8 +132,27 @@ export function parseStreamingLine(
   // 将新行添加到缓冲区
   var newBuffer = state.buffer + line;
 
-  // 移除 AI 思考内容
-  newBuffer = removeThinkingContent(newBuffer);
+  // 如果还没跳过思考内容，检查是否有 </think> 标签
+  if (!state.thinkingEnded) {
+    var thinkingEndIndex = newBuffer.indexOf('</think>');
+    if (thinkingEndIndex !== -1) {
+      // 找到了结束标签，跳过思考内容
+      newBuffer = newBuffer.substring(thinkingEndIndex + '</think>'.length);
+    } else {
+      // 还没找到结束标签，继续等待
+      // 不解析内容，但保留缓冲区
+      return {
+        result: null,
+        newState: {
+          buffer: newBuffer,
+          inTable: false,
+          headerFound: false,
+          currentRow: [],
+          thinkingEnded: false,
+        },
+      };
+    }
+  }
 
   // 查找完整的行（以换行符结束）
   var newlineIndex = newBuffer.indexOf('\n');
@@ -165,6 +172,7 @@ export function parseStreamingLine(
         inTable: state.inTable,
         headerFound: state.headerFound,
         currentRow: state.currentRow,
+        thinkingEnded: true,
       },
     };
   }
@@ -182,6 +190,7 @@ export function parseStreamingLine(
         inTable: false,
         headerFound: false,
         currentRow: [],
+        thinkingEnded: true,
       },
     };
   }
@@ -195,6 +204,7 @@ export function parseStreamingLine(
         inTable: true,
         headerFound: true,
         currentRow: [],
+        thinkingEnded: true,
       },
     };
   }
@@ -208,6 +218,7 @@ export function parseStreamingLine(
         inTable: state.inTable,
         headerFound: state.headerFound,
         currentRow: [],
+        thinkingEnded: true,
       },
     };
   }
@@ -229,6 +240,7 @@ export function parseStreamingLine(
           inTable: state.inTable,
           headerFound: state.headerFound,
           currentRow: [],
+          thinkingEnded: true,
         },
       };
     }
@@ -263,6 +275,7 @@ export function parseStreamingLine(
         inTable: true,
         headerFound: state.headerFound,
         currentRow: [],
+        thinkingEnded: true,
       },
     };
   }
@@ -275,6 +288,7 @@ export function parseStreamingLine(
       inTable: state.inTable,
       headerFound: state.headerFound,
       currentRow: [],
+      thinkingEnded: true,
     },
   };
 }
@@ -284,64 +298,80 @@ export function parseStreamingLine(
  * 在流结束时调用，处理缓冲区中剩余的数据
  * @param state 当前解析状态
  * @param sentenceMap 序号到 sentenceId 的映射
- * @returns 解析结果（可能有最后一个结果）
+ * @returns 解析结果数组
  */
 export function flushParser(
   state: ParserState,
   sentenceMap: Map<number, string>
-): { result: AIProofreadResult | null } {
+): { results: AIProofreadResult[] } {
+  var results: AIProofreadResult[] = [];
+
   // 如果缓冲区为空，直接返回
   if (state.buffer.trim().length === 0) {
-    return { result: null };
+    return { results: results };
   }
 
-  // 移除 AI 思考内容
-  var buffer = removeThinkingContent(state.buffer);
+  // 处理缓冲区内容
+  var buffer = state.buffer;
 
-  // 尝试解析缓冲区中的最后一行
-  var columns = parseTableRow(buffer);
-
-  // 如果不是有效的表格行，返回空
-  if (columns === null || columns.length < 3) {
-    return { result: null };
+  // 如果还没跳过思考内容，检查是否有 </think> 标签
+  if (!state.thinkingEnded) {
+    var thinkingEndIndex = buffer.indexOf('</think>');
+    if (thinkingEndIndex !== -1) {
+      // 找到了结束标签，跳过思考内容
+      buffer = buffer.substring(thinkingEndIndex + '</think>'.length);
+    }
+    // 如果没找到标签，说明没有思考内容，正常解析缓冲区中的内容
   }
 
-  // 检查是否是表头行或分隔行
-  if (isHeaderRow(columns) || isSeparatorRow(columns)) {
-    return { result: null };
+  // 逐行处理缓冲区中的内容
+  var lines = buffer.split('\n');
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i];
+    var columns = parseTableRow(line);
+
+    // 如果不是有效的表格行，跳过
+    if (columns === null || columns.length < 3) {
+      continue;
+    }
+
+    // 检查是否是表头行或分隔行
+    if (isHeaderRow(columns) || isSeparatorRow(columns)) {
+      continue;
+    }
+
+    // 解析数据行
+    var seqNumStr = columns[0];
+    var originalText = columns[1];
+    var suggestion = columns[2];
+
+    // 解析序号
+    var seqNum = parseInt(seqNumStr, 10);
+    if (isNaN(seqNum)) {
+      continue;
+    }
+
+    // 从映射中获取 sentenceId
+    var sentenceId = sentenceMap.get(seqNum);
+    if (sentenceId === undefined) {
+      sentenceId = 'unknown-' + seqNum;
+    }
+
+    // 判断是否有问题
+    var hasIssue = true;
+    if (suggestion === '无' || suggestion === '' || suggestion.trim() === '') {
+      hasIssue = false;
+    }
+
+    // 构建结果
+    results.push({
+      sentenceId: sentenceId,
+      seqNum: seqNum,
+      originalText: originalText,
+      suggestion: suggestion,
+      hasIssue: hasIssue,
+    });
   }
 
-  // 解析数据行
-  var seqNumStr = columns[0];
-  var originalText = columns[1];
-  var suggestion = columns[2];
-
-  // 解析序号
-  var seqNum = parseInt(seqNumStr, 10);
-  if (isNaN(seqNum)) {
-    return { result: null };
-  }
-
-  // 从映射中获取 sentenceId
-  var sentenceId = sentenceMap.get(seqNum);
-  if (sentenceId === undefined) {
-    sentenceId = 'unknown-' + seqNum;
-  }
-
-  // 判断是否有问题
-  var hasIssue = true;
-  if (suggestion === '无' || suggestion === '' || suggestion.trim() === '') {
-    hasIssue = false;
-  }
-
-  // 构建结果
-  var result: AIProofreadResult = {
-    sentenceId: sentenceId,
-    seqNum: seqNum,
-    originalText: originalText,
-    suggestion: suggestion,
-    hasIssue: hasIssue,
-  };
-
-  return { result: result };
+  return { results: results };
 }
