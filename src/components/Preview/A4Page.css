@@ -81,6 +81,7 @@
 }
 
 /* 字符网格间距：微调 letter-spacing 使每行恰好 28 字 (GB/T 9704) */
+/* 强制全角字符（包括标点）使用全宽，确保每行恰好 28 字 */
 .a4-title,
 .a4-h1,
 .a4-h2,
@@ -89,9 +90,15 @@
 .a4-paragraph,
 .a4-addressee,
 .a4-attachment,
-.a4-date {
+.a4-date,
+.a4-h1-inline,
+.a4-h2-inline,
+.a4-h3-inline,
+.a4-h4-inline,
+.a4-paragraph-inline,
+.a4-bold-first,
+.a4-highlight-sentence {
   letter-spacing: var(--char-spacing, 0);
-  /* 强制全角字符（包括标点）使用全宽，确保每行恰好 28 字 */
   font-variant-east-asian: full-width;
 }
 
@@ -465,8 +472,9 @@
   background-color: #fff3cd;
   cursor: pointer;
   border-radius: 2px;
-  padding: 0 2px;
   transition: background-color 0.2s ease;
+  /* 使用 box-shadow 模拟视觉间距，不影响文本布局 */
+  box-shadow: 2px 0 0 #fff3cd, -2px 0 0 #fff3cd;
 }
 
 .a4-highlight-sentence:hover {
