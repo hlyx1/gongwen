@@ -9,7 +9,7 @@ import type { GongwenAST, DocumentNode, AttachmentNode, TableNode } from '../typ
 import { NodeType } from '../types/ast'
 import type { DocumentConfig } from '../types/documentConfig'
 import { cmToTwip, ptToTwip } from '../types/documentConfig'
-import { getParagraphStyle, getRunStyle, getAttachmentParagraphStyle, getAttachmentRunStyle, getAttachmentPunctuationRunStyle } from './styleFactory'
+import { getParagraphStyle, getRunStyle, getAttachmentParagraphStyle, getAttachmentRunStyle, getAttachmentPunctuationRunStyle, getHeading3PunctuationRunStyle } from './styleFactory'
 
 // ---- 无边框定义（用于版头表格） ----
 
@@ -73,6 +73,44 @@ function splitHeadingSentence(content: string, headingStyle: Partial<IRunOptions
     new TextRun({ ...headingStyle, text: headingText }),
     new TextRun({ ...bodyStyle, text: bodyText }),
   ]
+}
+
+/**
+ * 拆分三级标题文本：序号后的英文句号使用仿宋
+ * 例如："1.xxx" 拆分为 ["1", ".", "xxx"]，其中 "." 使用仿宋
+ * @param text 三级标题文本
+ * @param runStyle 三级标题基础样式
+ * @param punctuationStyle 标点样式（仿宋）
+ * @returns TextRun 数组
+ */
+function splitHeading3Text(
+  text: string,
+  runStyle: Partial<IRunOptions>,
+  punctuationStyle: Partial<IRunOptions>
+): TextRun[] {
+  const runs: TextRun[] = []
+  // 三级标题格式：数字 + 英文句号 + 内容，如 "1.xxx"
+  const match = text.match(/^(\d+)(\.)(.*)$/)
+  
+  if (match) {
+    const numberPart = match[1]
+    const dotPart = match[2]
+    const contentPart = match[3]
+    
+    // 数字部分使用基础样式
+    runs.push(new TextRun({ ...runStyle, text: numberPart }))
+    // 英文句号使用仿宋样式
+    runs.push(new TextRun({ ...punctuationStyle, text: dotPart }))
+    // 内容部分使用基础样式
+    if (contentPart) {
+      runs.push(new TextRun({ ...runStyle, text: contentPart }))
+    }
+  } else {
+    // 不匹配格式，直接返回原文本
+    runs.push(new TextRun({ ...runStyle, text: text }))
+  }
+  
+  return runs
 }
 
 /**
@@ -283,6 +321,33 @@ function nodeToParagraph(
     node.type === NodeType.HEADING_3 ||
     node.type === NodeType.HEADING_4
   ) {
+    // 三级标题特殊处理：序号后的英文句号使用仿宋
+    if (node.type === NodeType.HEADING_3) {
+      const punctuationStyle = getHeading3PunctuationRunStyle(config)
+      const idx = node.content.indexOf('。')
+      
+      if (idx === -1 || idx === node.content.length - 1) {
+        // 没有中文句号或句号在末尾，只处理序号部分
+        return new Paragraph({
+          ...paragraphStyle,
+          children: splitHeading3Text(node.content, runStyle, punctuationStyle),
+        })
+      }
+      
+      // 有中文句号，拆分首句和剩余内容
+      const headingText = node.content.slice(0, idx + 1)
+      const bodyText = node.content.slice(idx + 1)
+      const bodyStyle = getRunStyle(NodeType.PARAGRAPH, config)
+      
+      return new Paragraph({
+        ...paragraphStyle,
+        children: [
+          ...splitHeading3Text(headingText, runStyle, punctuationStyle),
+          new TextRun({ ...bodyStyle, text: bodyText }),
+        ],
+      })
+    }
+    
     return new Paragraph({
       ...paragraphStyle,
       children: splitHeadingSentence(node.content, runStyle, config),

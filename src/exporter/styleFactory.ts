@@ -319,3 +319,23 @@ export function getAttachmentPunctuationRunStyle(config: DocumentConfig): Partia
     characterSpacing: charSpacing,
   }
 }
+
+/**
+ * 三级标题标点样式：序号后的英文句号使用仿宋
+ * 与三级标题保持一致的字号
+ */
+export function getHeading3PunctuationRunStyle(config: DocumentConfig): Partial<IRunOptions> {
+  const availableTwips = 11906 - cmToTwip(config.margins.left) - cmToTwip(config.margins.right)
+  const charSpacing = Math.floor(availableTwips / CHARS_PER_LINE - config.body.fontSize * 20)
+
+  return {
+    font: {
+      ascii: config.body.fontFamily,
+      eastAsia: config.body.fontFamily,
+      hAnsi: config.body.fontFamily,
+      cs: config.body.fontFamily,
+    },
+    size: config.advanced.h3.fontSize * 2,
+    characterSpacing: charSpacing,
+  }
+}
