@@ -9,7 +9,7 @@ import type { GongwenAST, DocumentNode, AttachmentNode, TableNode } from '../typ
 import { NodeType } from '../types/ast'
 import type { DocumentConfig } from '../types/documentConfig'
 import { cmToTwip, ptToTwip } from '../types/documentConfig'
-import { getParagraphStyle, getRunStyle, getAttachmentParagraphStyle, getAttachmentRunStyle, getAttachmentPunctuationRunStyle, getHeading3PunctuationRunStyle } from './styleFactory'
+import { getParagraphStyle, getRunStyle, getAttachmentParagraphStyle, getAttachmentRunStyle, getAttachmentPunctuationRunStyle, getHeading3PunctuationRunStyle, getTimeColonRunStyle } from './styleFactory'
 
 // ---- 无边框定义（用于版头表格） ----
 
@@ -110,6 +110,62 @@ function splitHeading3Text(
     runs.push(new TextRun({ ...runStyle, text: text }))
   }
   
+  return runs
+}
+
+/** 时间格式正则：匹配半角冒号分隔的时间（如 3:00、14:30） */
+const TIME_COLON_PATTERN = /(\d{1,2})(:)(\d{2})/g
+
+/**
+ * 拆分时间格式文本：时间中的半角冒号使用正文字体
+ * 解决半角冒号默认使用 Times New Roman 导致视觉不统一的问题
+ * 例如："会议时间：9:00-11:30" 中的 ":" 使用仿宋
+ * @param text 文本内容
+ * @param runStyle 基础样式
+ * @param colonStyle 冒号样式（正文字体）
+ * @returns TextRun 数组
+ */
+function splitTimeColonText(
+  text: string,
+  runStyle: Partial<IRunOptions>,
+  colonStyle: Partial<IRunOptions>
+): TextRun[] {
+  const runs: TextRun[] = []
+  let lastIndex = 0
+  let match: RegExpExecArray | null
+
+  // 重置正则的 lastIndex
+  TIME_COLON_PATTERN.lastIndex = 0
+
+  while ((match = TIME_COLON_PATTERN.exec(text)) !== null) {
+    const matchStart = match.index
+    const matchEnd = matchStart + match[0].length
+
+    // 添加匹配前的普通文本
+    if (matchStart > lastIndex) {
+      runs.push(new TextRun({ ...runStyle, text: text.slice(lastIndex, matchStart) }))
+    }
+
+    // 添加小时部分
+    runs.push(new TextRun({ ...runStyle, text: match[1] }))
+    // 添加冒号（使用正文字体）
+    runs.push(new TextRun({ ...colonStyle, text: match[2] }))
+    // 添加分钟部分
+    runs.push(new TextRun({ ...runStyle, text: match[3] }))
+
+    lastIndex = matchEnd
+  }
+
+  // 添加剩余的普通文本
+  if (lastIndex < text.length) {
+    runs.push(new TextRun({ ...runStyle, text: text.slice(lastIndex) }))
+  }
+
+  // 如果没有匹配到任何时间格式，返回原文本
+  if (runs.length === 0) {
+    runs.push(new TextRun({ ...runStyle, text: text }))
+  }
+
   return runs
 }
 
@@ -338,12 +394,13 @@ function nodeToParagraph(
       const headingText = node.content.slice(0, idx + 1)
       const bodyText = node.content.slice(idx + 1)
       const bodyStyle = getRunStyle(NodeType.PARAGRAPH, config)
+      const bodyTimeColonStyle = getTimeColonRunStyle(config, bodyStyle.size as number)
       
       return new Paragraph({
         ...paragraphStyle,
         children: [
           ...splitHeading3Text(headingText, runStyle, punctuationStyle),
-          new TextRun({ ...bodyStyle, text: bodyText }),
+          ...splitTimeColonText(bodyText, bodyStyle, bodyTimeColonStyle),
         ],
       })
     }
@@ -354,14 +411,11 @@ function nodeToParagraph(
     })
   }
 
+  // 默认情况：处理时间冒号，使其使用正文字体
+  const timeColonStyle = getTimeColonRunStyle(config, runStyle.size as number)
   return new Paragraph({
     ...paragraphStyle,
-    children: [
-      new TextRun({
-        ...runStyle,
-        text: node.content,
-      }),
-    ],
+    children: splitTimeColonText(node.content, runStyle, timeColonStyle),
   })
 }
 

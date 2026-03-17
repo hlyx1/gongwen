@@ -301,7 +301,7 @@ export function getAttachmentRunStyle(config: DocumentConfig): Partial<IRunOptio
 }
 
 /**
- * 附件说明标点样式：标点（序号后的英文句号）使用仿宋
+ * 附件说明标点样式：标点（序号后的英文句号）使用正文字体
  */
 export function getAttachmentPunctuationRunStyle(config: DocumentConfig): Partial<IRunOptions> {
   const bodyFontSize = config.body.fontSize * 2
@@ -321,7 +321,7 @@ export function getAttachmentPunctuationRunStyle(config: DocumentConfig): Partia
 }
 
 /**
- * 三级标题标点样式：序号后的英文句号使用仿宋
+ * 三级标题标点样式：序号后的英文句号使用正文字体
  * 与三级标题保持一致的字号
  */
 export function getHeading3PunctuationRunStyle(config: DocumentConfig): Partial<IRunOptions> {
@@ -336,6 +336,28 @@ export function getHeading3PunctuationRunStyle(config: DocumentConfig): Partial<
       cs: config.body.fontFamily,
     },
     size: config.advanced.h3.fontSize * 2,
+    characterSpacing: charSpacing,
+  }
+}
+
+/**
+ * 时间冒号样式：时间格式中的半角冒号使用正文字体
+ * 解决半角冒号默认使用 Times New Roman 导致视觉不统一的问题
+ * @param config 文档配置
+ * @param fontSize 字号（half-point）
+ */
+export function getTimeColonRunStyle(config: DocumentConfig, fontSize: number): Partial<IRunOptions> {
+  const availableTwips = 11906 - cmToTwip(config.margins.left) - cmToTwip(config.margins.right)
+  const charSpacing = Math.floor(availableTwips / CHARS_PER_LINE - config.body.fontSize * 20)
+
+  return {
+    font: {
+      ascii: config.body.fontFamily,
+      eastAsia: config.body.fontFamily,
+      hAnsi: config.body.fontFamily,
+      cs: config.body.fontFamily,
+    },
+    size: fontSize,
     characterSpacing: charSpacing,
   }
 }
