@@ -530,11 +530,6 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
             <h3 className="settings-section-title">特殊选项</h3>
             <div className="settings-options">
               <CheckboxField
-                label="正文段落首句加粗"
-                checked={config.specialOptions.boldFirstSentence}
-                onChange={(v) => patch({ specialOptions: { boldFirstSentence: v } })}
-              />
-              <CheckboxField
                 label="添加页码"
                 checked={config.specialOptions.showPageNumber}
                 onChange={(v) => patch({ specialOptions: { showPageNumber: v } })}

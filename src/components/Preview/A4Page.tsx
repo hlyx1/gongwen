@@ -124,22 +124,6 @@ export function renderHeading4(content: string) {
 }
 
 /**
- * 渲染正文首句加粗：首句（到第一个"。"）加粗，其余正常
- */
-export function renderBoldFirstSentence(content: string) {
-  const idx = content.indexOf('。')
-  if (idx === -1 || idx === content.length - 1) {
-    return <span className="a4-bold-first">{content}</span>
-  }
-  return (
-    <>
-      <span className="a4-bold-first">{content.slice(0, idx + 1)}</span>
-      <span>{content.slice(idx + 1)}</span>
-    </>
-  )
-}
-
-/**
  * 拆分附件说明文本：标点（英文句号）使用仿宋，其他使用 Times New Roman
  * 例如："1.xxx" 拆分为 ["1", "."] 分别用不同样式
  */
@@ -266,8 +250,6 @@ interface A4PageProps {
   clipHeight: number
   /** 是否显示页码 */
   showPageNumber: boolean
-  /** 是否对正文首句加粗 */
-  boldFirstSentence: boolean
   /** 版头配置 */
   headerConfig: HeaderConfig
   /** 版记配置 */
@@ -294,7 +276,6 @@ export function A4Page({
   offsetY,
   clipHeight,
   showPageNumber,
-  boldFirstSentence,
   headerConfig,
   footerNoteConfig,
   isFirstPage,
@@ -649,65 +630,6 @@ export function A4Page({
   }
 
   /**
-   * 渲染带高亮的正文内容（首句加粗模式）
-   * sentenceId 格式：nodeType-lineNumber-localSeq（与 sentenceSplitter.ts 一致）
-   */
-  function renderBoldFirstSentenceWithHighlight(content: string, node: DocumentNode): React.ReactNode {
-    const idx = content.indexOf('。')
-    if (idx === -1 || idx === content.length - 1) {
-      if (!aiProofreadResults || aiProofreadResults.size === 0) {
-        return <span className="a4-bold-first">{content}</span>
-      }
-      const sentenceId = node.type + '-' + node.lineNumber + '-1'
-      const result = aiProofreadResults.get(sentenceId)
-      if (result && result.hasIssue) {
-        return (
-          <span
-            className="a4-bold-first a4-highlight-sentence"
-            onMouseEnter={function() { handleMouseEnter(result) }}
-            onMouseLeave={handleMouseLeave}
-          >
-            {content}
-          </span>
-        )
-      }
-      return <span className="a4-bold-first">{content}</span>
-    }
-
-    const firstSentence = content.slice(0, idx + 1)
-    const rest = content.slice(idx + 1)
-
-    let firstSentenceElement: React.ReactNode
-    if (!aiProofreadResults || aiProofreadResults.size === 0) {
-      firstSentenceElement = <span className="a4-bold-first">{firstSentence}</span>
-    } else {
-      const sentenceId = node.type + '-' + node.lineNumber + '-1'
-      const result = aiProofreadResults.get(sentenceId)
-      if (result && result.hasIssue) {
-        firstSentenceElement = (
-          <span
-            className="a4-bold-first a4-highlight-sentence"
-            onMouseEnter={function() { handleMouseEnter(result) }}
-            onMouseLeave={handleMouseLeave}
-          >
-            {firstSentence}
-          </span>
-        )
-      } else {
-        firstSentenceElement = <span className="a4-bold-first">{firstSentence}</span>
-      }
-    }
-
-    const restElement = renderTextWithHighlight(rest, node)
-
-    return (
-      <>
-        {firstSentenceElement}
-        {restElement}
-      </>
-    )
-  }
-  /**
    * 计算节点的动态样式
    * - SIGNATURE: 以成文日期为基准居中
    * - DATE: 根据 hasStamp 右空四字或二字
@@ -814,9 +736,7 @@ export function A4Page({
                           ? renderHeading3WithHighlight(node.content, node)
                           : node.type === NodeType.HEADING_4
                             ? renderHeading4WithHighlight(node.content, node)
-                            : (boldFirstSentence && node.type === NodeType.PARAGRAPH)
-                              ? renderBoldFirstSentenceWithHighlight(node.content, node)
-                              : renderTextWithHighlight(node.content, node)}
+                            : renderTextWithHighlight(node.content, node)}
                   </p>
                 )
               }

@@ -44,7 +44,6 @@ export interface TableConfig {
 
 /** 特殊选项 */
 export interface SpecialOptionsConfig {
-  boldFirstSentence: boolean
   showPageNumber: boolean
   pageNumberFont: string
   /**
@@ -159,7 +158,6 @@ export const DEFAULT_CONFIG: DocumentConfig = {
     boldHeader: true,
   },
   specialOptions: {
-    boldFirstSentence: false,
     showPageNumber: true,
     pageNumberFont: '宋体',
     hasStamp: false,

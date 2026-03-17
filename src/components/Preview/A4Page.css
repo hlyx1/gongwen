@@ -96,7 +96,6 @@
 .a4-h3-inline,
 .a4-h4-inline,
 .a4-paragraph-inline,
-.a4-bold-first,
 .a4-highlight-sentence {
   letter-spacing: var(--char-spacing, 0);
   font-variant-east-asian: full-width;
@@ -361,11 +360,6 @@
 .a4-footer-even {
   text-align: left;
   padding-left: 1em;
-}
-
-/* 首句加粗样式 */
-.a4-bold-first {
-  font-weight: bold;
 }
 
 /* ---- 版头 ---- */

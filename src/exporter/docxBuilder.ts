@@ -76,24 +76,6 @@ function splitHeadingSentence(content: string, headingStyle: Partial<IRunOptions
 }
 
 /**
- * 拆分正文首句加粗：首句（到第一个"。"）加粗
- */
-function splitBoldFirstSentence(content: string, runStyle: Partial<IRunOptions>): TextRun[] {
-  const idx = content.indexOf('。')
-  if (idx === -1 || idx === content.length - 1) {
-    return [new TextRun({ ...runStyle, text: content, bold: true })]
-  }
-
-  const firstSentence = content.slice(0, idx + 1)
-  const rest = content.slice(idx + 1)
-
-  return [
-    new TextRun({ ...runStyle, text: firstSentence, bold: true }),
-    new TextRun({ ...runStyle, text: rest }),
-  ]
-}
-
-/**
  * 拆分附件说明文本：标点（英文句号）使用仿宋，其他使用 Times New Roman
  * 例如："1.xxx" 拆分为 ["1", "."] 样式分别为正文样式和标点样式
  */
@@ -304,14 +286,6 @@ function nodeToParagraph(
     return new Paragraph({
       ...paragraphStyle,
       children: splitHeadingSentence(node.content, runStyle, config),
-    })
-  }
-
-  // 正文首句加粗
-  if (node.type === NodeType.PARAGRAPH && config.specialOptions.boldFirstSentence) {
-    return new Paragraph({
-      ...paragraphStyle,
-      children: splitBoldFirstSentence(node.content, runStyle),
     })
   }
 

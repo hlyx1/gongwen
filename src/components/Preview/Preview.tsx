@@ -5,7 +5,7 @@ import type { AIProofreadResult } from '../../types/aiProofread'
 import { useDocumentConfig } from '../../contexts/DocumentConfigContext'
 import { cmToPagePercent, CHARS_PER_LINE } from '../../types/documentConfig'
 import { usePagination } from '../../hooks/usePagination'
-import { A4Page, NODE_CLASS_MAP, renderHeading1, renderHeading2, renderHeading3, renderHeading4, renderBoldFirstSentence, renderAttachment, calculateSignatureIndentEm } from './A4Page'
+import { A4Page, NODE_CLASS_MAP, renderHeading1, renderHeading2, renderHeading3, renderHeading4, renderAttachment, calculateSignatureIndentEm } from './A4Page'
 import './A4Page.css'
 import './Preview.css'
 
@@ -88,8 +88,6 @@ export function Preview({ ast, aiProofreadResults }: PreviewProps) {
     } as CSSProperties
   }, [config])
 
-  const boldFirst = config.specialOptions.boldFirstSentence
-
   return (
     <div className="preview-container">
       <div className="preview-scroll" style={cssVars}>
@@ -152,9 +150,7 @@ export function Preview({ ast, aiProofreadResults }: PreviewProps) {
                           ? renderHeading3(node.content)
                           : node.type === NodeType.HEADING_4
                             ? renderHeading4(node.content)
-                            : (boldFirst && node.type === NodeType.PARAGRAPH)
-                              ? renderBoldFirstSentence(node.content)
-                              : node.content}
+                            : node.content}
                   </p>
                 )
               }
@@ -191,7 +187,6 @@ export function Preview({ ast, aiProofreadResults }: PreviewProps) {
             offsetY={slice.offsetY}
             clipHeight={slice.clipHeight}
             showPageNumber={config.specialOptions.showPageNumber}
-            boldFirstSentence={boldFirst}
             headerConfig={config.header}
             footerNoteConfig={config.footerNote}
             isFirstPage={index === 0}
