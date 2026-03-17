@@ -1,17 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="64" fill="#c0392b"/>
-  <rect x="96" y="72" width="320" height="368" rx="16" fill="#fff"/>
-  <!-- 红头横线 -->
-  <line x1="128" y1="148" x2="384" y2="148" stroke="#c0392b" stroke-width="6"/>
-  <!-- 文字行 -->
-  <rect x="144" y="172" width="200" height="12" rx="2" fill="#333"/>
-  <rect x="144" y="200" width="224" height="10" rx="2" fill="#888"/>
-  <rect x="144" y="224" width="224" height="10" rx="2" fill="#888"/>
-  <rect x="144" y="248" width="180" height="10" rx="2" fill="#888"/>
-  <rect x="144" y="272" width="224" height="10" rx="2" fill="#888"/>
-  <rect x="144" y="296" width="210" height="10" rx="2" fill="#888"/>
-  <rect x="144" y="320" width="224" height="10" rx="2" fill="#888"/>
-  <rect x="144" y="344" width="160" height="10" rx="2" fill="#888"/>
-  <!-- 五角星 -->
-  <polygon points="256,88 262,108 284,108 266,120 273,140 256,128 239,140 246,120 228,108 250,108" fill="#c0392b"/>
-</svg>
+<?xml version="1.0" standalone="no"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg t="1773714866844" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="4423" xmlns:xlink="http://www.w3.org/1999/xlink" width="256" height="256"><path d="M866 960H158a62.07 62.07 0 0 1-62-62V126a62.07 62.07 0 0 1 62-62h708a62.07 62.07 0 0 1 62 62v772a62.07 62.07 0 0 1-62 62z m-706-64h704V128H160z" fill="#515151" p-id="4424"></path><path d="M212 576m32 0l536 0q32 0 32 32l0 0q0 32-32 32l-536 0q-32 0-32-32l0 0q0-32 32-32Z" fill="#515151" p-id="4425"></path><path d="M212 704m32 0l364 0q32 0 32 32l0 0q0 32-32 32l-364 0q-32 0-32-32l0 0q0-32 32-32Z" fill="#515151" p-id="4426"></path><path d="M212 448m32 0l216 0q32 0 32 32l0 0q0 32-32 32l-216 0q-32 0-32-32l0 0q0-32 32-32Z" fill="#515151" p-id="4427"></path><path d="M212 320m32 0l216 0q32 0 32 32l0 0q0 32-32 32l-216 0q-32 0-32-32l0 0q0-32 32-32Z" fill="#515151" p-id="4428"></path><path d="M212 192m32 0l216 0q32 0 32 32l0 0q0 32-32 32l-216 0q-32 0-32-32l0 0q0-32 32-32Z" fill="#515151" p-id="4429"></path><path d="M770 512H566a42 42 0 0 1-42-42V234a42 42 0 0 1 42-42h204a42 42 0 0 1 42 42v236a42 42 0 0 1-42 42z m-182-64h160V256H588z" fill="#515151" p-id="4430"></path></svg>

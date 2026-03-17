@@ -18,7 +18,10 @@ export function Toolbar({ ast, onExport }: ToolbarProps) {
   return (
     <div className="toolbar">
       <div className="toolbar-left">
-        <h1 className="toolbar-title">公文排版工具</h1>
+        <h1 className="toolbar-title">
+          <img src="/favicon.svg" alt="公文排版工具" className="toolbar-icon" />
+          公文排版工具
+        </h1>
         <button
           className="toolbar-badge toolbar-badge--clickable"
           onClick={() => setShowStandard(true)}

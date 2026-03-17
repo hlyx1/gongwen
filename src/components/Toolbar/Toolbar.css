@@ -28,6 +28,15 @@
   background-clip: text;
   margin: 0;
   letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+}
+
+.toolbar-icon {
+  width: 28px;
+  height: 28px;
+  margin-right: 10px;
+  flex-shrink: 0;
 }
 
 .toolbar-badge {
