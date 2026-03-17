@@ -54,6 +54,8 @@ export function Preview({ ast, aiProofreadResults }: PreviewProps) {
     const marginRightPct = config.margins.right * 10 / 210
     const availablePx = pageWidthPx * (1 - marginLeftPct - marginRightPct)
     const charSpacingPx = availablePx / CHARS_PER_LINE - config.body.fontSize
+    // 首行缩进像素值 = 字符数 × (字号 + 字符间距)，确保缩进与实际字符宽度一致
+    const bodyIndentPx = config.body.firstLineIndent * (config.body.fontSize + charSpacingPx)
 
     return {
       '--margin-top': `${cmToPagePercent(config.margins.top, 'x')}%`,
@@ -69,6 +71,8 @@ export function Preview({ ast, aiProofreadResults }: PreviewProps) {
       '--body-size': `${config.body.fontSize}px`,
       '--body-line-height': `${config.body.lineSpacing}px`,
       '--body-indent': `${config.body.firstLineIndent}em`,
+      // 首行缩进像素值，包含字符间距，用于精确缩进
+      '--body-indent-px': `${bodyIndentPx.toFixed(4)}px`,
       '--char-spacing': `${charSpacingPx.toFixed(4)}px`,
       '--h1-font': config.headings.h1.fontFamily,
       '--h1-size': `${config.headings.h1.fontSize}px`,

@@ -91,6 +91,8 @@
 .a4-attachment,
 .a4-date {
   letter-spacing: var(--char-spacing, 0);
+  /* 强制全角字符（包括标点）使用全宽，确保每行恰好 28 字 */
+  font-variant-east-asian: full-width;
 }
 
 /* 公文标题: 方正小标宋_GBK 22pt 居中, 固定行距 */
@@ -107,8 +109,9 @@
 .a4-h1 {
   font-size: var(--h1-size, 16px);
   font-weight: normal;
-  text-indent: var(--body-indent, 2em);
+  text-indent: var(--body-indent-px, 2em);
   text-align: justify;
+  text-justify: inter-ideograph;
   line-height: var(--body-line-height, 29px);
   margin: 0;
 }
@@ -123,8 +126,9 @@
   font-size: var(--h2-size, 16px);
   font-weight: normal;
   font-style: normal;
-  text-indent: var(--body-indent, 2em);
+  text-indent: var(--body-indent-px, 2em);
   text-align: justify;
+  text-justify: inter-ideograph;
   line-height: var(--body-line-height, 29px);
   margin: 0;
 }
@@ -156,7 +160,9 @@
   font-family: var(--h3-font, 'FangSong_GB2312'), 'FangSong', 'STFangsong', serif;
   font-size: var(--body-size, 16px);
   font-weight: normal;
-  text-indent: var(--body-indent, 2em);
+  text-indent: var(--body-indent-px, 2em);
+  text-align: justify;
+  text-justify: inter-ideograph;
   line-height: var(--body-line-height, 29px);
   margin: 0;
 }
@@ -166,7 +172,9 @@
   font-family: var(--body-font, 'FangSong_GB2312'), 'FangSong', 'STFangsong', serif;
   font-size: var(--body-size, 16px);
   font-weight: normal;
-  text-indent: var(--body-indent, 2em);
+  text-indent: var(--body-indent-px, 2em);
+  text-align: justify;
+  text-justify: inter-ideograph;
   line-height: var(--body-line-height, 29px);
   margin: 0;
 }
@@ -176,8 +184,9 @@
   font-family: var(--body-font, 'FangSong_GB2312'), 'FangSong', 'STFangsong', serif;
   font-size: var(--body-size, 16px);
   font-weight: normal;
-  text-indent: var(--body-indent, 2em);
+  text-indent: var(--body-indent-px, 2em);
   text-align: justify;
+  text-justify: inter-ideograph;
   line-height: var(--body-line-height, 29px);
   margin: 0;
 }
@@ -197,6 +206,7 @@
   font-size: var(--body-size, 16px);
   text-indent: 0;
   text-align: justify;
+  text-justify: inter-ideograph;
   line-height: var(--body-line-height, 29px);
   margin: 0;
 }
@@ -206,21 +216,22 @@
   font-family: var(--body-font, 'FangSong_GB2312'), 'FangSong', 'STFangsong', serif;
   font-size: var(--body-size, 16px);
   text-indent: 0;
-  padding-left: var(--body-indent, 2em);
+  padding-left: var(--body-indent-px, 2em);
   text-align: justify;
+  text-justify: inter-ideograph;
   line-height: var(--body-line-height, 29px);
   margin: var(--body-line-height, 29px) 0 0 0;
 }
 
 /* 单附件换行悬挂缩进：首行正常，后续行缩进 3 字符 */
 .a4-attachment--single {
-  padding-left: calc(var(--body-indent, 2em) + 3em);
+  padding-left: calc(var(--body-indent-px, 2em) + 3em);
   text-indent: -3em;
 }
 
 /* 多附件第一行：附件：1.xxx，左空 2 字符，换行后悬挂缩进 3 字符 */
 .a4-attachment--multi-first {
-  padding-left: calc(var(--body-indent, 2em) + 3em);
+  padding-left: calc(var(--body-indent-px, 2em) + 3em);
   text-indent: -3em;
 }
 
@@ -229,6 +240,7 @@
   font-family: var(--body-font, 'FangSong_GB2312'), 'FangSong', 'STFangsong', serif;
   font-size: var(--body-size, 16px);
   text-align: justify;
+  text-justify: inter-ideograph;
   line-height: var(--body-line-height, 29px);
   margin: 0;
   letter-spacing: var(--char-spacing, 0);
@@ -236,7 +248,7 @@
 
 /* 多附件项：左缩进 5 字符（2 + 3），首行和换行后都从 5 字符开始 */
 .a4-attachment-item--multi {
-  padding-left: calc(var(--body-indent, 2em) + 3em);
+  padding-left: calc(var(--body-indent-px, 2em) + 3em);
   text-indent: 0;
 }
 
