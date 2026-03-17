@@ -9,6 +9,9 @@
 /** 半角句号仅在中文字符后替换为全角（避免误伤英文缩写 / 小数） */
 const CJK_BEFORE_DOT = /([\u4e00-\u9fff\u3000-\u303f\uff00-\uffef])\./g
 
+/** 时间格式正则：匹配 "数字：数字" 格式的时间（如 3：00、14：30） */
+const TIME_PATTERN = /(\d{1,2})(：)(\d{2})/g
+
 /** 替换规则：按顺序执行，顺序无关联依赖 */
 const PUNCTUATION_MAP: [RegExp, string][] = [
   [/,/g, '\uff0c'],          // , → ，
@@ -149,6 +152,14 @@ export function sanitizeText(text: string): SanitizeResult {
       return replacement.includes('$1') ? args[1] + replacement.slice(2) : replacement
     })
   }
+
+  // 1.5 时间格式中的冒号还原为半角（如 3：00 → 3:00）
+  // 此步骤在标点替换之后执行，确保时间格式使用半角冒号
+  TIME_PATTERN.lastIndex = 0
+  result = result.replace(TIME_PATTERN, (_match, hour, _colon, minute) => {
+    count++
+    return hour + ':' + minute
+  })
 
   // 2. 不间断空格 → 普通空格
   result = result.replace(/\u00A0/g, () => { count++; return ' ' })
