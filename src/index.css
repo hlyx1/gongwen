@@ -7,6 +7,24 @@
   font-display: swap;
 }
 
+/* 加载仿宋字体文件 */
+@font-face {
+  font-family: '仿宋_GB2312';
+  src: url('/仿宋_GB2312.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* 加载 Times New Roman 字体文件 */
+@font-face {
+  font-family: 'Times New Roman';
+  src: url('/Times New Roman.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 * {
   box-sizing: border-box;
 }
