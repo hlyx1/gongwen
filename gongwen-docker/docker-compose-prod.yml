@@ -1,20 +1,15 @@
 # 公文排版工具 - Docker Compose 配置
-# 使用方法：
-#   1. 先在项目根目录构建：npm run build
-#   2. 启动容器：docker-compose up -d --build（会自动使用本地的 dist 目录）
+# 使用方法：docker-compose up -d --build
 
 services:
   gongwen:
-    image: gongwen-web:1.0.1
-    build:
-      context: ..
-      dockerfile: gongwen-docker/Dockerfile
+    image: gongwen-web:1.0.0
     container_name: gongwen-web
     ports:
       - "88:80"
     volumes:
       # 挂载 nginx 配置文件
-      - ./nginx-dev.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx-prod.conf:/etc/nginx/nginx.conf:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/health"]

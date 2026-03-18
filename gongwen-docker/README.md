@@ -14,10 +14,10 @@ docker-compose up -d --build
 
 ```bash
 # 导出镜像
-docker save gongwen-web:latest -o gongwen-web-latest.tar
+docker save gongwen-web:1.0.1 -o gongwen-web-1.0.1.tar
 
 # 导入镜像
-docker load -i gongwen-latest.tar
+docker load -i gongwen-web-1.0.1.tar
 
 # 导入后启动
 docker-compose up -d
