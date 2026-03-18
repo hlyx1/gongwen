@@ -150,6 +150,23 @@ interface DocumentConfig {
 - 支持版记（抄送机关、印发机关、印发日期）
 - 支持奇偶页不同页码位置
 - 支持附件说明的单/多附件模式
+- 支持时间格式中的半角冒号使用正文字体（避免使用 Times New Roman）
+
+**特殊字符处理：**
+
+1. **时间格式中的半角冒号**（如 `9:00`、`14:30`）会自动使用正文字体渲染：
+   - **清洗阶段**：`sanitize.ts` 将时间格式的全角冒号还原为半角冒号（`3：00` → `3:00`）
+   - **导出阶段**：`splitTimeColonText` 函数检测时间格式，将半角冒号单独拆分，应用正文字体样式（如仿宋），而不是默认的 Times New Roman
+
+2. **三级标题序号后的英文句号**（如 `1.xxx` 中的 `.`）使用正文字体：
+   - **样式函数**：`getHeading3PunctuationRunStyle(config)` 返回正文字体样式
+   - **拆分函数**：`splitHeading3Text()` 将 `1.xxx` 拆分为 `1`（三级标题样式）+ `.`（正文字体）+ `xxx`（三级标题样式）
+   - **目的**：避免英文句号使用 Times New Roman 导致视觉不统一，使其与正文保持一致
+
+3. **附件说明序号后的英文句号**（如 `1.xxx` 中的 `.`）使用正文字体：
+   - **样式函数**：`getAttachmentPunctuationRunStyle(config)` 返回正文字体样式
+   - **拆分函数**：`splitAttachmentText()` 将 `1.xxx` 拆分为 `1`（Times New Roman）+ `.`（正文字体）+ `xxx`（Times New Roman）
+   - **目的**：符合公文排版习惯，使英文句号与正文保持一致
 
 ### 3. 预览组件 (components/Preview/)
 
