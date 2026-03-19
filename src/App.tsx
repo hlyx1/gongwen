@@ -11,6 +11,8 @@ import { useAIProofread } from './hooks/useAIProofread'
 import { isAIServiceConfigured, getAIServiceConfig } from './services/aiServiceConfig'
 import { downloadDocx } from './exporter'
 import { sanitizeText } from './utils/sanitize'
+import { reportStats, STATS_ACTION_EXPORT, STATS_ACTION_AI_PROOFREAD } from './utils/statsReporter'
+import { printStatsOverview } from './utils/statsPrinter'
 import { importFile } from './utils/fileImporter'
 import { getHistory, saveToHistory, deleteHistoryItem, clearHistory, isContentExists } from './utils/historyStorage'
 import type { HistoryRecord } from './types/history'
@@ -110,12 +112,18 @@ function App() {
     return () => clearTimeout(timerRef.current)
   }, [text])
 
+  // 打印使用统计概览到控制台
+  useEffect(() => {
+    printStatsOverview()
+  }, [])
+
   /**
    * 导出文档
    */
   const handleExport = useCallback(async () => {
     try {
       await downloadDocx(ast, config)
+      reportStats(STATS_ACTION_EXPORT)
     } catch (err) {
       console.error('导出失败:', err)
       alert('导出失败，请检查控制台日志')
@@ -189,6 +197,7 @@ function App() {
    * 开始 AI 审核
    */
   const handleStartAIProofread = useCallback(function() {
+    reportStats(STATS_ACTION_AI_PROOFREAD)
     startProofread(ast, {
       customCheckItems: aiConfig.customCheckItems,
       customExampleItems: aiConfig.customExampleItems,
