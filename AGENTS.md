@@ -47,8 +47,13 @@ src/
 ├── components/           # UI 组件
 │   ├── Editor/          # 文本编辑器（支持拖拽上传）
 │   ├── Preview/         # A4 分页预览
-│   │   ├── A4Page.tsx   # 单页渲染 + 分页裁剪逻辑
-│   │   └── Preview.tsx  # 预览容器 + CSS 变量注入
+│   │   ├── A4Page.tsx        # 单页装配（决策层渲染器，分页裁剪 + 悬停浮层状态）
+│   │   ├── Preview.tsx       # 预览容器 + CSS 变量注入 + 度量容器
+│   │   ├── renderContentFlow.tsx  # 内容流共享渲染器（块序列 → React 节点）
+│   │   ├── aiHighlight.tsx   # AI 高亮包装层（切句正则 + sentenceId 冻结现状）
+│   │   ├── A4HeaderSection.tsx    # 版头子组件
+│   │   ├── A4FooterNote.tsx  # 版记子组件
+│   │   └── A4PageNumber.tsx  # 页码子组件
 │   ├── DetectionPanel/  # 检测点面板（实时解析公文结构）
 │   │   ├── DetectionPanel.tsx  # 主组件
 │   │   └── DetectionPanel.css  # 样式
@@ -193,15 +198,32 @@ docx 渲染器翻译层——先经 `buildLayout(ast, config, { renderer: 'docx'
 
 ### 4. 预览组件 (components/Preview/)
 
+预览侧为排版决策层（`src/layout/`，`buildLayout(renderer='preview')`）的渲染器，
+DOM 类名与层级结构由结构特征快照测试锁定（`__tests__/previewStructure.test.tsx`，
+renderToStaticMarkup，A4Page.css 与快照基线为行为保持红线）。
+
 **Preview.tsx**: 预览容器
 - 注入 CSS 自定义属性（字体、字号、行距、页边距）
+- 一次性调用 buildLayout，页面与度量容器消费同一份块序列渲染输出
 - 调用 usePagination 进行分页计算
 - 渲染多个 A4Page 组件
 
-**A4Page.tsx**: 单页渲染
+**renderContentFlow.tsx**: 内容流共享渲染器
+- 把决策层块序列翻译为 React 节点（A4Page 视窗与度量容器共用）
+- mode='measurer'：度量容器形态——表格按段落测量（待办-0005 冻结现状）
+- 标题首句 inline 类名按段落源类型映射（a4-h4-inline 等冻结表现）
+
+**aiHighlight.tsx**: AI 高亮包装层
+- 切句正则与 sentenceId 拼接自旧 A4Page 原样迁移（与 sentenceSplitter
+  的既有差异为冻结项，待办-0013）
+
+**A4Page.tsx**: 单页装配
 - 模拟 A4 纸张尺寸 (210mm × 297mm)
 - 通过 offsetY + clipHeight 实现分页裁剪
-- 渲染版头、正文、版记、页码
+- 装配版头/版记/页码子组件与内容流，AI 悬停浮层状态保留于此
+
+**A4HeaderSection / A4FooterNote / A4PageNumber**: 版头/版记/页码子组件
+- 消费决策层版式参数（buildLayout.header/footerNote/pageNumber）
 
 ### 5. 配置管理 (contexts/DocumentConfigContext.tsx)
 
@@ -382,7 +404,7 @@ npm run lint
 2. 在 `parser/matchers.ts` 中添加正则匹配规则
 3. 在 `parser/parser.ts` 的 detectNodeType 中添加识别逻辑
 4. 在 `layout/fonts.ts`（角色规格）与 `layout/index.ts`（对齐/缩进/分段）中添加排版决策
-5. 在 `components/Preview/A4Page.tsx` 中添加渲染逻辑
+5. 在 `components/Preview/renderContentFlow.tsx` 中添加渲染逻辑
 
 ### 修改默认配置
 
@@ -398,7 +420,7 @@ npm run lint
 
 ## 测试
 
-测试文件位于 `parser/__tests__/`、`utils/__tests__/`、`layout/__tests__/`、`exporter/__tests__/` 目录（公文解析、清洗规则、AI 响应解析、排版决策、导出翻译与产物结构），使用 Vitest 框架：
+测试文件位于 `parser/__tests__/`、`utils/__tests__/`、`layout/__tests__/`、`exporter/__tests__/`、`components/Preview/__tests__/` 目录（公文解析、清洗规则、AI 响应解析、排版决策、导出翻译与产物结构、预览结构特征快照），使用 Vitest 框架：
 
 ```bash
 # 运行测试
