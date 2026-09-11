@@ -41,7 +41,7 @@ export interface UseAIProofreadReturn {
 /**
  * 初始状态
  */
-var INITIAL_STATE: AIProofreadState = {
+const INITIAL_STATE: AIProofreadState = {
   status: 'idle',
   processedSentences: 0,
   totalSentences: 0,
@@ -55,16 +55,16 @@ var INITIAL_STATE: AIProofreadState = {
  */
 export function useAIProofread(): UseAIProofreadReturn {
   // 管理状态
-  var _useState = useState<AIProofreadState>(INITIAL_STATE);
-  var state = _useState[0];
-  var setState = _useState[1];
+  const _useState = useState<AIProofreadState>(INITIAL_STATE);
+  const state = _useState[0];
+  const setState = _useState[1];
 
   /**
    * 开始校对
    * @param ast 公文 AST
    * @param config AI 校对配置（包含内部参数）
    */
-  var startProofread = useCallback(function (
+  const startProofread = useCallback(function (
     ast: GongwenAST,
     config: FullProofreadConfig
   ): Promise<void> {
@@ -96,9 +96,9 @@ export function useAIProofread(): UseAIProofreadReturn {
       }
 
       // 切分句子
-      var splitResult = splitIntoSentences(ast);
-      var sentences = splitResult.sentences;
-      var sentenceMap = splitResult.sentenceMap;
+      const splitResult = splitIntoSentences(ast);
+      const sentences = splitResult.sentences;
+      const sentenceMap = splitResult.sentenceMap;
 
       // 检查是否有句子
       if (sentences.length === 0) {
@@ -114,7 +114,7 @@ export function useAIProofread(): UseAIProofreadReturn {
       }
 
       // 分块
-      var blocks = splitIntoBlocks(sentences, config.maxCharsPerRequest);
+      const blocks = splitIntoBlocks(sentences, config.maxCharsPerRequest);
 
       // 检查是否有块
       if (blocks.length === 0) {
@@ -139,8 +139,8 @@ export function useAIProofread(): UseAIProofreadReturn {
       });
 
       // 创建结果 Map
-      var resultsMap = new Map<string, AIProofreadResult>();
-      var processedCount = 0;
+      const resultsMap = new Map<string, AIProofreadResult>();
+      let processedCount = 0;
 
       /**
        * 处理单个校对结果
@@ -202,14 +202,14 @@ export function useAIProofread(): UseAIProofreadReturn {
           reject(error);
         });
     });
-  }, []);
+  }, [setState]);
 
   /**
    * 重置状态
    */
-  var resetProofread = useCallback(function (): void {
+  const resetProofread = useCallback(function (): void {
     setState(INITIAL_STATE);
-  }, []);
+  }, [setState]);
 
   return {
     state: state,

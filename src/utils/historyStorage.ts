@@ -10,10 +10,10 @@ const MAX_RECORDS = 50
  * @returns 提取的标题，最多30字符
  */
 function extractTitle(content: string): string {
-  var lines = content.split('\n')
-  var titleLines: string[] = []
-  for (var i = 0; i < lines.length; i++) {
-    var trimmed = lines[i].trim()
+  const lines = content.split('\n')
+  const titleLines: string[] = []
+  for (let i = 0; i < lines.length; i++) {
+    const trimmed = lines[i].trim()
     if (!trimmed) {
       break
     }
@@ -27,7 +27,7 @@ function extractTitle(content: string): string {
   if (titleLines.length === 0) {
     return '无标题'
   }
-  var fullTitle = titleLines.join('').replace(/[\r\n]/g, '')
+  const fullTitle = titleLines.join('').replace(/[\r\n]/g, '')
   return fullTitle.length > 30 ? fullTitle.slice(0, 30) + '...' : fullTitle
 }
 

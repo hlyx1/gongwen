@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import React from 'react'
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+ 
 import { renderToStaticMarkup } from 'react-dom/server'
 import { DEFAULT_CONFIG } from '../../../types/documentConfig'
 import type { DocumentConfig } from '../../../types/documentConfig'

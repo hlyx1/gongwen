@@ -20,34 +20,34 @@ interface AIProofreadSettingsProps {
  * AI 校对设置弹窗组件
  */
 export function AIProofreadSettings(props: AIProofreadSettingsProps) {
-  var isOpen = props.isOpen
-  var config = props.config
-  var onSave = props.onSave
-  var onClose = props.onClose
+  const isOpen = props.isOpen
+  const config = props.config
+  const onSave = props.onSave
+  const onClose = props.onClose
 
   // 本地状态：用户添加的检查项文本（每行一个）
-  var _useState = useState(config.customCheckItems.join('\n'))
-  var customCheckText = _useState[0]
-  var setCustomCheckText = _useState[1]
+  const _useState = useState(config.customCheckItems.join('\n'))
+  const customCheckText = _useState[0]
+  const setCustomCheckText = _useState[1]
 
   // 本地状态：用户添加的示例行列表
-  var _useState3 = useState<CustomExampleItem[]>(config.customExampleItems.slice())
-  var customExampleItems = _useState3[0]
-  var setCustomExampleItems = _useState3[1]
+  const _useState3 = useState<CustomExampleItem[]>(config.customExampleItems.slice())
+  const customExampleItems = _useState3[0]
+  const setCustomExampleItems = _useState3[1]
 
   // 本地状态：新示例输入
-  var _useState4 = useState('')
-  var newExampleOriginal = _useState4[0]
-  var setNewExampleOriginal = _useState4[1]
+  const _useState4 = useState('')
+  const newExampleOriginal = _useState4[0]
+  const setNewExampleOriginal = _useState4[1]
 
-  var _useState5 = useState('')
-  var newExampleSuggestion = _useState5[0]
-  var setNewExampleSuggestion = _useState5[1]
+  const _useState5 = useState('')
+  const newExampleSuggestion = _useState5[0]
+  const setNewExampleSuggestion = _useState5[1]
 
   // 当外部 config 变化时同步状态
-  var _useState2 = useState(config)
-  var lastConfig = _useState2[0]
-  var setLastConfig = _useState2[1]
+  const _useState2 = useState(config)
+  const lastConfig = _useState2[0]
+  const setLastConfig = _useState2[1]
 
   if (config !== lastConfig) {
     setLastConfig(config)
@@ -64,10 +64,10 @@ export function AIProofreadSettings(props: AIProofreadSettingsProps) {
    * 解析用户检查项文本
    */
   function parseCustomCheckItems(text: string): string[] {
-    var lines = text.split('\n')
-    var items: string[] = []
-    for (var i = 0; i < lines.length; i++) {
-      var line = lines[i].trim()
+    const lines = text.split('\n')
+    const items: string[] = []
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim()
       if (line.length > 0) {
         items.push(line)
       }
@@ -80,7 +80,7 @@ export function AIProofreadSettings(props: AIProofreadSettingsProps) {
    */
   function handleAddExample() {
     if (newExampleOriginal.trim().length > 0) {
-      var newItem: CustomExampleItem = {
+      const newItem: CustomExampleItem = {
         originalText: newExampleOriginal.trim(),
         suggestion: newExampleSuggestion.trim(),
       }
@@ -94,8 +94,8 @@ export function AIProofreadSettings(props: AIProofreadSettingsProps) {
    * 删除示例行
    */
   function handleDeleteExample(index: number) {
-    var newItems: CustomExampleItem[] = []
-    for (var i = 0; i < customExampleItems.length; i++) {
+    const newItems: CustomExampleItem[] = []
+    for (let i = 0; i < customExampleItems.length; i++) {
       if (i !== index) {
         newItems.push(customExampleItems[i])
       }
@@ -126,7 +126,7 @@ export function AIProofreadSettings(props: AIProofreadSettingsProps) {
   }
 
   // 构建预览提示词
-  var previewPrompt = buildPromptTemplate(parseCustomCheckItems(customCheckText), customExampleItems)
+  const previewPrompt = buildPromptTemplate(parseCustomCheckItems(customCheckText), customExampleItems)
 
   return (
     <div className="ai-settings-overlay" onClick={handleCancel}>

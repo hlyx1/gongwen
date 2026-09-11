@@ -19,7 +19,7 @@ export function splitIntoBlocks(
   maxCharsPerRequest: number
 ): SentenceBlock[] {
   // 参数校验和默认值处理
-  var maxChars = maxCharsPerRequest;
+  let maxChars = maxCharsPerRequest;
   if (!maxCharsPerRequest || maxCharsPerRequest <= 0) {
     maxChars = 3000;
   }
@@ -30,10 +30,10 @@ export function splitIntoBlocks(
   }
 
   // 计算每个句子的长度
-  var sentenceLengths: number[] = [];
-  var totalChars = 0;
-  for (var i = 0; i < sentences.length; i++) {
-    var len = sentences[i].text ? sentences[i].text.length : 0;
+  const sentenceLengths: number[] = [];
+  let totalChars = 0;
+  for (let i = 0; i < sentences.length; i++) {
+    const len = sentences[i].text ? sentences[i].text.length : 0;
     sentenceLengths.push(len);
     totalChars = totalChars + len;
   }
@@ -48,23 +48,23 @@ export function splitIntoBlocks(
   }
 
   // 计算需要的块数（向上取整）
-  var numBlocks = Math.ceil(totalChars / maxChars);
+  const numBlocks = Math.ceil(totalChars / maxChars);
   
   // 目标每块的平均字符数
-  var targetCharsPerBlock = totalChars / numBlocks;
+  const targetCharsPerBlock = totalChars / numBlocks;
 
   // 使用动态规划找最佳分割点
-  var splitPoints = findOptimalSplitPoints(sentenceLengths, numBlocks, targetCharsPerBlock);
+  const splitPoints = findOptimalSplitPoints(sentenceLengths, numBlocks, targetCharsPerBlock);
 
   // 根据分割点构建块
-  var blocks: SentenceBlock[] = [];
-  var prevSplit = 0;
+  const blocks: SentenceBlock[] = [];
+  let prevSplit = 0;
   
-  for (var j = 0; j < splitPoints.length; j++) {
-    var splitPoint = splitPoints[j];
-    var blockSentences = sentences.slice(prevSplit, splitPoint);
-    var blockCharCount = 0;
-    for (var k = prevSplit; k < splitPoint; k++) {
+  for (let j = 0; j < splitPoints.length; j++) {
+    const splitPoint = splitPoints[j];
+    const blockSentences = sentences.slice(prevSplit, splitPoint);
+    let blockCharCount = 0;
+    for (let k = prevSplit; k < splitPoint; k++) {
       blockCharCount = blockCharCount + sentenceLengths[k];
     }
     
@@ -79,9 +79,9 @@ export function splitIntoBlocks(
 
   // 处理最后一个块
   if (prevSplit < sentences.length) {
-    var lastBlockSentences = sentences.slice(prevSplit);
-    var lastBlockCharCount = 0;
-    for (var m = prevSplit; m < sentences.length; m++) {
+    const lastBlockSentences = sentences.slice(prevSplit);
+    let lastBlockCharCount = 0;
+    for (let m = prevSplit; m < sentences.length; m++) {
       lastBlockCharCount = lastBlockCharCount + sentenceLengths[m];
     }
     
@@ -109,18 +109,18 @@ function findOptimalSplitPoints(
   numBlocks: number,
   targetCharsPerBlock: number
 ): number[] {
-  var splitPoints: number[] = [];
-  var currentSum = 0;
-  var currentBlock = 0;
-  var remainingBlocks = numBlocks - 1; // 最后一个块不需要分割点
+  const splitPoints: number[] = [];
+  let currentSum = 0;
+  let currentBlock = 0;
+  let remainingBlocks = numBlocks - 1; // 最后一个块不需要分割点
 
-  for (var i = 0; i < sentenceLengths.length && remainingBlocks > 0; i++) {
+  for (let i = 0; i < sentenceLengths.length && remainingBlocks > 0; i++) {
     currentSum = currentSum + sentenceLengths[i];
     
     // 计算剩余需要处理的句子数和字符数
-    var remainingSentences = sentenceLengths.length - i - 1;
-    var remainingChars = 0;
-    for (var j = i + 1; j < sentenceLengths.length; j++) {
+    const remainingSentences = sentenceLengths.length - i - 1;
+    let remainingChars = 0;
+    for (let j = i + 1; j < sentenceLengths.length; j++) {
       remainingChars = remainingChars + sentenceLengths[j];
     }
     
@@ -128,10 +128,10 @@ function findOptimalSplitPoints(
     // 条件：当前累计接近目标，且剩余句子足够分配到剩余块
     if (remainingSentences >= remainingBlocks) {
       // 计算如果在此分割，当前块与目标的差距
-      var currentDiff = Math.abs(currentSum - targetCharsPerBlock);
+      const currentDiff = Math.abs(currentSum - targetCharsPerBlock);
       // 计算如果再加一句，当前块与目标的差距
-      var nextSum = currentSum + (sentenceLengths[i + 1] || 0);
-      var nextDiff = Math.abs(nextSum - targetCharsPerBlock);
+      const nextSum = currentSum + (sentenceLengths[i + 1] || 0);
+      const nextDiff = Math.abs(nextSum - targetCharsPerBlock);
       
       // 如果当前累计已经超过目标，或者加下一句会更远离目标
       if (currentSum >= targetCharsPerBlock || (currentDiff <= nextDiff && currentSum >= targetCharsPerBlock * 0.8)) {
@@ -162,9 +162,9 @@ export function calculateTotalChars(sentences: Sentence[]): number {
     return 0;
   }
 
-  var total = 0;
-  for (var i = 0; i < sentences.length; i++) {
-    var sentence = sentences[i];
+  let total = 0;
+  for (let i = 0; i < sentences.length; i++) {
+    const sentence = sentences[i];
     if (sentence.text) {
       total = total + sentence.text.length;
     }
@@ -197,13 +197,13 @@ export function getBlockStats(blocks: SentenceBlock[]): {
     };
   }
 
-  var totalSentences = 0;
-  var totalChars = 0;
-  var maxChars = blocks[0].charCount;
-  var minChars = blocks[0].charCount;
+  let totalSentences = 0;
+  let totalChars = 0;
+  let maxChars = blocks[0].charCount;
+  let minChars = blocks[0].charCount;
 
-  for (var i = 0; i < blocks.length; i++) {
-    var block = blocks[i];
+  for (let i = 0; i < blocks.length; i++) {
+    const block = blocks[i];
     totalSentences = totalSentences + block.sentences.length;
     totalChars = totalChars + block.charCount;
 

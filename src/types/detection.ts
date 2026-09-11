@@ -134,7 +134,7 @@ export interface DetectionResult {
 }
 
 /** 节点类型到检测点类型的映射 */
-export var NODE_TO_DETECTION_MAP: Record<NodeType, DetectionPointType | null> = {
+export const NODE_TO_DETECTION_MAP: Record<NodeType, DetectionPointType | null> = {
   [NodeType.DOCUMENT_TITLE]: DetectionPointType.TITLE,
   [NodeType.ADDRESSEE]: DetectionPointType.ADDRESSEE,
   [NodeType.HEADING_1]: null,

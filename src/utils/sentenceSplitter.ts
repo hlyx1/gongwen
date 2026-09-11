@@ -37,7 +37,7 @@ const PAIR_START_TO_END: PairMap = {
 };
 
 /** 配对符号：结束符号 -> 开始符号 */
-var PAIR_END_TO_START: PairMap = {
+const PAIR_END_TO_START: PairMap = {
   '」': '「',
   '』': '『',
   '》': '《',
@@ -46,7 +46,7 @@ var PAIR_END_TO_START: PairMap = {
 };
 
 /** 需要切分的节点类型集合 */
-var SPLITTABLE_TYPES: { [key: string]: boolean } = {
+const SPLITTABLE_TYPES: { [key: string]: boolean } = {
   [NodeType.PARAGRAPH]: true,
   [NodeType.HEADING_1]: true,
   [NodeType.HEADING_2]: true,
@@ -56,7 +56,7 @@ var SPLITTABLE_TYPES: { [key: string]: boolean } = {
 };
 
 /** 不需要切分的节点类型集合 */
-var NON_SPLITTABLE_TYPES: { [key: string]: boolean } = {
+const NON_SPLITTABLE_TYPES: { [key: string]: boolean } = {
   [NodeType.DOCUMENT_TITLE]: true,
   [NodeType.ATTACHMENT]: true,
   [NodeType.SIGNATURE]: true,
@@ -72,11 +72,11 @@ var NON_SPLITTABLE_TYPES: { [key: string]: boolean } = {
  * @returns 如果在配对符号内返回 true，否则返回 false
  */
 function isInQuoteOrBracket(text: string, position: number): boolean {
-  var stack: string[] = [];
-  var i = 0;
+  const stack: string[] = [];
+  let i = 0;
 
   for (i = 0; i < position; i++) {
-    var char = text[i];
+    const char = text[i];
 
     // 如果是开始符号，压入栈
     if (PAIR_START_TO_END[char]) {
@@ -84,9 +84,9 @@ function isInQuoteOrBracket(text: string, position: number): boolean {
     }
     // 如果是结束符号，检查是否与栈顶匹配
     else if (PAIR_END_TO_START[char]) {
-      var startChar = PAIR_END_TO_START[char];
+      const startChar = PAIR_END_TO_START[char];
       // 从栈顶向下查找匹配的开始符号
-      var j = stack.length - 1;
+      let j = stack.length - 1;
       while (j >= 0) {
         if (stack[j] === startChar) {
           // 移除匹配的开始符号及其后面的所有符号
@@ -109,14 +109,14 @@ function isInQuoteOrBracket(text: string, position: number): boolean {
  * @returns 分隔符位置和分隔符长度的对象，如果没找到返回 null
  */
 function findNextDelimiter(text: string, startPos: number): { position: number; length: number } | null {
-  var result: { position: number; length: number } | null = null;
-  var minPos = text.length;
-  var delimiterLength = 0;
-  var i = 0;
+  let result: { position: number; length: number } | null = null;
+  let minPos = text.length;
+  let delimiterLength = 0;
+  let i = 0;
 
   for (i = 0; i < DELIMITERS.length; i++) {
-    var delimiter = DELIMITERS[i];
-    var pos = text.indexOf(delimiter, startPos);
+    const delimiter = DELIMITERS[i];
+    const pos = text.indexOf(delimiter, startPos);
 
     if (pos !== -1 && pos < minPos) {
       // 检查该位置是否在配对符号内
@@ -141,10 +141,10 @@ function findNextDelimiter(text: string, startPos: number): { position: number; 
  * @returns 句子数组
  */
 function splitNodeIntoSentences(node: DocumentNode, globalSeq: { value: number }): Sentence[] {
-  var sentences: Sentence[] = [];
-  var content = node.content;
-  var startPos = 0;
-  var localSeq = 1;
+  const sentences: Sentence[] = [];
+  const content = node.content;
+  let startPos = 0;
+  let localSeq = 1;
 
   // 如果内容为空，返回空数组
   if (!content || content.length === 0) {
@@ -152,11 +152,11 @@ function splitNodeIntoSentences(node: DocumentNode, globalSeq: { value: number }
   }
 
   // 查找所有分隔符并切分
-  var delimiter = findNextDelimiter(content, startPos);
+  let delimiter = findNextDelimiter(content, startPos);
 
   while (delimiter !== null) {
-    var endPos = delimiter.position + delimiter.length;
-    var sentenceText = content.substring(startPos, endPos);
+    const endPos = delimiter.position + delimiter.length;
+    let sentenceText = content.substring(startPos, endPos);
 
     // 去除首尾空白
     sentenceText = sentenceText.trim();
@@ -165,7 +165,7 @@ function splitNodeIntoSentences(node: DocumentNode, globalSeq: { value: number }
     if (sentenceText.length > 0) {
       globalSeq.value = globalSeq.value + 1;
 
-      var sentenceId = node.type + '-' + node.lineNumber + '-' + localSeq;
+      const sentenceId = node.type + '-' + node.lineNumber + '-' + localSeq;
 
       sentences.push({
         id: sentenceId,
@@ -185,13 +185,13 @@ function splitNodeIntoSentences(node: DocumentNode, globalSeq: { value: number }
 
   // 处理最后剩余的文本（没有分隔符结尾的部分）
   if (startPos < content.length) {
-    var remainingText = content.substring(startPos);
+    let remainingText = content.substring(startPos);
     remainingText = remainingText.trim();
 
     if (remainingText.length > 0) {
       globalSeq.value = globalSeq.value + 1;
 
-      var lastSentenceId = node.type + '-' + node.lineNumber + '-' + localSeq;
+      const lastSentenceId = node.type + '-' + node.lineNumber + '-' + localSeq;
 
       sentences.push({
         id: lastSentenceId,
@@ -215,22 +215,22 @@ function splitNodeIntoSentences(node: DocumentNode, globalSeq: { value: number }
  *   - sentenceMap: Map<number, string> 全局序号到 sentenceId 的映射
  */
 function splitIntoSentences(ast: GongwenAST): { sentences: Sentence[]; sentenceMap: Map<number, string> } {
-  var sentences: Sentence[] = [];
-  var sentenceMap = new Map<number, string>();
+  const sentences: Sentence[] = [];
+  const sentenceMap = new Map<number, string>();
 
   // 全局序号计数器（使用对象包装以实现引用传递）
-  var globalSeq = { value: 0 };
+  const globalSeq = { value: 0 };
 
   // 处理标题节点（标题不切分，清理换行符）
   // 公文标题可能因排版目的换行，但应作为一个整体发送给AI
   if (ast.title && ast.title.length > 0) {
     // 收集所有标题行的内容
-    var titleLines: string[] = [];
-    var firstLineNumber = 1;
-    var titleIndex = 0;
+    const titleLines: string[] = [];
+    let firstLineNumber = 1;
+    let titleIndex = 0;
     
     for (titleIndex = 0; titleIndex < ast.title.length; titleIndex++) {
-      var titleNode = ast.title[titleIndex];
+      const titleNode = ast.title[titleIndex];
       
       // 记录第一个标题节点的行号
       if (titleIndex === 0) {
@@ -248,14 +248,14 @@ function splitIntoSentences(ast: GongwenAST): { sentences: Sentence[]; sentenceM
       globalSeq.value = globalSeq.value + 1;
       
       // 合并所有标题行，用空格连接（清理换行符）
-      var mergedTitleText = titleLines.join('');
+      let mergedTitleText = titleLines.join('');
       // 清理可能残留的换行符和多余空白
       mergedTitleText = mergedTitleText.split('\n').join('');
       mergedTitleText = mergedTitleText.split('\r').join('');
       // 清理多余空白字符
       mergedTitleText = mergedTitleText.split(/\s+/).join('');
       
-      var titleSentenceId = NodeType.DOCUMENT_TITLE + '-' + firstLineNumber + '-1';
+      const titleSentenceId = NodeType.DOCUMENT_TITLE + '-' + firstLineNumber + '-1';
       
       sentences.push({
         id: titleSentenceId,
@@ -272,17 +272,17 @@ function splitIntoSentences(ast: GongwenAST): { sentences: Sentence[]; sentenceM
 
   // 处理正文节点
   if (ast.body && ast.body.length > 0) {
-    var bodyIndex = 0;
+    let bodyIndex = 0;
     for (bodyIndex = 0; bodyIndex < ast.body.length; bodyIndex++) {
-      var node = ast.body[bodyIndex];
+      const node = ast.body[bodyIndex];
 
       // 判断节点类型是否需要切分
       if (SPLITTABLE_TYPES[node.type]) {
         // 需要切分的节点类型
-        var nodeSentences = splitNodeIntoSentences(node, globalSeq);
-        var sIndex = 0;
+        const nodeSentences = splitNodeIntoSentences(node, globalSeq);
+        let sIndex = 0;
         for (sIndex = 0; sIndex < nodeSentences.length; sIndex++) {
-          var sentence = nodeSentences[sIndex];
+          const sentence = nodeSentences[sIndex];
           sentences.push(sentence);
           sentenceMap.set(sentence.seqNum, sentence.id);
         }
@@ -291,7 +291,7 @@ function splitIntoSentences(ast: GongwenAST): { sentences: Sentence[]; sentenceM
         if (node.content && node.content.trim().length > 0) {
           globalSeq.value = globalSeq.value + 1;
 
-          var wholeSentenceId = node.type + '-' + node.lineNumber + '-1';
+          const wholeSentenceId = node.type + '-' + node.lineNumber + '-1';
 
           sentences.push({
             id: wholeSentenceId,

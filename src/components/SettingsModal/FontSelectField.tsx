@@ -61,6 +61,19 @@ export function FontSelectField({
     ...filteredCustom.map((f) => ({ value: f, label: f, isCustom: true })),
   ]
 
+  // 提交输入并关闭（函数声明置于 useEffect 之前——react-hooks/immutability
+  // 要求先声明后访问；函数声明提升使移动本身无行为影响）
+  function commitAndClose() {
+    const trimmed = filter.trim()
+    if (trimmed && !builtinValues.has(trimmed) && trimmed !== value) {
+      onAddCustomFont(trimmed)
+      onChange(trimmed)
+    }
+    setOpen(false)
+    setFilter('')
+    setActiveIdx(-1)
+  }
+
   // 点击外部关闭
   useEffect(() => {
     if (!open) return
@@ -72,17 +85,6 @@ export function FontSelectField({
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   })
-
-  function commitAndClose() {
-    const trimmed = filter.trim()
-    if (trimmed && !builtinValues.has(trimmed) && trimmed !== value) {
-      onAddCustomFont(trimmed)
-      onChange(trimmed)
-    }
-    setOpen(false)
-    setFilter('')
-    setActiveIdx(-1)
-  }
 
   function handleSelect(val: string) {
     onChange(val)

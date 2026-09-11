@@ -22,7 +22,7 @@ interface DetectionPanelProps {
 }
 
 /** 状态颜色映射 */
-var STATUS_COLORS: Record<DetectionStatus, string> = {
+const STATUS_COLORS: Record<DetectionStatus, string> = {
   [DetectionStatus.DETECTED]: '#11AA66',
   [DetectionStatus.MISSING]: '#999999',
   [DetectionStatus.WARNING]: '#d81e06',
@@ -30,7 +30,7 @@ var STATUS_COLORS: Record<DetectionStatus, string> = {
 
 /** 状态图标组件 */
 function StatusIcon({ status }: { status: DetectionStatus }) {
-  var iconSrc = ''
+  let iconSrc = ''
   if (status === DetectionStatus.DETECTED) {
     iconSrc = '/正确.svg'
   } else if (status === DetectionStatus.WARNING) {
@@ -51,8 +51,8 @@ function StatusIcon({ status }: { status: DetectionStatus }) {
 
 /** 正文统计信息组件 */
 function BodyStatsView({ stats }: { stats: BodyStats }) {
-  var h = stats.headingCounts
-  var headingParts: string[] = []
+  const h = stats.headingCounts
+  const headingParts: string[] = []
   if (h.h1 > 0) headingParts.push('一级标题 ' + h.h1)
   if (h.h2 > 0) headingParts.push('二级标题 ' + h.h2)
   if (h.h3 > 0) headingParts.push('三级标题 ' + h.h3)
@@ -131,7 +131,7 @@ function HeadingNumberWarningView({ warning }: { warning: HeadingNumberWarning }
 
 /** 获取序号显示文本 */
 function getNumberDisplay(num: number, level: number): string {
-  var CHINESE_DIGITS = '一二三四五六七八九十'
+  const CHINESE_DIGITS = '一二三四五六七八九十'
   if (level === 1) {
     return CHINESE_DIGITS.charAt(num - 1) + '、'
   } else if (level === 2) {
@@ -171,12 +171,12 @@ function formatDisplayContent(content: string, type: DetectionPointType): string
 
 /** 检测点卡片组件 */
 function DetectionPointCard({ point }: { point: DetectionPoint }) {
-  var isMissing = point.status === DetectionStatus.MISSING
-  var isWarning = point.status === DetectionStatus.WARNING
-  var isBody = point.type === DetectionPointType.BODY
-  var color = STATUS_COLORS[point.status]
+  const isMissing = point.status === DetectionStatus.MISSING
+  const isWarning = point.status === DetectionStatus.WARNING
+  const isBody = point.type === DetectionPointType.BODY
+  const color = STATUS_COLORS[point.status]
 
-  var cardClass = [
+  const cardClass = [
     'detection-card',
     isMissing ? 'detection-card--missing' : '',
     isWarning ? 'detection-card--warning' : '',
@@ -329,7 +329,7 @@ function AIProofreadSection({
   }
 
   // 收集有问题的结果，按序号排序
-  var issues: AIProofreadResult[] = []
+  const issues: AIProofreadResult[] = []
   state.results.forEach(function(result) {
     if (result.hasIssue) {
       issues.push(result)
@@ -339,8 +339,8 @@ function AIProofreadSection({
     return a.seqNum - b.seqNum
   })
 
-  var status = DetectionStatus.DETECTED
-  var statusColor = '#047857'
+  let status = DetectionStatus.DETECTED
+  let statusColor = '#047857'
   
   // 根据状态确定颜色（使用主题色绿色）
   if (state.status === 'loading') {
@@ -432,13 +432,13 @@ function AIProofreadSection({
 
 /** 检测面板主组件 */
 export function DetectionPanel(props: DetectionPanelProps) {
-  var ast = props.ast
-  var aiProofreadState = props.aiProofreadState
-  var isAIConfigured = props.isAIConfigured
-  var onLocateSentence = props.onLocateSentence
+  const ast = props.ast
+  const aiProofreadState = props.aiProofreadState
+  const isAIConfigured = props.isAIConfigured
+  const onLocateSentence = props.onLocateSentence
 
-  var result = useDetectionData(ast)
-  var points = result.points
+  const result = useDetectionData(ast)
+  const points = result.points
 
   return (
     <div className="detection-panel">

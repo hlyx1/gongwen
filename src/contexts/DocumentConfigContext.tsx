@@ -234,6 +234,9 @@ export function DocumentConfigProvider({ children }: { children: ReactNode }) {
 
 // ---- Hook ----
 
+// Context 文件同时导出配套 hook 为既有约定（消费方统一从此处导入），
+// fast-refresh 的「仅组件」提示不适用此模式，显式豁免
+// eslint-disable-next-line react-refresh/only-export-components
 export function useDocumentConfig(): DocumentConfigContextValue {
   const ctx = useContext(DocumentConfigContext)
   if (!ctx) {

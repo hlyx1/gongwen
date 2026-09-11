@@ -61,10 +61,10 @@ function App() {
   const [showAISettings, setShowAISettings] = useState(false)
   
   // 使用 AI 审核 hook
-  var aiProofreadHook = useAIProofread()
-  var aiProofreadState = aiProofreadHook.state
-  var startProofread = aiProofreadHook.startProofread
-  var isAIConfigured = isAIServiceConfigured()
+  const aiProofreadHook = useAIProofread()
+  const aiProofreadState = aiProofreadHook.state
+  const startProofread = aiProofreadHook.startProofread
+  const isAIConfigured = isAIServiceConfigured()
 
   // 自动净化：解析前预处理，编辑器保留原文不干扰输入
   const sanitized = useMemo(() => sanitizeText(text).text, [text])
@@ -72,6 +72,8 @@ function App() {
   const { config } = useDocumentConfig()
 
   // Auto-Save: debounce 500ms 写入 localStorage
+  // historyRecords 刻意保留为依赖：历史记录增删后需重算重复检测
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const isContentDuplicate = useMemo(() => isContentExists(text), [text, historyRecords])
 
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
@@ -197,7 +199,7 @@ function App() {
   /**
    * 计算问题数量
    */
-  var issueCount = 0
+  let issueCount = 0
   aiProofreadState.results.forEach(function(result) {
     if (result.hasIssue) {
       issueCount = issueCount + 1

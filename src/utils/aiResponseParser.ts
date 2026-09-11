@@ -45,7 +45,7 @@ export function createInitialParserState(): ParserState {
  */
 export function parseTableRow(line: string): string[] | null {
   // 检查是否是表格行（以 | 开始和结束）
-  var trimmed = line.trim();
+  const trimmed = line.trim();
   if (trimmed.length === 0) {
     return null;
   }
@@ -57,12 +57,12 @@ export function parseTableRow(line: string): string[] | null {
   }
 
   // 按 | 分割
-  var parts = trimmed.split('|');
+  const parts = trimmed.split('|');
 
   // 去除首尾空元素（因为首尾都是 |，分割后首尾为空字符串）
   // 手动处理，不使用 slice
-  var result: string[] = [];
-  for (var i = 0; i < parts.length; i++) {
+  const result: string[] = [];
+  for (let i = 0; i < parts.length; i++) {
     // 跳过第一个和最后一个空元素
     if (i === 0 || i === parts.length - 1) {
       continue;
@@ -83,9 +83,9 @@ function isHeaderRow(columns: string[]): boolean {
   if (columns.length < 3) {
     return false;
   }
-  var col0 = columns[0].toLowerCase();
-  var col1 = columns[1].toLowerCase();
-  var col2 = columns[2].toLowerCase();
+  const col0 = columns[0].toLowerCase();
+  const col1 = columns[1].toLowerCase();
+  const col2 = columns[2].toLowerCase();
   return col0.indexOf('序号') !== -1 && col1.indexOf('原句') !== -1 && col2.indexOf('修改') !== -1;
 }
 
@@ -99,15 +99,15 @@ function isSeparatorRow(columns: string[]): boolean {
     return false;
   }
   // 分隔行格式如 :--- 或 --- 或 :-: 等
-  for (var i = 0; i < columns.length; i++) {
-    var col = columns[i];
+  for (let i = 0; i < columns.length; i++) {
+    const col = columns[i];
     // 必须包含 - 且主要由 - 和 : 组成
     if (col.indexOf('-') === -1) {
       return false;
     }
     // 检查是否只包含 - 和 :
-    for (var j = 0; j < col.length; j++) {
-      var ch = col.charAt(j);
+    for (let j = 0; j < col.length; j++) {
+      const ch = col.charAt(j);
       if (ch !== '-' && ch !== ':') {
         return false;
       }
@@ -130,11 +130,11 @@ export function parseStreamingLine(
   sentenceMap: Map<number, string>
 ): { result: AIProofreadResult | null; newState: ParserState } {
   // 将新行添加到缓冲区
-  var newBuffer = state.buffer + line;
+  let newBuffer = state.buffer + line;
 
   // 如果还没跳过思考内容，检查是否有 </think> 标签
   if (!state.thinkingEnded) {
-    var thinkingEndIndex = newBuffer.indexOf('</think>');
+    const thinkingEndIndex = newBuffer.indexOf('</think>');
     if (thinkingEndIndex !== -1) {
       // 找到了结束标签，跳过思考内容
       newBuffer = newBuffer.substring(thinkingEndIndex + '</think>'.length);
@@ -155,9 +155,9 @@ export function parseStreamingLine(
   }
 
   // 查找完整的行（以换行符结束）
-  var newlineIndex = newBuffer.indexOf('\n');
-  var completeLine = '';
-  var remainingBuffer = newBuffer;
+  const newlineIndex = newBuffer.indexOf('\n');
+  let completeLine = '';
+  let remainingBuffer = newBuffer;
 
   if (newlineIndex !== -1) {
     // 提取完整行
@@ -178,7 +178,7 @@ export function parseStreamingLine(
   }
 
   // 解析表格行
-  var columns = parseTableRow(completeLine);
+  const columns = parseTableRow(completeLine);
 
   // 如果不是表格行，检查是否需要重置状态
   if (columns === null) {
@@ -225,12 +225,12 @@ export function parseStreamingLine(
 
   // 解析数据行
   if (columns.length >= 3) {
-    var seqNumStr = columns[0];
-    var originalText = columns[1];
-    var suggestion = columns[2];
+    const seqNumStr = columns[0];
+    const originalText = columns[1];
+    const suggestion = columns[2];
 
     // 解析序号
-    var seqNum = parseInt(seqNumStr, 10);
+    const seqNum = parseInt(seqNumStr, 10);
     if (isNaN(seqNum)) {
       // 序号解析失败，跳过此行
       return {
@@ -246,7 +246,7 @@ export function parseStreamingLine(
     }
 
     // 从映射中获取 sentenceId
-    var sentenceId = sentenceMap.get(seqNum);
+    let sentenceId = sentenceMap.get(seqNum);
     if (sentenceId === undefined) {
       // 未找到映射，使用默认值
       sentenceId = 'unknown-' + seqNum;
@@ -254,13 +254,13 @@ export function parseStreamingLine(
 
     // 判断是否有问题
     // 建议为"无"或空表示没有问题
-    var hasIssue = true;
+    let hasIssue = true;
     if (suggestion === '无' || suggestion === '' || suggestion.trim() === '') {
       hasIssue = false;
     }
 
     // 构建结果
-    var result: AIProofreadResult = {
+    const result: AIProofreadResult = {
       sentenceId: sentenceId,
       seqNum: seqNum,
       originalText: originalText,
@@ -304,7 +304,7 @@ export function flushParser(
   state: ParserState,
   sentenceMap: Map<number, string>
 ): { results: AIProofreadResult[] } {
-  var results: AIProofreadResult[] = [];
+  const results: AIProofreadResult[] = [];
 
   // 如果缓冲区为空，直接返回
   if (state.buffer.trim().length === 0) {
@@ -312,11 +312,11 @@ export function flushParser(
   }
 
   // 处理缓冲区内容
-  var buffer = state.buffer;
+  let buffer = state.buffer;
 
   // 如果还没跳过思考内容，检查是否有 </think> 标签
   if (!state.thinkingEnded) {
-    var thinkingEndIndex = buffer.indexOf('</think>');
+    const thinkingEndIndex = buffer.indexOf('</think>');
     if (thinkingEndIndex !== -1) {
       // 找到了结束标签，跳过思考内容
       buffer = buffer.substring(thinkingEndIndex + '</think>'.length);
@@ -325,10 +325,10 @@ export function flushParser(
   }
 
   // 逐行处理缓冲区中的内容
-  var lines = buffer.split('\n');
-  for (var i = 0; i < lines.length; i++) {
-    var line = lines[i];
-    var columns = parseTableRow(line);
+  const lines = buffer.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const columns = parseTableRow(line);
 
     // 如果不是有效的表格行，跳过
     if (columns === null || columns.length < 3) {
@@ -341,24 +341,24 @@ export function flushParser(
     }
 
     // 解析数据行
-    var seqNumStr = columns[0];
-    var originalText = columns[1];
-    var suggestion = columns[2];
+    const seqNumStr = columns[0];
+    const originalText = columns[1];
+    const suggestion = columns[2];
 
     // 解析序号
-    var seqNum = parseInt(seqNumStr, 10);
+    const seqNum = parseInt(seqNumStr, 10);
     if (isNaN(seqNum)) {
       continue;
     }
 
     // 从映射中获取 sentenceId
-    var sentenceId = sentenceMap.get(seqNum);
+    let sentenceId = sentenceMap.get(seqNum);
     if (sentenceId === undefined) {
       sentenceId = 'unknown-' + seqNum;
     }
 
     // 判断是否有问题
-    var hasIssue = true;
+    let hasIssue = true;
     if (suggestion === '无' || suggestion === '' || suggestion.trim() === '') {
       hasIssue = false;
     }

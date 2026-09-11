@@ -15,7 +15,7 @@ import type { AIServiceConfig } from '../types/aiProofread';
  */
 function normalizeBaseUrl(url: string): string {
   // 去除首尾空白
-  var trimmedUrl = url.trim();
+  let trimmedUrl = url.trim();
 
   // 去除末尾的斜杠，保持 URL 格式规范
   while (trimmedUrl.length > 0 && trimmedUrl.charAt(trimmedUrl.length - 1) === '/') {
@@ -28,7 +28,7 @@ function normalizeBaseUrl(url: string): string {
   }
 
   // 检查是否已经有 /v1 前缀
-  var finalUrl = trimmedUrl;
+  let finalUrl = trimmedUrl;
   if (trimmedUrl.indexOf('/v1') === -1) {
     finalUrl = trimmedUrl + '/v1';
   }

@@ -19,5 +19,13 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    rules: {
+      // 治理约定（task-0001 单元8）：下划线前缀的参数/捕获变量视为有意忽略的占位
+      // （如字符串替换回调的占位形参、空进度回调），不计入未使用变量
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' },
+      ],
+    },
   },
 ])

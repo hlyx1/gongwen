@@ -17,7 +17,7 @@ import { parseStreamingLine, createInitialParserState, flushParser } from '../ut
  * 系统内置检查项
  * 用于在设置界面显示，与提示词中的检查项保持一致
  */
-export var BUILTIN_CHECK_ITEMS = [
+export const BUILTIN_CHECK_ITEMS = [
   '错别字、漏字、重复字',
   '谓语、宾语缺失',
   '句式杂糅',
@@ -27,7 +27,7 @@ export var BUILTIN_CHECK_ITEMS = [
 /**
  * 系统内置示例
  */
-export var BUILTIN_EXAMPLES: CustomExampleItem[] = [
+export const BUILTIN_EXAMPLES: CustomExampleItem[] = [
   { originalText: '请各部门做好工作部暑', suggestion: '"部暑"→"部署"："暑"为错别字' },
   { originalText: '会议截止日期是明天下午三点。', suggestion: '"截止"→"截至"："截止"是动词，不能带时间点，"截至"是介词，带时间点' },
   { originalText: '公司决定提高员工的水平。', suggestion: '"水平"→"工作水平"：宾语缺失："提高"需搭配具体对象' },
@@ -46,7 +46,7 @@ export function buildPromptTemplate(
   customCheckItems: CustomCheckItem[],
   customExampleItems: CustomExampleItem[]
 ): string {
-  var prompt = 
+  let prompt = 
     '你是一个文章审核员，对于给定被分割为若干个纠错单元的文章，你需要进行以纠错单元为单位的审核。\n' +
     '\n' +
     '# 工作流程\n' +
@@ -59,8 +59,8 @@ export function buildPromptTemplate(
     '4. 其他明显错误的情况';
 
   // 添加用户自定义检查项（追加到序号列表）
-  for (var i = 0; i < customCheckItems.length; i++) {
-    var item = customCheckItems[i];
+  for (let i = 0; i < customCheckItems.length; i++) {
+    const item = customCheckItems[i];
     if (item && item.trim().length > 0) {
       prompt += '\n' + (i + 5) + '. ' + item.trim();
     }
@@ -84,14 +84,14 @@ export function buildPromptTemplate(
     '| --- | --- | --- |';
 
   // 添加内置示例
-  for (var bi = 0; bi < BUILTIN_EXAMPLES.length; bi++) {
-    var builtinItem = BUILTIN_EXAMPLES[bi];
+  for (let bi = 0; bi < BUILTIN_EXAMPLES.length; bi++) {
+    const builtinItem = BUILTIN_EXAMPLES[bi];
     prompt += '\n| ' + (bi + 1) + ' | ' + builtinItem.originalText + ' | ' + builtinItem.suggestion + ' |';
   }
 
   // 添加用户自定义示例行
-  for (var j = 0; j < customExampleItems.length; j++) {
-    var exampleItem = customExampleItems[j];
+  for (let j = 0; j < customExampleItems.length; j++) {
+    const exampleItem = customExampleItems[j];
     if (exampleItem.originalText && exampleItem.originalText.trim().length > 0) {
       prompt += '\n| ' + (j + BUILTIN_EXAMPLES.length + 1) + ' | ' + exampleItem.originalText + ' | ' + (exampleItem.suggestion || '无') + ' |';
     }
@@ -120,12 +120,12 @@ export function buildPrompt(
   customExampleItems: CustomExampleItem[]
 ): string {
   // 使用公共模板构建主体
-  var prompt = buildPromptTemplate(customCheckItems, customExampleItems);
+  let prompt = buildPromptTemplate(customCheckItems, customExampleItems);
 
   // 添加待审核的句子列表（使用标签格式）
   prompt += '\n';
-  for (var k = 0; k < block.sentences.length; k++) {
-    var sentence = block.sentences[k];
+  for (let k = 0; k < block.sentences.length; k++) {
+    const sentence = block.sentences[k];
     prompt += '\n<纠错单元' + sentence.seqNum + '>' + sentence.text + '</纠错单元' + sentence.seqNum + '>';
   }
 
@@ -150,17 +150,17 @@ export function sendBlockStreaming(
 ): Promise<void> {
   return new Promise(function (resolve, reject) {
     // 获取 AI 服务配置
-    var config = getAIServiceConfig();
+    const config = getAIServiceConfig();
     if (config === null) {
       reject(new Error('AI服务未配置'));
       return;
     }
 
     // 构建提示词
-    var prompt = buildPrompt(block, customCheckItems, customExampleItems);
+    const prompt = buildPrompt(block, customCheckItems, customExampleItems);
 
     // 构建请求体
-    var requestBody: OpenAIChatRequest = {
+    const requestBody: OpenAIChatRequest = {
       model: config.model,
       messages: [
         {
@@ -208,9 +208,9 @@ export function sendBlockStreaming(
         }
 
         // 获取读取器
-        var reader = response.body.getReader();
-        var decoder = new TextDecoder('utf-8');
-        var parserState = createInitialParserState();
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let parserState = createInitialParserState();
 
         // 读取流式数据
         function readStream(): Promise<void> {
@@ -218,8 +218,8 @@ export function sendBlockStreaming(
             // 检查是否结束
             if (result.done) {
               // 刷新解析器，处理缓冲区中剩余的数据
-              var flushResult = flushParser(parserState, sentenceMap);
-              for (var fi = 0; fi < flushResult.results.length; fi++) {
+              const flushResult = flushParser(parserState, sentenceMap);
+              for (let fi = 0; fi < flushResult.results.length; fi++) {
                 onResult(flushResult.results[fi]);
               }
               resolve();
@@ -227,13 +227,13 @@ export function sendBlockStreaming(
             }
 
             // 解码数据
-            var chunk = decoder.decode(result.value, { stream: true });
+            const chunk = decoder.decode(result.value, { stream: true });
 
             // 按 SSE 格式解析（每行以 "data: " 开头）
-            var lines = chunk.split('\n');
+            const lines = chunk.split('\n');
 
-            for (var i = 0; i < lines.length; i++) {
-              var line = lines[i];
+            for (let i = 0; i < lines.length; i++) {
+              const line = lines[i];
 
               // 跳过空行
               if (line.trim().length === 0) {
@@ -243,13 +243,13 @@ export function sendBlockStreaming(
               // 检查是否是 SSE 数据行
               if (line.indexOf('data: ') === 0) {
                 // 提取数据部分
-                var data = line.substring(6);
+                const data = line.substring(6);
 
                 // 检查是否是结束标记
                 if (data === '[DONE]') {
                   // 刷新解析器，处理缓冲区中剩余的数据
-                  var flushResult2 = flushParser(parserState, sentenceMap);
-                  for (var fi2 = 0; fi2 < flushResult2.results.length; fi2++) {
+                  const flushResult2 = flushParser(parserState, sentenceMap);
+                  for (let fi2 = 0; fi2 < flushResult2.results.length; fi2++) {
                     onResult(flushResult2.results[fi2]);
                   }
                   resolve();
@@ -258,7 +258,7 @@ export function sendBlockStreaming(
 
                 // 解析 JSON
                 try {
-                  var json = JSON.parse(data);
+                  const json = JSON.parse(data);
                   // 提取内容
                   if (
                     json.choices &&
@@ -266,10 +266,10 @@ export function sendBlockStreaming(
                     json.choices[0].delta &&
                     json.choices[0].delta.content
                   ) {
-                    var content = json.choices[0].delta.content;
+                    const content = json.choices[0].delta.content;
 
                     // 使用解析器解析表格行
-                    var parseResult = parseStreamingLine(parserState, content, sentenceMap);
+                    const parseResult = parseStreamingLine(parserState, content, sentenceMap);
                     parserState = parseResult.newState;
 
                     // 如果解析出结果，调用回调
@@ -277,7 +277,7 @@ export function sendBlockStreaming(
                       onResult(parseResult.result);
                     }
                   }
-                } catch (e) {
+                } catch {
                   // JSON 解析失败，可能是数据不完整，忽略
                 }
               }
@@ -327,12 +327,12 @@ export function sendAllBlocksStreaming(
   }
 
   return new Promise(function (resolve, reject) {
-    var total = blocks.length;
-    var processed = 0;
-    var currentIndex = 0;
-    var activeCount = 0;
-    var hasError = false;
-    var errorMessage = '';
+    const total = blocks.length;
+    let processed = 0;
+    let currentIndex = 0;
+    let activeCount = 0;
+    let hasError = false;
+    let errorMessage = '';
 
     // 检查是否有块需要处理
     if (total === 0) {
@@ -351,7 +351,7 @@ export function sendAllBlocksStreaming(
       retryCount: number,
       maxRetries: number
     ): void {
-      var block = blocks[blockIndex];
+      const block = blocks[blockIndex];
 
       sendBlockStreaming(block, customCheckItems, customExampleItems, sentenceMap, onResult)
         .then(function () {
@@ -410,7 +410,7 @@ export function sendAllBlocksStreaming(
     function processNext(): void {
       // 检查是否还有待处理的块
       while (currentIndex < total && activeCount < maxConcurrent) {
-        var blockIndex = currentIndex;
+        const blockIndex = currentIndex;
         currentIndex++;
         activeCount++;
 
