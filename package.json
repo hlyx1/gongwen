@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "build:single": "tsc -b && SINGLE_FILE=1 vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run"
   },
   "dependencies": {
     "docx": "^9.5.3",
