@@ -16,7 +16,9 @@ import {
  * - 旧双轨结构（headings.h1/h2 + advanced.*）→ 单一 headings 真值
  *   （h1/h2/h3/addressee × 中文字体/英数字体/字号）
  * - 两轨冲突以 advanced 为准（字段最全、驱动导出）
- * - 多档 savedConfigs 各自迁移；activeConfigId/aiProofreadConfig 原样保留
+ * - 多档 savedConfigs 各自迁移；activeConfigId 原样保留
+ * - 旧值中的 aiProofreadConfig 死字段被安全忽略（工作单元-8 删除
+ *   Context 死路径后，AI 配置实际走独立键 ai-proofread-config）
  * - 迁移前旧结构原样备份至 docx-document-config-v2.backup-<时间戳> 键
  *   （回滚＝清空主键、恢复备份键——见文末回滚演练用例）
  * - 主键 docx-document-config-v2 前后保持不变（就地升级）
@@ -170,7 +172,7 @@ describe('migrateDocumentConfig 单配置迁移', () => {
 // ---- migrateConfigStorage（存储级纯函数） ----
 
 describe('migrateConfigStorage 存储级迁移', () => {
-  it('多档 savedConfigs 各自迁移；activeConfigId/aiProofreadConfig 原样保留', () => {
+  it('多档 savedConfigs 各自迁移；activeConfigId 原样保留；旧值 aiProofreadConfig 死字段被安全忽略', () => {
     const aiSentinel = { baseUrl: 'http://sentinel' }
     const parsed = {
       activeConfigId: 'cfg-b',
@@ -184,7 +186,7 @@ describe('migrateConfigStorage 存储级迁移', () => {
     const outcome = migrateConfigStorage(parsed)
     expect(outcome.migrated).toBe(true)
     expect(outcome.storage.activeConfigId).toBe('cfg-b')
-    expect(outcome.storage.aiProofreadConfig).toEqual(aiSentinel)
+    expect((outcome.storage as unknown as Record<string, unknown>).aiProofreadConfig).toBeUndefined()
     expect(outcome.storage.savedConfigs).toHaveLength(3)
     // 各档独立迁移：冲突档 h1 取 advanced，默认等值档取等值，新结构档原样
     const configs = outcome.storage.savedConfigs.map(function (sc) {
@@ -306,6 +308,21 @@ describe('loadMigratedConfigStorage 读取迁移（含备份）', () => {
     })
   })
 
+  it('getItem 抛异常（如 localStorage 被禁用）：返回空存储不崩溃（复核观察2）', () => {
+    const throwing: ConfigKVStore = {
+      getItem(): string | null {
+        throw new Error('localStorage disabled')
+      },
+      setItem(): void {
+        // 不会到达
+      },
+    }
+    expect(loadMigratedConfigStorage(throwing)).toEqual({
+      activeConfigId: null,
+      savedConfigs: [],
+    })
+  })
+
   it('回滚路径演练：清空主键→恢复备份键内容→得到可读的旧结构原貌', () => {
     const raw = legacyRaw()
     const store = memoryStore()
@@ -326,5 +343,56 @@ describe('loadMigratedConfigStorage 读取迁移（含备份）', () => {
     const config = restored.savedConfigs[0].config
     expect(Object.prototype.hasOwnProperty.call(config, 'advanced')).toBe(true)
     expect(config.headings.h1).toEqual({ fontFamily: '宋体', fontSize: 22 })
+  })
+})
+
+// ---- aiProofreadConfig 死路径删除的持久化兼容（工作单元-8，条款7） ----
+
+describe('aiProofreadConfig 死路径删除的持久化兼容', () => {
+  /** 旧双轨主键原文（内含 aiProofreadConfig 死字段残留） */
+  function legacyRawWithAIDeadField(): string {
+    return JSON.stringify({
+      activeConfigId: 'cfg-a',
+      aiProofreadConfig: { baseUrl: 'http://sentinel' },
+      savedConfigs: [
+        { id: 'cfg-a', name: '旧档', createdAt: 1, config: legacyConflictConfig() },
+      ],
+    })
+  }
+
+  it('旧双轨主键含 aiProofreadConfig 字段：迁移照常发生，回写内容不再含该死字段，配置读取正常', () => {
+    const raw = legacyRawWithAIDeadField()
+    const store = memoryStore()
+    store.setItem(CONFIG_STORAGE_KEY, raw)
+
+    const storage = loadMigratedConfigStorage(store)
+
+    // 配置本身读取正常（迁移行为不变：冲突以 advanced 为准）
+    expect(storage.activeConfigId).toBe('cfg-a')
+    expect(storage.savedConfigs[0].config.headings.h1.fontFamily).toBe('黑体')
+    // 回写主键不再携带死字段（旧值中的该字段被安全忽略，不报错不保留）
+    const rewritten = JSON.parse(store.data[CONFIG_STORAGE_KEY])
+    expect(Object.prototype.hasOwnProperty.call(rewritten, 'aiProofreadConfig')).toBe(false)
+  })
+
+  it('已是新结构但残留 aiProofreadConfig 字段的旧值：直接读取不迁移，配置无损', () => {
+    // 旧版 Context 曾把 aiProofreadConfig 写入主键；新结构配置 + 残留死字段
+    const raw = JSON.stringify({
+      activeConfigId: 'cfg-x',
+      aiProofreadConfig: { baseUrl: 'http://sentinel' },
+      savedConfigs: [
+        { id: 'cfg-x', name: '新档', createdAt: 9, config: clone(DEFAULT_CONFIG) },
+      ],
+    })
+    const store = memoryStore()
+    store.setItem(CONFIG_STORAGE_KEY, raw)
+
+    const storage = loadMigratedConfigStorage(store)
+
+    // 不触发迁移（无备份产生），配置读取正常，死字段被安全忽略
+    expect(Object.keys(store.data)).toEqual([CONFIG_STORAGE_KEY])
+    expect(storage.savedConfigs[0].name).toBe('新档')
+    expect(storage.savedConfigs[0].config).toEqual(clone(DEFAULT_CONFIG))
+    expect((storage as unknown as Record<string, unknown>).aiProofreadConfig).toBeUndefined()
   })
 })

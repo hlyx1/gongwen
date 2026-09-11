@@ -14,10 +14,6 @@ import {
   type SavedConfig,
   type ConfigStorage,
 } from '../types/documentConfig'
-import {
-  DEFAULT_AI_PROOFREAD_CONFIG,
-  type AIProofreadConfig,
-} from '../types/aiProofread'
 
 // ---- 深合并工具 ----
 
@@ -61,8 +57,6 @@ interface ConfigState {
   currentConfig: DocumentConfig
   /** 所有保存的自定义配置 */
   savedConfigs: SavedConfig[]
-  /** AI 校对配置 */
-  aiProofreadConfig: AIProofreadConfig
 }
 
 // ---- Action ----
@@ -73,8 +67,6 @@ type Action =
   | { type: 'saveAs'; config: SavedConfig }
   | { type: 'save'; id: string; config: DocumentConfig }
   | { type: 'delete'; id: string }
-  | { type: 'updateAIProofread'; config: AIProofreadConfig }
-  | { type: 'resetAIProofread' }
 
 /** 根据 ID 获取配置 */
 function getConfigById(state: ConfigState, id: string | null): DocumentConfig {
@@ -132,7 +124,6 @@ function configReducer(state: ConfigState, action: Action): ConfigState {
           savedConfigs: newSavedConfigs,
           activeConfigId: null,
           currentConfig: deepClone(DEFAULT_CONFIG),
-          aiProofreadConfig: state.aiProofreadConfig,
         }
       }
       return {
@@ -140,16 +131,6 @@ function configReducer(state: ConfigState, action: Action): ConfigState {
         savedConfigs: newSavedConfigs,
       }
     }
-    case 'updateAIProofread':
-      return {
-        ...state,
-        aiProofreadConfig: deepClone(action.config),
-      }
-    case 'resetAIProofread':
-      return {
-        ...state,
-        aiProofreadConfig: deepClone(DEFAULT_AI_PROOFREAD_CONFIG),
-      }
     default:
       return state
   }
@@ -165,19 +146,14 @@ function loadStorage(): ConfigStorage {
 /** 从存储结构初始化状态 */
 function initState(): ConfigState {
   const storage = loadStorage()
-  // 初始化 AI 校对配置，如果存储中没有则使用默认值
-  const aiProofreadConfig = storage.aiProofreadConfig
-    ? deepClone(storage.aiProofreadConfig)
-    : deepClone(DEFAULT_AI_PROOFREAD_CONFIG)
   const currentConfig = deepClone(getConfigById(
-    { savedConfigs: storage.savedConfigs, activeConfigId: storage.activeConfigId, currentConfig: DEFAULT_CONFIG, aiProofreadConfig: aiProofreadConfig },
+    { savedConfigs: storage.savedConfigs, activeConfigId: storage.activeConfigId, currentConfig: DEFAULT_CONFIG },
     storage.activeConfigId
   ))
   return {
     activeConfigId: storage.activeConfigId,
     currentConfig: currentConfig,
     savedConfigs: storage.savedConfigs,
-    aiProofreadConfig: aiProofreadConfig,
   }
 }
 
@@ -187,14 +163,11 @@ interface DocumentConfigContextValue {
   config: DocumentConfig
   savedConfigs: SavedConfig[]
   activeConfigId: string | null
-  aiProofreadConfig: AIProofreadConfig
   updateConfig: (patch: DeepPartial<DocumentConfig>) => void
   switchConfig: (id: string | null) => void
   saveAsCustomConfig: (name: string) => void
   saveCurrentConfig: () => void
   deleteCustomConfig: (id: string) => void
-  updateAIProofreadConfig: (config: AIProofreadConfig) => void
-  resetAIProofreadConfig: () => void
 }
 
 const DocumentConfigContext = createContext<DocumentConfigContextValue | null>(null)
@@ -232,23 +205,14 @@ export function DocumentConfigProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'delete', id })
   }
 
-  const updateAIProofreadConfig = (config: AIProofreadConfig) => {
-    dispatch({ type: 'updateAIProofread', config })
-  }
-
-  const resetAIProofreadConfig = () => {
-    dispatch({ type: 'resetAIProofread' })
-  }
-
   // 持久化到 localStorage
   useEffect(function () {
     const storage: ConfigStorage = {
       activeConfigId: state.activeConfigId,
       savedConfigs: state.savedConfigs,
-      aiProofreadConfig: state.aiProofreadConfig,
     }
     localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(storage))
-  }, [state.activeConfigId, state.savedConfigs, state.aiProofreadConfig])
+  }, [state.activeConfigId, state.savedConfigs])
 
   return (
     <DocumentConfigContext.Provider
@@ -256,14 +220,11 @@ export function DocumentConfigProvider({ children }: { children: ReactNode }) {
         config: state.currentConfig,
         savedConfigs: state.savedConfigs,
         activeConfigId: state.activeConfigId,
-        aiProofreadConfig: state.aiProofreadConfig,
         updateConfig: updateConfig,
         switchConfig: switchConfig,
         saveAsCustomConfig: saveAsCustomConfig,
         saveCurrentConfig: saveCurrentConfig,
         deleteCustomConfig: deleteCustomConfig,
-        updateAIProofreadConfig: updateAIProofreadConfig,
-        resetAIProofreadConfig: resetAIProofreadConfig,
       }}
     >
       {children}

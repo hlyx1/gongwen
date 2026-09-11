@@ -122,8 +122,8 @@ export interface SavedConfig {
 export interface ConfigStorage {
   activeConfigId: string | null
   savedConfigs: SavedConfig[]
-  /** AI 校对配置（可选，用于向后兼容） */
-  aiProofreadConfig?: import('./aiProofread').AIProofreadConfig
+  // 注：旧版曾在此持久化 aiProofreadConfig 死字段（工作单元-8 已删，
+  // AI 配置实际走独立键 ai-proofread-config）；旧值中残留的该字段被安全忽略
 }
 
 // ---- 旧配置迁移（单元6：配置双轨合并，task-0001 条款6 / 裁定 §三） ----
@@ -245,7 +245,8 @@ export interface ConfigMigrationOutcome {
 
 /**
  * 检测并迁移整份存储结构（纯函数，不触碰 localStorage）
- * - 多档 savedConfigs 逐档迁移；activeConfigId/aiProofreadConfig 原样保留
+ * - 多档 savedConfigs 逐档迁移；activeConfigId 原样保留
+ * - 旧值中残留的 aiProofreadConfig 死字段被安全忽略（不保留到新结构）
  * - 无旧结构时原样返回（migrated=false，savedConfigs 逐项引用不变）
  */
 export function migrateConfigStorage(parsed: unknown): ConfigMigrationOutcome {
@@ -267,7 +268,6 @@ export function migrateConfigStorage(parsed: unknown): ConfigMigrationOutcome {
   const storage: ConfigStorage = {
     activeConfigId: (record.activeConfigId as string) || null,
     savedConfigs: savedConfigs,
-    aiProofreadConfig: record.aiProofreadConfig as ConfigStorage['aiProofreadConfig'],
   }
   return { storage: storage, migrated: migrated }
 }
@@ -281,7 +281,13 @@ export function migrateConfigStorage(parsed: unknown): ConfigMigrationOutcome {
  * - 主键缺失/解析失败：返回空存储（与旧版 loadStorage 容错行为一致）
  */
 export function loadMigratedConfigStorage(store: ConfigKVStore): ConfigStorage {
-  const raw = store.getItem(CONFIG_STORAGE_KEY)
+  // getItem 可能抛异常（如浏览器禁用 localStorage）——与 JSON 解析失败同等容错
+  let raw: string | null
+  try {
+    raw = store.getItem(CONFIG_STORAGE_KEY)
+  } catch {
+    return { activeConfigId: null, savedConfigs: [] }
+  }
   if (!raw) {
     return { activeConfigId: null, savedConfigs: [] }
   }
@@ -406,9 +412,6 @@ export const INDENT_OPTIONS: { label: string; value: number }[] = [
 
 /** 每行字数 */
 export const CHARS_PER_LINE = 28
-
-/** 每页行数 */
-export const LINES_PER_PAGE = 22
 
 // ---- 单位转换工具函数 ----
 
