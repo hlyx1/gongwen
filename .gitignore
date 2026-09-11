@@ -38,3 +38,4 @@ gongwen-docker/.env
 gongwen-docker/data/
 *.tar
 *.pyc
+.qoder/
