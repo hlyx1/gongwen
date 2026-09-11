@@ -1,7 +1,6 @@
 /**
  * AI 审核服务模块
  * 负责构建提示词、发送请求、解析流式响应
- * 兼容 Chrome 78 内核，不使用可选链和空值合并操作符
  */
 
 import type {
@@ -140,7 +139,6 @@ export function buildPrompt(
  * @param customExampleItems 自定义示例行列表
  * @param sentenceMap 序号到 sentenceId 的映射
  * @param onResult 每解析出一行就调用的回调函数
- * @param onRawResponse 可选，收到完整响应时的回调（用于调试）
  * @returns Promise<void>
  */
 export function sendBlockStreaming(
@@ -148,9 +146,7 @@ export function sendBlockStreaming(
   customCheckItems: CustomCheckItem[],
   customExampleItems: CustomExampleItem[],
   sentenceMap: Map<number, string>,
-  onResult: (result: AIProofreadResult) => void,
-  onRawResponse?: (rawResponse: string, blockIndex: number) => void,
-  blockIndex?: number
+  onResult: (result: AIProofreadResult) => void
 ): Promise<void> {
   return new Promise(function (resolve, reject) {
     // 获取 AI 服务配置
@@ -215,8 +211,6 @@ export function sendBlockStreaming(
         var reader = response.body.getReader();
         var decoder = new TextDecoder('utf-8');
         var parserState = createInitialParserState();
-        // 用于调试：收集完整的响应文本
-        var rawResponseText = '';
 
         // 读取流式数据
         function readStream(): Promise<void> {
@@ -227,10 +221,6 @@ export function sendBlockStreaming(
               var flushResult = flushParser(parserState, sentenceMap);
               for (var fi = 0; fi < flushResult.results.length; fi++) {
                 onResult(flushResult.results[fi]);
-              }
-              // 调试：输出完整的响应文本
-              if (onRawResponse && blockIndex !== undefined) {
-                onRawResponse(rawResponseText, blockIndex);
               }
               resolve();
               return;
@@ -262,10 +252,6 @@ export function sendBlockStreaming(
                   for (var fi2 = 0; fi2 < flushResult2.results.length; fi2++) {
                     onResult(flushResult2.results[fi2]);
                   }
-                  // 调试：输出完整的响应文本
-                  if (onRawResponse && blockIndex !== undefined) {
-                    onRawResponse(rawResponseText, blockIndex);
-                  }
                   resolve();
                   return;
                 }
@@ -281,8 +267,6 @@ export function sendBlockStreaming(
                     json.choices[0].delta.content
                   ) {
                     var content = json.choices[0].delta.content;
-                    // 收集响应文本
-                    rawResponseText = rawResponseText + content;
 
                     // 使用解析器解析表格行
                     var parseResult = parseStreamingLine(parserState, content, sentenceMap);
@@ -349,46 +333,11 @@ export function sendAllBlocksStreaming(
     var activeCount = 0;
     var hasError = false;
     var errorMessage = '';
-    // 用于调试：收集所有块的响应文本
-    var allRawResponses: string[] = [];
-    // 用于调试：收集所有解析出的序号
-    var allParsedSeqNums: number[] = [];
-    // 用于调试：收集发送的句子序号
-    var allSentSeqNums: number[] = [];
-
-    // 收集所有发送的句子序号
-    for (var bi = 0; bi < blocks.length; bi++) {
-      var blockSentences = blocks[bi].sentences;
-      for (var si = 0; si < blockSentences.length; si++) {
-        allSentSeqNums.push(blockSentences[si].seqNum);
-      }
-    }
 
     // 检查是否有块需要处理
     if (total === 0) {
       resolve();
       return;
-    }
-
-    /**
-     * 处理单个块的原始响应（用于调试）
-     * @param rawResponse 原始响应文本
-     * @param blockIndex 块索引
-     */
-    function handleRawResponse(rawResponse: string, blockIndex: number): void {
-      // 确保数组足够大
-      while (allRawResponses.length <= blockIndex) {
-        allRawResponses.push('');
-      }
-      allRawResponses[blockIndex] = rawResponse;
-    }
-
-    /**
-     * 包装 onResult 回调，收集解析出的序号
-     */
-    function wrappedOnResult(result: AIProofreadResult): void {
-      allParsedSeqNums.push(result.seqNum);
-      onResult(result);
     }
 
     /**
@@ -404,7 +353,7 @@ export function sendAllBlocksStreaming(
     ): void {
       var block = blocks[blockIndex];
 
-      sendBlockStreaming(block, customCheckItems, customExampleItems, sentenceMap, wrappedOnResult, handleRawResponse, blockIndex)
+      sendBlockStreaming(block, customCheckItems, customExampleItems, sentenceMap, onResult)
         .then(function () {
           // 成功完成
           processed++;
@@ -413,25 +362,6 @@ export function sendAllBlocksStreaming(
 
           // 检查是否全部完成
           if (processed === total) {
-            // 调试：打印所有块的响应到控制台
-            console.log('=== AI校对调试信息 ===');
-            console.log('总块数:', total);
-            console.log('发送的句子序号:', allSentSeqNums.sort(function(a, b) { return a - b; }).join(', '));
-            console.log('解析出的句子序号:', allParsedSeqNums.sort(function(a, b) { return a - b; }).join(', '));
-            console.log('发送数量:', allSentSeqNums.length, '解析数量:', allParsedSeqNums.length);
-            // 找出缺失的序号
-            var missingSeqNums: number[] = [];
-            for (var mi = 0; mi < allSentSeqNums.length; mi++) {
-              if (allParsedSeqNums.indexOf(allSentSeqNums[mi]) === -1) {
-                missingSeqNums.push(allSentSeqNums[mi]);
-              }
-            }
-            console.log('缺失的序号:', missingSeqNums.join(', '));
-            console.log('各块响应长度:', allRawResponses.map(function(r, i) { return '块' + (i+1) + ': ' + r.length + '字符'; }));
-            console.log('=== AI返回的完整Markdown表格 ===');
-            console.log(allRawResponses.join('\n\n'));
-            console.log('=== 调试信息结束 ===');
-
             if (hasError) {
               reject(new Error(errorMessage));
             } else {
@@ -464,25 +394,6 @@ export function sendAllBlocksStreaming(
 
             // 检查是否全部完成
             if (processed === total) {
-              // 调试：打印所有块的响应到控制台（即使有错误）
-              console.log('=== AI校对调试信息（有错误）===');
-              console.log('总块数:', total);
-              console.log('错误信息:', errorMessage);
-              console.log('发送的句子序号:', allSentSeqNums.sort(function(a, b) { return a - b; }).join(', '));
-              console.log('解析出的句子序号:', allParsedSeqNums.sort(function(a, b) { return a - b; }).join(', '));
-              console.log('发送数量:', allSentSeqNums.length, '解析数量:', allParsedSeqNums.length);
-              var missingSeqNums2: number[] = [];
-              for (var mi2 = 0; mi2 < allSentSeqNums.length; mi2++) {
-                if (allParsedSeqNums.indexOf(allSentSeqNums[mi2]) === -1) {
-                  missingSeqNums2.push(allSentSeqNums[mi2]);
-                }
-              }
-              console.log('缺失的序号:', missingSeqNums2.join(', '));
-              console.log('各块响应长度:', allRawResponses.map(function(r, i) { return '块' + (i+1) + ': ' + r.length + '字符'; }));
-              console.log('=== AI返回的完整Markdown表格 ===');
-              console.log(allRawResponses.join('\n\n'));
-              console.log('=== 调试信息结束 ===');
-
               reject(new Error(errorMessage));
               return;
             }
