@@ -385,6 +385,9 @@ npm test
 npm test -- --watch
 ```
 
+注意：`exporter/__tests__/__snapshots__/` 中的导出产物结构快照是导出行为基线
+（重构前后一致性对照标准），快照变更即意味着导出行为改变，须确认行为变化有意为之后方可更新。
+
 ## 部署
 
 ### GitHub Pages
