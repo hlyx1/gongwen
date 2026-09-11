@@ -245,7 +245,9 @@ describe('buildLayout 各 NodeType 决策输出', () => {
     const layout = buildLayout(ast, DEFAULT_CONFIG, { renderer: 'docx' })
     const block = paragraphBlocksOf(layout, NodeType.ATTACHMENT)[0]
     expect(block.indent).toEqual({ leftTwips: 1575, hangingTwips: 945 })
+    // 缺陷修正（单元4）：spacing 形状与导出侧现状一致——仅 before、无 after
     expect(block.spacing.beforeTwips).toBe(592)
+    expect(block.spacing.afterTwips).toBeUndefined()
     expect(block.runs.map((r) => r.text)).toEqual(['附件：', '公文排版管理办法实施细则'])
   })
 
@@ -257,9 +259,12 @@ describe('buildLayout 各 NodeType 决策输出', () => {
     expect(blocks[0].runs[2].role).toBe('bodyPunct')
     expect(blocks[0].indent).toEqual({ leftTwips: 1575, hangingTwips: 945 })
     expect(blocks[0].spacing.beforeTwips).toBe(592)
+    expect(blocks[0].spacing.afterTwips).toBeUndefined()
     expect(blocks[1].runs.map((r) => r.text)).toEqual(['2', '.', '公文格式自查清单'])
     expect(blocks[1].indent).toEqual({ leftTwips: 1575 })
-    expect(blocks[1].spacing.beforeTwips).toBe(0)
+    // 缺陷修正（单元4）：后续行段前/段后均不设（导出侧现状）
+    expect(blocks[1].spacing.beforeTwips).toBeUndefined()
+    expect(blocks[1].spacing.afterTwips).toBeUndefined()
   })
 
   it('SIGNATURE＋DATE：署名前 2 空行、按日期宽度居中（1417.5/630 基准）', () => {
@@ -334,6 +339,8 @@ describe('buildLayout 各 NodeType 决策输出', () => {
       expect(table.cellAlignment).toBe('center')
       expect(table.font.eastAsia).toBe('仿宋_GB2312')
       expect(table.font.ascii).toBe('Times New Roman')
+      // 缺陷修正（单元4）：表格四槽 hAnsi=Times New Roman（导出侧快照现状）
+      expect(table.font.hAnsi).toBe('Times New Roman')
       expect(table.sizeHalfPt).toBe(24) // 表格 12pt
       expect(table.lineTwips).toBe(440) // 22pt 行距
       expect(table.boldHeader).toBe(true)
@@ -370,10 +377,11 @@ describe('buildLayout 版头/版记/页码版式参数', () => {
       expect(header.orgNameRun.text).toBe('某某市人民政府文件')
       expect(header.orgNameRun.font.eastAsia).toBe('方正小标宋_GBK')
       expect(header.orgNameRun.sizeHalfPt).toBe(60)
+      // 缺陷修正（单元4）：机关标志四槽 hAnsi=Times New Roman（导出侧快照现状）
       expect(header.orgNameRun.font).toEqual({
         ascii: 'Times New Roman',
         eastAsia: '方正小标宋_GBK',
-        hAnsi: '方正小标宋_GBK',
+        hAnsi: 'Times New Roman',
         cs: 'Times New Roman',
       })
       expect(header.metaFont.hAnsi).toBe('Times New Roman') // 版头元数据字体现状（hAnsi=TNR）

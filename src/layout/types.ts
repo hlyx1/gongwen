@@ -62,12 +62,17 @@ export interface LayoutIndent {
   hangingTwips?: number
 }
 
-/** 段落行距与段前段后距（固定行距口径，现状全部 exact） */
+/**
+ * 段落行距与段前段后距（固定行距口径，现状全部 exact）
+ * 缺陷修正（单元4 接线发现）：段前/段后距为可选——导出侧现状并非恒输出
+ * （附件段落首行仅 before、后续行两者皆无；docx 序列化对未设属性不产出 XML 属性），
+ * 决策层按现状形状输出，翻译层仅翻译存在的字段
+ */
 export interface LayoutSpacing {
   lineTwips: number
   lineRule: 'exact'
-  beforeTwips: number
-  afterTwips: number
+  beforeTwips?: number
+  afterTwips?: number
 }
 
 /** 段落块 */

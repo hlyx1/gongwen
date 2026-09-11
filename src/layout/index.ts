@@ -238,11 +238,12 @@ function attachmentToBlocks(
 
   if (!node.isMultiple) {
     // 单附件：「附件：」＋名称（不拆分句点——导出/预览两侧现状一致）
+    // 缺陷修正（单元4 接线发现）：spacing 形状与导出侧现状一致——仅 before、无 after
     blocks.push({
       kind: 'paragraph',
       sourceType: NodeType.ATTACHMENT,
       alignment: 'justified',
-      spacing: { lineTwips, lineRule: 'exact', beforeTwips: lineTwips, afterTwips: 0 },
+      spacing: { lineTwips, lineRule: 'exact', beforeTwips: lineTwips },
       indent: {
         leftTwips: ATTACHMENT_LEFT_CHARS * charWidth,
         hangingTwips: ATTACHMENT_HANGING_CHARS * charWidth,
@@ -267,9 +268,11 @@ function attachmentToBlocks(
       kind: 'paragraph',
       sourceType: NodeType.ATTACHMENT,
       alignment: 'justified',
+      // 缺陷修正（单元4 接线发现）：spacing 形状与导出侧现状一致——
+      // 首行仅 before、后续行两者皆无
       spacing: isFirst
-        ? { lineTwips, lineRule: 'exact', beforeTwips: lineTwips, afterTwips: 0 }
-        : { lineTwips, lineRule: 'exact', beforeTwips: 0, afterTwips: 0 },
+        ? { lineTwips, lineRule: 'exact', beforeTwips: lineTwips }
+        : { lineTwips, lineRule: 'exact' },
       indent: isFirst
         ? {
             leftTwips: ATTACHMENT_LEFT_CHARS * charWidth,
@@ -297,7 +300,14 @@ function tableToBlock(node: TableNode, config: DocumentConfig): LayoutTableBlock
       })
     }),
     cellAlignment: 'center',
-    font: quad(config.table.fontFamily),
+    // 缺陷修正（单元4 接线发现）：表格四槽 hAnsi=Times New Roman（导出侧快照现状），
+    // 非 quad() 的中文字体口径
+    font: {
+      ascii: 'Times New Roman',
+      eastAsia: config.table.fontFamily,
+      hAnsi: 'Times New Roman',
+      cs: 'Times New Roman',
+    },
     sizeHalfPt: config.table.fontSize * 2,
     lineTwips: ptToTwip(config.table.lineSpacing),
     boldHeader: config.table.boldHeader,
@@ -316,10 +326,12 @@ function buildHeaderLayout(
     docNumber: config.header.docNumber,
     signer: config.header.signer,
     // 发文机关标志：红色 30pt 小标宋（与版头表格内字体无关的固定规格——现状）
+    // 缺陷修正（单元4 接线发现）：机关标志四槽 hAnsi=Times New Roman（导出侧快照现状），
+    // 非 quad() 的中文字体口径——与签发人姓名字体同法，从 metaQuad 派生
     orgNameRun: {
       text: config.header.orgName,
       role: 'title' as const,
-      font: quad(HEADER_ORG_NAME_FONT),
+      font: { ...metaFont, eastAsia: HEADER_ORG_NAME_FONT },
       sizeHalfPt: HEADER_ORG_NAME_SIZE_HALF_PT,
     },
     metaFont,

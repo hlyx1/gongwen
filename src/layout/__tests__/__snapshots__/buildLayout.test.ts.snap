@@ -518,7 +518,7 @@ exports[`buildLayout 全节点样例快照 > docx 渲染器：体现导出侧现
         "ascii": "Times New Roman",
         "cs": "Times New Roman",
         "eastAsia": "仿宋_GB2312",
-        "hAnsi": "仿宋_GB2312",
+        "hAnsi": "Times New Roman",
       },
       "headerCells": [
         "序号",
@@ -589,7 +589,6 @@ exports[`buildLayout 全节点样例快照 > docx 渲染器：体现导出侧现
       ],
       "sourceType": "ATTACHMENT",
       "spacing": {
-        "afterTwips": 0,
         "beforeTwips": 592,
         "lineRule": "exact",
         "lineTwips": 592,
@@ -641,8 +640,6 @@ exports[`buildLayout 全节点样例快照 > docx 渲染器：体现导出侧现
       ],
       "sourceType": "ATTACHMENT",
       "spacing": {
-        "afterTwips": 0,
-        "beforeTwips": 0,
         "lineRule": "exact",
         "lineTwips": 592,
       },
@@ -693,8 +690,6 @@ exports[`buildLayout 全节点样例快照 > docx 渲染器：体现导出侧现
       ],
       "sourceType": "ATTACHMENT",
       "spacing": {
-        "afterTwips": 0,
-        "beforeTwips": 0,
         "lineRule": "exact",
         "lineTwips": 592,
       },
@@ -1333,7 +1328,7 @@ exports[`buildLayout 全节点样例快照 > preview 渲染器：体现预览侧
         "ascii": "Times New Roman",
         "cs": "Times New Roman",
         "eastAsia": "仿宋_GB2312",
-        "hAnsi": "仿宋_GB2312",
+        "hAnsi": "Times New Roman",
       },
       "headerCells": [
         "序号",
@@ -1404,7 +1399,6 @@ exports[`buildLayout 全节点样例快照 > preview 渲染器：体现预览侧
       ],
       "sourceType": "ATTACHMENT",
       "spacing": {
-        "afterTwips": 0,
         "beforeTwips": 592,
         "lineRule": "exact",
         "lineTwips": 592,
@@ -1456,8 +1450,6 @@ exports[`buildLayout 全节点样例快照 > preview 渲染器：体现预览侧
       ],
       "sourceType": "ATTACHMENT",
       "spacing": {
-        "afterTwips": 0,
-        "beforeTwips": 0,
         "lineRule": "exact",
         "lineTwips": 592,
       },
@@ -1508,8 +1500,6 @@ exports[`buildLayout 全节点样例快照 > preview 渲染器：体现预览侧
       ],
       "sourceType": "ATTACHMENT",
       "spacing": {
-        "afterTwips": 0,
-        "beforeTwips": 0,
         "lineRule": "exact",
         "lineTwips": 592,
       },
@@ -1743,7 +1733,7 @@ exports[`buildLayout 版头/版记/页码版式参数 > 版头开（含签发人
         "ascii": "Times New Roman",
         "cs": "Times New Roman",
         "eastAsia": "方正小标宋_GBK",
-        "hAnsi": "方正小标宋_GBK",
+        "hAnsi": "Times New Roman",
       },
       "role": "title",
       "sizeHalfPt": 60,
