@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import type { IRunOptions, IFontAttributesProperties } from 'docx'
 import {
   getParagraphStyle,
   getRunStyle,
@@ -39,6 +40,11 @@ import { NodeType } from '../../types/ast'
  *   CJK 判定正则 /[\u4e00-\u9fff\u3400-\u4dbf]/ 不含「〇」(U+3007)，
  *   故「二〇二六」中的〇按 0.69 窄字符计宽（1 个汉字=1，ASCII=0.69）。
  */
+
+/** 读取 run 样式的字体属性（getRunStyle 系列恒经 font() 构造对象形式字体） */
+function fontOf(style: Partial<IRunOptions>): IFontAttributesProperties {
+  return style.font as IFontAttributesProperties
+}
 
 /** 深拷贝默认配置后打补丁（测试专用，避免污染共享对象） */
 function configWith(patch: (c: DocumentConfig) => void): DocumentConfig {
@@ -105,26 +111,26 @@ describe('getRunStyle 节点字体映射', () => {
 
   it('公文标题：方正小标宋_GBK，二号 44 half-point', () => {
     const style = getRunStyle(NodeType.DOCUMENT_TITLE, DEFAULT_CONFIG)
-    expect(style.font?.eastAsia).toBe('方正小标宋_GBK')
+    expect(fontOf(style).eastAsia).toBe('方正小标宋_GBK')
     expect(style.size).toBe(44)
   })
 
   it('一/二/三级标题读 config.advanced（双轨证据：导出侧真值来源）', () => {
-    expect(getRunStyle(NodeType.HEADING_1, DEFAULT_CONFIG).font?.eastAsia).toBe('黑体')
-    expect(getRunStyle(NodeType.HEADING_2, DEFAULT_CONFIG).font?.eastAsia).toBe('楷体_GB2312')
-    expect(getRunStyle(NodeType.HEADING_3, DEFAULT_CONFIG).font?.eastAsia).toBe('仿宋_GB2312')
+    expect(fontOf(getRunStyle(NodeType.HEADING_1, DEFAULT_CONFIG)).eastAsia).toBe('黑体')
+    expect(fontOf(getRunStyle(NodeType.HEADING_2, DEFAULT_CONFIG)).eastAsia).toBe('楷体_GB2312')
+    expect(fontOf(getRunStyle(NodeType.HEADING_3, DEFAULT_CONFIG)).eastAsia).toBe('仿宋_GB2312')
   })
 
   it('四级标题落入默认分支：正文字体仿宋_GB2312（现状）', () => {
     const style = getRunStyle(NodeType.HEADING_4, DEFAULT_CONFIG)
-    expect(style.font?.eastAsia).toBe('仿宋_GB2312')
+    expect(fontOf(style).eastAsia).toBe('仿宋_GB2312')
     expect(style.size).toBe(32)
   })
 
   it('主送机关读 config.advanced.addressee（仿宋 + Times New Roman）', () => {
     const style = getRunStyle(NodeType.ADDRESSEE, DEFAULT_CONFIG)
-    expect(style.font?.eastAsia).toBe('仿宋_GB2312')
-    expect(style.font?.ascii).toBe('Times New Roman')
+    expect(fontOf(style).eastAsia).toBe('仿宋_GB2312')
+    expect(fontOf(style).ascii).toBe('Times New Roman')
   })
 
   it('改 config.headings.h1 不影响导出字体（双轨现状行为记录）', () => {
@@ -133,7 +139,7 @@ describe('getRunStyle 节点字体映射', () => {
       c.headings.h1.fontSize = 22
     })
     const style = getRunStyle(NodeType.HEADING_1, config)
-    expect(style.font?.eastAsia).toBe('黑体') // 仍取 advanced.h1
+    expect(fontOf(style).eastAsia).toBe('黑体') // 仍取 advanced.h1
     expect(style.size).toBe(32)
   })
 
@@ -141,14 +147,14 @@ describe('getRunStyle 节点字体映射', () => {
     const config = configWith((c) => {
       c.advanced.h1.fontFamily = '宋体'
     })
-    expect(getRunStyle(NodeType.HEADING_1, config).font?.eastAsia).toBe('宋体')
+    expect(fontOf(getRunStyle(NodeType.HEADING_1, config)).eastAsia).toBe('宋体')
   })
 
   it('advanced.h1.asciiFontFamily 为空串时回退中文字体（「跟随中文字体」选项）', () => {
     const config = configWith((c) => {
       c.advanced.h1.asciiFontFamily = ''
     })
-    expect(getRunStyle(NodeType.HEADING_1, config).font?.ascii).toBe('黑体')
+    expect(fontOf(getRunStyle(NodeType.HEADING_1, config)).ascii).toBe('黑体')
   })
 })
 
@@ -169,20 +175,20 @@ describe('特殊标点 run 样式', () => {
 
   it('三级标题句点样式：四槽全正文字体，字号跟随三级标题（32）', () => {
     const style = getHeading3PunctuationRunStyle(DEFAULT_CONFIG)
-    expect(style.font?.ascii).toBe('仿宋_GB2312')
+    expect(fontOf(style).ascii).toBe('仿宋_GB2312')
     expect(style.size).toBe(32)
   })
 
   it('附件句点样式：四槽全正文字体，字号跟随正文（32）', () => {
     const style = getAttachmentPunctuationRunStyle(DEFAULT_CONFIG)
-    expect(style.font?.ascii).toBe('仿宋_GB2312')
+    expect(fontOf(style).ascii).toBe('仿宋_GB2312')
     expect(style.size).toBe(32)
   })
 
   it('附件说明文本样式：数字英文 Times New Roman，中文仿宋', () => {
     const style = getAttachmentRunStyle(DEFAULT_CONFIG)
-    expect(style.font?.ascii).toBe('Times New Roman')
-    expect(style.font?.eastAsia).toBe('仿宋_GB2312')
+    expect(fontOf(style).ascii).toBe('Times New Roman')
+    expect(fontOf(style).eastAsia).toBe('仿宋_GB2312')
     expect(style.characterSpacing).toBe(-5)
   })
 })
