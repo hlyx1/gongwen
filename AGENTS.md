@@ -130,7 +130,7 @@ enum NodeType {
 interface DocumentConfig {
   margins: MarginsConfig        // 页边距 (cm)
   title: TitleConfig            // 标题格式
-  headings: HeadingsConfig      // 各级标题字体
+  headings: HeadingsConfig      // 标题与主送机关字体（单一真值，含中文字体/英数字体/字号）
   body: BodyConfig              // 正文格式
   specialOptions: SpecialOptionsConfig  // 特殊选项
   header: HeaderConfig          // 版头配置
