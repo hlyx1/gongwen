@@ -1,50 +1,37 @@
 import { describe, it, expect } from 'vitest'
-import type { IRunOptions, IFontAttributesProperties } from 'docx'
+import { Paragraph, Table } from 'docx'
+import { buildLayout } from '../../layout'
+import type { LayoutBlock, LayoutParagraphBlock, LayoutRun } from '../../layout/types'
 import {
-  getParagraphStyle,
-  getRunStyle,
-  getAttachmentParagraphStyle,
-  getAttachmentRunStyle,
-  getAttachmentPunctuationRunStyle,
-  getHeading3PunctuationRunStyle,
-  getTimeColonRunStyle,
-  calculateCharWidth,
-  calculateTextWidth,
-  calculateSignatureIndent,
+  fontOptions,
+  runOptions,
+  paragraphOptions,
+  paragraphFromBlock,
+  spacerParagraphs,
+  blocksToDocx,
+  blockToDocx,
 } from '../styleFactory'
-import { calculateSignatureIndentEm, calculateTextWidthEm } from '../../components/Preview/A4Page'
 import { DEFAULT_CONFIG } from '../../types/documentConfig'
 import type { DocumentConfig } from '../../types/documentConfig'
 import { NodeType } from '../../types/ast'
+import type { GongwenAST, DocumentNode, AttachmentNode } from '../../types/ast'
 
 /**
- * styleFactory / A4Page 纯函数行为记录（task-0001 条款1c）
+ * 导出翻译层测试（task-0001 条款3，单元4 迁移改写）
  *
- * 【单元3 等价性对照基线】
- * 签名缩进现有两份独立实现：
- *   - twip 版：styleFactory.calculateSignatureIndent（导出侧）
- *   - em 版：A4Page.calculateSignatureIndentEm（预览侧）
- * charSpacing 公式现状：floor((11906 − 左右边距 twips) / 28 − 正文字号×20)，
- * 在 styleFactory 内多处复制、Preview.tsx 另有 px 版。
- * 单元3 建立排版决策层后，统一实现须与本文件锁定的数值一致；
- * 若决策层有意改变行为，须新裁定并同步更新本基线。
+ * 原 styleFactory.test.ts（60 用例）的对照基线职责拆分承接：
+ * - 排版决策数值 → src/layout/__tests__/（fonts/metrics/buildLayout）
+ * - 导出产物结构 → docxBuilder.test.ts 13 条快照红线
+ * - 本文件＝「决策中间表示 → docx 对象」翻译层的形状与数值：
+ *   可选字段只在决策层给出时翻译（docx 对空对象产出空标签、对 undefined
+ *   不产出属性——逐字节保持快照的机械保证），数值与原基线一致
+ *   （charSpacing −5、charWidth 315、首行缩进 630、签名缩进 1417.5 等）。
  *
- * 默认配置手算锚点（DEFAULT_CONFIG）：
- *   左边距 2.8cm=1588twips，右边距 2.6cm=1474twips
- *   可用宽度 = 11906 − 1588 − 1474 = 8844
- *   charSpacing = floor(8844/28 − 320) = −5
- *   字符宽度 charWidth = 16pt×20 + (−5) = 315 twips
- *   正文行距 = 29.6pt = 592 twips；首行缩进 = 2×315 = 630
- *
- * 宽度计量现状特征（两版一致，属锁定对象而非缺陷修复项）：
- *   CJK 判定正则 /[\u4e00-\u9fff\u3400-\u4dbf]/ 不含「〇」(U+3007)，
- *   故「二〇二六」中的〇按 0.69 窄字符计宽（1 个汉字=1，ASCII=0.69）。
+ * 双轨现状行为记录（单元6 前保持）：导出真值在 config.advanced，
+ * 改 config.headings 不影响导出。
  */
 
-/** 读取 run 样式的字体属性（getRunStyle 系列恒经 font() 构造对象形式字体） */
-function fontOf(style: Partial<IRunOptions>): IFontAttributesProperties {
-  return style.font as IFontAttributesProperties
-}
+// ---- 测试辅助 ----
 
 /** 深拷贝默认配置后打补丁（测试专用，避免污染共享对象） */
 function configWith(patch: (c: DocumentConfig) => void): DocumentConfig {
@@ -53,270 +40,516 @@ function configWith(patch: (c: DocumentConfig) => void): DocumentConfig {
   return cloned
 }
 
-// ---- charSpacing 计算（单元3 等价性对照基线） ----
+/** 构造普通 AST 节点 */
+function makeNode(type: NodeType, content: string, lineNumber = 1): DocumentNode {
+  return { type, content, lineNumber }
+}
 
-describe('charSpacing 计算', () => {
-  it('默认配置：floor(8844/28 − 320) = −5（twips）', () => {
-    expect(getRunStyle(NodeType.PARAGRAPH, DEFAULT_CONFIG).characterSpacing).toBe(-5)
-  })
+/** 构造单节点公文并取其首个段落块（署名/备注前有空行块，须跳过） */
+function paragraphBlockOf(
+  type: NodeType,
+  content: string,
+  config: DocumentConfig = DEFAULT_CONFIG
+): LayoutParagraphBlock {
+  const ast: GongwenAST = { title: [], body: [makeNode(type, content)] }
+  const layout = buildLayout(ast, config, { renderer: 'docx' })
+  const block = layout.blocks.find((b): b is LayoutParagraphBlock => b.kind === 'paragraph')
+  if (!block) {
+    throw new Error('预期存在段落块')
+  }
+  return block
+}
 
-  it('正文字符宽度 = 字号×20 + charSpacing = 315 twips', () => {
-    expect(calculateCharWidth(DEFAULT_CONFIG)).toBe(315)
-  })
+/** 构造署名+日期公文（署名缩进按日期上下文计算；跳过署名前空行块） */
+function signatureBlockOf(
+  signature: string,
+  date: string,
+  config: DocumentConfig = DEFAULT_CONFIG
+): LayoutParagraphBlock {
+  const ast: GongwenAST = {
+    title: [],
+    body: [makeNode(NodeType.SIGNATURE, signature), makeNode(NodeType.DATE, date)],
+  }
+  const layout = buildLayout(ast, config, { renderer: 'docx' })
+  const block = layout.blocks.find(
+    (b): b is LayoutParagraphBlock => b.kind === 'paragraph' && b.sourceType === NodeType.SIGNATURE
+  )
+  if (!block) {
+    throw new Error('预期存在署名段落块')
+  }
+  return block
+}
 
-  it('各级标题/主送/正文/署名的 charSpacing 同值（−5）', () => {
-    const types = [
-      NodeType.HEADING_1,
-      NodeType.HEADING_2,
-      NodeType.HEADING_3,
-      NodeType.HEADING_4,
-      NodeType.ADDRESSEE,
-      NodeType.PARAGRAPH,
-      NodeType.SIGNATURE,
-      NodeType.DATE,
-      NodeType.REMARK,
-    ]
-    for (const type of types) {
-      expect(getRunStyle(type, DEFAULT_CONFIG).characterSpacing).toBe(-5)
-    }
-  })
+/** 构造附件节点并取全部附件段落块 */
+function attachmentBlocksOf(
+  items: Array<{ index: number; name: string }>,
+  isMultiple: boolean,
+  config: DocumentConfig = DEFAULT_CONFIG
+): LayoutParagraphBlock[] {
+  const node: AttachmentNode = {
+    type: NodeType.ATTACHMENT,
+    content: '附件：',
+    lineNumber: 1,
+    isMultiple,
+    items,
+  }
+  const ast: GongwenAST = { title: [], body: [node] }
+  const layout = buildLayout(ast, config, { renderer: 'docx' })
+  return layout.blocks.filter(
+    (b): b is LayoutParagraphBlock => b.kind === 'paragraph' && b.sourceType === NodeType.ATTACHMENT
+  )
+}
 
-  it('公文标题无 characterSpacing（不参与 28 字微调）', () => {
-    expect(getRunStyle(NodeType.DOCUMENT_TITLE, DEFAULT_CONFIG).characterSpacing).toBeUndefined()
-  })
+/** 手工构造最小 LayoutRun（纯翻译函数单测用） */
+function mkRun(overrides: Partial<LayoutRun>): LayoutRun {
+  return {
+    text: 'x',
+    role: 'body',
+    font: { ascii: 'Times New Roman', eastAsia: '仿宋_GB2312', hAnsi: '仿宋_GB2312', cs: 'Times New Roman' },
+    sizeHalfPt: 32,
+    ...overrides,
+  }
+}
 
-  it('边距变化响应：左右各 2.5cm → floor(9070/28 − 320) = 3', () => {
-    const config = configWith((c) => {
-      c.margins.left = 2.5
-      c.margins.right = 2.5
-    })
-    expect(getRunStyle(NodeType.PARAGRAPH, config).characterSpacing).toBe(3)
-    expect(calculateCharWidth(config)).toBe(323)
-  })
-})
+// ---- 纯翻译函数形状（快照逐字节保持的机械保证） ----
 
-// ---- getRunStyle 字体角色映射 ----
-
-describe('getRunStyle 节点字体映射', () => {
-  it('正文：eastAsia/hAnsi 仿宋_GB2312，ascii/cs Times New Roman，三号 32 half-point', () => {
-    const style = getRunStyle(NodeType.PARAGRAPH, DEFAULT_CONFIG)
-    expect(style.font).toEqual({
+describe('fontOptions / runOptions 翻译形状', () => {
+  it('字体四槽纯搬运（四键直传）', () => {
+    expect(fontOptions(mkRun({}).font)).toEqual({
       ascii: 'Times New Roman',
       eastAsia: '仿宋_GB2312',
       hAnsi: '仿宋_GB2312',
       cs: 'Times New Roman',
     })
-    expect(style.size).toBe(32)
   })
 
-  it('公文标题：方正小标宋_GBK，二号 44 half-point', () => {
-    const style = getRunStyle(NodeType.DOCUMENT_TITLE, DEFAULT_CONFIG)
-    expect(fontOf(style).eastAsia).toBe('方正小标宋_GBK')
-    expect(style.size).toBe(44)
+  it('text 与 size 直传', () => {
+    const options = runOptions(mkRun({ text: '正文', sizeHalfPt: 44 }))
+    expect(options.text).toBe('正文')
+    expect(options.size).toBe(44)
   })
 
-  it('一/二/三级标题读 config.advanced（双轨证据：导出侧真值来源）', () => {
-    expect(fontOf(getRunStyle(NodeType.HEADING_1, DEFAULT_CONFIG)).eastAsia).toBe('黑体')
-    expect(fontOf(getRunStyle(NodeType.HEADING_2, DEFAULT_CONFIG)).eastAsia).toBe('楷体_GB2312')
-    expect(fontOf(getRunStyle(NodeType.HEADING_3, DEFAULT_CONFIG)).eastAsia).toBe('仿宋_GB2312')
+  it('characterSpacing 未设时不产出属性（公文标题——不参与 28 字微调）', () => {
+    const options = runOptions(mkRun({ characterSpacingTwips: undefined }))
+    expect(options.characterSpacing).toBeUndefined()
+    expect('characterSpacing' in options).toBe(false)
   })
 
-  it('四级标题落入默认分支：正文字体仿宋_GB2312（现状）', () => {
-    const style = getRunStyle(NodeType.HEADING_4, DEFAULT_CONFIG)
-    expect(fontOf(style).eastAsia).toBe('仿宋_GB2312')
-    expect(style.size).toBe(32)
+  it('characterSpacing 设定时产出（−5）', () => {
+    const options = runOptions(mkRun({ characterSpacingTwips: -5 }))
+    expect(options.characterSpacing).toBe(-5)
   })
 
-  it('主送机关读 config.advanced.addressee（仿宋 + Times New Roman）', () => {
-    const style = getRunStyle(NodeType.ADDRESSEE, DEFAULT_CONFIG)
-    expect(fontOf(style).eastAsia).toBe('仿宋_GB2312')
-    expect(fontOf(style).ascii).toBe('Times New Roman')
+  it('bold 未设时不产出属性（现状正文/标题均无加粗 run）', () => {
+    const options = runOptions(mkRun({}))
+    expect('bold' in options).toBe(false)
   })
 
-  it('改 config.headings.h1 不影响导出字体（双轨现状行为记录）', () => {
-    const config = configWith((c) => {
-      c.headings.h1.fontFamily = '宋体'
-      c.headings.h1.fontSize = 22
-    })
-    const style = getRunStyle(NodeType.HEADING_1, config)
-    expect(fontOf(style).eastAsia).toBe('黑体') // 仍取 advanced.h1
-    expect(style.size).toBe(32)
-  })
-
-  it('改 config.advanced.h1 影响导出字体', () => {
-    const config = configWith((c) => {
-      c.advanced.h1.fontFamily = '宋体'
-    })
-    expect(fontOf(getRunStyle(NodeType.HEADING_1, config)).eastAsia).toBe('宋体')
-  })
-
-  it('advanced.h1.asciiFontFamily 为空串时回退中文字体（「跟随中文字体」选项）', () => {
-    const config = configWith((c) => {
-      c.advanced.h1.asciiFontFamily = ''
-    })
-    expect(fontOf(getRunStyle(NodeType.HEADING_1, config)).ascii).toBe('黑体')
+  it('bold 设定时保留 boolean（表格表头 boldHeader 通道）', () => {
+    expect(runOptions(mkRun({ bold: true })).bold).toBe(true)
+    expect(runOptions(mkRun({ bold: false })).bold).toBe(false)
   })
 })
 
-// ---- 特殊标点样式（时间冒号 / 三级标题句点 / 附件句点） ----
+// ---- 决策块 → run 翻译（原 getRunStyle 字体映射基线承接） ----
 
-describe('特殊标点 run 样式', () => {
-  it('时间冒号样式：四槽全正文字体，字号随调用方', () => {
-    const style = getTimeColonRunStyle(DEFAULT_CONFIG, 44)
-    expect(style.font).toEqual({
+describe('决策块 run 数值基线（原 getRunStyle 对照迁移）', () => {
+  it('正文：eastAsia/hAnsi 仿宋_GB2312，ascii/cs Times New Roman，三号 32 half-point', () => {
+    const block = paragraphBlockOf(NodeType.PARAGRAPH, '正文内容。')
+    const options = runOptions(block.runs[0])
+    expect(options.font).toEqual({
+      ascii: 'Times New Roman',
+      eastAsia: '仿宋_GB2312',
+      hAnsi: '仿宋_GB2312',
+      cs: 'Times New Roman',
+    })
+    expect(options.size).toBe(32)
+  })
+
+  it('公文标题：方正小标宋_GBK，二号 44 half-point', () => {
+    const ast: GongwenAST = { title: [makeNode(NodeType.DOCUMENT_TITLE, '标题')], body: [] }
+    const layout = buildLayout(ast, DEFAULT_CONFIG, { renderer: 'docx' })
+    const title = layout.blocks[0]
+    if (title.kind !== 'paragraph') throw new Error('预期标题段')
+    const options = runOptions(title.runs[0])
+    expect(options.font).toEqual(
+      expect.objectContaining({ eastAsia: '方正小标宋_GBK' })
+    )
+    expect(options.size).toBe(44)
+  })
+
+  it('一级标题：eastAsia/hAnsi 黑体（读 config.advanced.h1）', () => {
+    const block = paragraphBlockOf(NodeType.HEADING_1, '一、总体要求。')
+    expect(runOptions(block.runs[0]).font).toEqual(
+      expect.objectContaining({ eastAsia: '黑体', hAnsi: '黑体' })
+    )
+  })
+
+  it('二级标题：eastAsia 楷体_GB2312（读 config.advanced.h2）', () => {
+    const block = paragraphBlockOf(NodeType.HEADING_2, '（一）指导思想。')
+    expect(runOptions(block.runs[0]).font).toEqual(
+      expect.objectContaining({ eastAsia: '楷体_GB2312' })
+    )
+  })
+
+  it('三级标题：eastAsia 仿宋_GB2312（读 config.advanced.h3）', () => {
+    const block = paragraphBlockOf(NodeType.HEADING_3, '1.加强组织领导。')
+    expect(runOptions(block.runs[0]).font).toEqual(
+      expect.objectContaining({ eastAsia: '仿宋_GB2312' })
+    )
+  })
+
+  it('四级标题落入默认分支：正文字体仿宋_GB2312（现状）', () => {
+    const block = paragraphBlockOf(NodeType.HEADING_4, '（1）制定实施方案。')
+    const options = runOptions(block.runs[0])
+    expect(options.font).toEqual(
+      expect.objectContaining({ eastAsia: '仿宋_GB2312' })
+    )
+    expect(options.size).toBe(32)
+  })
+
+  it('主送机关读 config.advanced.addressee（仿宋 + Times New Roman）', () => {
+    const block = paragraphBlockOf(NodeType.ADDRESSEE, '各县（市、区）人民政府：')
+    const options = runOptions(block.runs[0])
+    expect(options.font).toEqual(
+      expect.objectContaining({ eastAsia: '仿宋_GB2312', ascii: 'Times New Roman' })
+    )
+  })
+
+  it('署名/成文日期/备注 run 与正文同字体（body 角色）', () => {
+    for (const type of [NodeType.SIGNATURE, NodeType.DATE, NodeType.REMARK]) {
+      const block = paragraphBlockOf(type, '内容')
+      expect(runOptions(block.runs[0]).font).toEqual(
+        expect.objectContaining({ eastAsia: '仿宋_GB2312' })
+      )
+    }
+  })
+
+  it('时间冒号 run：四槽全正文字体（原 getTimeColonRunStyle 基线）', () => {
+    const block = paragraphBlockOf(NodeType.PARAGRAPH, '会议时间为9:00开始。')
+    const colon = block.runs.find((r) => r.role === 'bodyPunct')
+    if (!colon) throw new Error('缺少时间冒号 run')
+    expect(runOptions(colon).font).toEqual({
       ascii: '仿宋_GB2312',
       eastAsia: '仿宋_GB2312',
       hAnsi: '仿宋_GB2312',
       cs: '仿宋_GB2312',
     })
-    expect(style.size).toBe(44)
-    expect(style.characterSpacing).toBe(-5)
   })
 
-  it('三级标题句点样式：四槽全正文字体，字号跟随三级标题（32）', () => {
-    const style = getHeading3PunctuationRunStyle(DEFAULT_CONFIG)
-    expect(fontOf(style).ascii).toBe('仿宋_GB2312')
-    expect(style.size).toBe(32)
+  it('时间冒号 run 字号随宿主：正文内 32、标题内 44（原字号随调用方基线）', () => {
+    const body = paragraphBlockOf(NodeType.PARAGRAPH, '时间为9:00。')
+    const bodyColon = body.runs.find((r) => r.role === 'bodyPunct')
+    if (!bodyColon) throw new Error('缺少正文冒号 run')
+    expect(runOptions(bodyColon).size).toBe(32)
+
+    const ast: GongwenAST = {
+      title: [makeNode(NodeType.DOCUMENT_TITLE, '关于9:00开会')],
+      body: [],
+    }
+    const layout = buildLayout(ast, DEFAULT_CONFIG, { renderer: 'docx' })
+    const title = layout.blocks[0]
+    if (title.kind !== 'paragraph') throw new Error('预期标题段')
+    const titleColon = title.runs.find((r) => r.role === 'bodyPunct')
+    if (!titleColon) throw new Error('缺少标题冒号 run')
+    expect(runOptions(titleColon).size).toBe(44)
   })
 
-  it('附件句点样式：四槽全正文字体，字号跟随正文（32）', () => {
-    const style = getAttachmentPunctuationRunStyle(DEFAULT_CONFIG)
-    expect(fontOf(style).ascii).toBe('仿宋_GB2312')
-    expect(style.size).toBe(32)
+  it('三级标题句点 run：四槽正文字体，字号跟随三级标题（32）', () => {
+    const block = paragraphBlockOf(NodeType.HEADING_3, '1.加强领导。')
+    const dot = block.runs.find((r) => r.text === '.')
+    if (!dot) throw new Error('缺少句点 run')
+    const options = runOptions(dot)
+    expect(options.font).toEqual(
+      expect.objectContaining({ ascii: '仿宋_GB2312', eastAsia: '仿宋_GB2312' })
+    )
+    expect(options.size).toBe(32)
   })
 
-  it('附件说明文本样式：数字英文 Times New Roman，中文仿宋', () => {
-    const style = getAttachmentRunStyle(DEFAULT_CONFIG)
-    expect(fontOf(style).ascii).toBe('Times New Roman')
-    expect(fontOf(style).eastAsia).toBe('仿宋_GB2312')
-    expect(style.characterSpacing).toBe(-5)
+  it('附件句点 run：四槽正文字体，字号跟随正文（32）', () => {
+    const blocks = attachmentBlocksOf(
+      [
+        { index: 1, name: '办法' },
+        { index: 2, name: '清单' },
+      ],
+      true
+    )
+    const dot = blocks[0].runs.find((r) => r.text === '.')
+    if (!dot) throw new Error('缺少附件句点 run')
+    expect(runOptions(dot).size).toBe(32)
+    expect(runOptions(dot).font).toEqual(
+      expect.objectContaining({ ascii: '仿宋_GB2312' })
+    )
+  })
+
+  it('附件文本 run：数字英文 Times New Roman、中文仿宋（原 getAttachmentRunStyle 基线）', () => {
+    const blocks = attachmentBlocksOf([{ index: 1, name: '办法' }], true)
+    const numberRun = blocks[0].runs.find((r) => r.text === '1')
+    if (!numberRun) throw new Error('缺少序号 run')
+    const options = runOptions(numberRun)
+    expect(options.font).toEqual({
+      ascii: 'Times New Roman',
+      eastAsia: '仿宋_GB2312',
+      hAnsi: '仿宋_GB2312',
+      cs: 'Times New Roman',
+    })
+    expect(options.characterSpacing).toBe(-5)
+  })
+
+  it('charSpacing 公式：默认 floor(8844/28 − 320) = −5（twips）', () => {
+    const block = paragraphBlockOf(NodeType.PARAGRAPH, '正文。')
+    expect(runOptions(block.runs[0]).characterSpacing).toBe(-5)
+  })
+
+  it('边距变化响应：左右各 2.5cm → charSpacing = 3（原基线）', () => {
+    const config = configWith((c) => {
+      c.margins.left = 2.5
+      c.margins.right = 2.5
+    })
+    const block = paragraphBlockOf(NodeType.PARAGRAPH, '正文。', config)
+    expect(runOptions(block.runs[0]).characterSpacing).toBe(3)
   })
 })
 
-// ---- getParagraphStyle 段落样式 ----
+// ---- 决策块 → 段落翻译（原 getParagraphStyle 基线承接） ----
 
-describe('getParagraphStyle 段落样式', () => {
-  it('正文：两端对齐 + 首行缩进 630 twips + 固定行距 592', () => {
-    const style = getParagraphStyle(NodeType.PARAGRAPH, DEFAULT_CONFIG)
-    expect(style.alignment).toBe('both')
-    expect(style.spacing).toEqual({ line: 592, lineRule: 'exact', before: 0, after: 0 })
-    expect(style.indent).toEqual({ firstLine: 630, left: 0 })
+describe('决策块段落样式基线（原 getParagraphStyle 对照迁移）', () => {
+  it('正文：两端对齐 + 首行缩进 630 + 固定行距 592', () => {
+    const options = paragraphOptions(paragraphBlockOf(NodeType.PARAGRAPH, '正文。'))
+    expect(options.alignment).toBe('both')
+    expect(options.spacing).toEqual({ line: 592, lineRule: 'exact', before: 0, after: 0 })
+    expect(options.indent).toEqual({ firstLine: 630, left: 0 })
   })
 
-  it('公文标题：居中，行距取 title.lineSpacing（592）', () => {
-    const style = getParagraphStyle(NodeType.DOCUMENT_TITLE, DEFAULT_CONFIG)
-    expect(style.alignment).toBe('center')
-    expect(style.spacing?.line).toBe(592)
-    expect(style.indent).toBeUndefined()
+  it('公文标题：居中，行距取 title.lineSpacing（592），无缩进', () => {
+    const ast: GongwenAST = { title: [makeNode(NodeType.DOCUMENT_TITLE, '标题')], body: [] }
+    const layout = buildLayout(ast, DEFAULT_CONFIG, { renderer: 'docx' })
+    const title = layout.blocks[0]
+    if (title.kind !== 'paragraph') throw new Error('预期标题段')
+    const options = paragraphOptions(title)
+    expect(options.alignment).toBe('center')
+    expect(options.spacing).toEqual({ line: 592, lineRule: 'exact', before: 0, after: 0 })
+    expect(options.indent).toBeUndefined()
   })
 
-  it('主送机关：顶格（无首行缩进）两端对齐', () => {
-    const style = getParagraphStyle(NodeType.ADDRESSEE, DEFAULT_CONFIG)
-    expect(style.alignment).toBe('both')
-    expect(style.indent?.left).toBe(0)
-    expect(style.indent?.firstLine).toBeUndefined()
+  it('主送机关：顶格（无首行缩进，left 0）两端对齐', () => {
+    const options = paragraphOptions(paragraphBlockOf(NodeType.ADDRESSEE, '各部门：'))
+    expect(options.alignment).toBe('both')
+    expect(options.indent).toEqual({ left: 0 })
   })
 
-  it('附件说明段落：左空二字（630）', () => {
-    const style = getParagraphStyle(NodeType.ATTACHMENT, DEFAULT_CONFIG)
-    expect(style.indent?.left).toBe(630)
+  it('成文日期：右对齐右缩进，无印章空二字（630）', () => {
+    const options = paragraphOptions(paragraphBlockOf(NodeType.DATE, '二零二六年九月十一日'))
+    expect(options.alignment).toBe('right')
+    expect(options.indent).toEqual({ right: 630 })
   })
 
-  it('成文日期：右对齐右缩进，无印章空二字（630）、有印章空四字（1260）', () => {
-    expect(getParagraphStyle(NodeType.DATE, DEFAULT_CONFIG).indent?.right).toBe(630)
+  it('成文日期（有印章）：右空四字（1260）', () => {
     const stamped = configWith((c) => {
       c.specialOptions.hasStamp = true
     })
-    expect(getParagraphStyle(NodeType.DATE, stamped).indent?.right).toBe(1260)
+    const options = paragraphOptions(paragraphBlockOf(NodeType.DATE, '二零二六年九月十一日', stamped))
+    expect(options.indent).toEqual({ right: 1260 })
   })
 
-  it('署名（无日期上下文）：右缩进同日期基准（630/1260）', () => {
-    expect(getParagraphStyle(NodeType.SIGNATURE, DEFAULT_CONFIG).indent?.right).toBe(630)
+  it('署名（无日期上下文）：右缩进同日期基准（630）', () => {
+    const options = paragraphOptions(paragraphBlockOf(NodeType.SIGNATURE, '某某市政府'))
+    expect(options.indent).toEqual({ right: 630 })
   })
 
-  it('署名（有日期上下文）：右缩进取 calculateSignatureIndent 计算值', () => {
-    // 署名 5 字 × 日期 10 字：630 + (10−5)/2×315 = 1417.5
-    const style = getParagraphStyle(
-      NodeType.SIGNATURE,
-      DEFAULT_CONFIG,
-      '某某市政府',
-      '二零二六年九月十一日'
+  it('署名（无日期上下文、有印章）：右空四字（1260）', () => {
+    const stamped = configWith((c) => {
+      c.specialOptions.hasStamp = true
+    })
+    const options = paragraphOptions(paragraphBlockOf(NodeType.SIGNATURE, '某某市政府', stamped))
+    expect(options.indent).toEqual({ right: 1260 })
+  })
+
+  it('署名（有日期上下文）：右缩进取签名居中计算值（1417.5）', () => {
+    const options = paragraphOptions(
+      signatureBlockOf('某某市政府', '二零二六年九月十一日')
     )
-    expect(style.indent?.right).toBe(1417.5)
+    expect(options.indent).toEqual({ right: 1417.5 })
   })
 
   it('备注：左对齐不缩进', () => {
-    const style = getParagraphStyle(NodeType.REMARK, DEFAULT_CONFIG)
-    expect(style.alignment).toBe('left')
-    expect(style.indent?.left).toBe(0)
-    expect(style.indent?.firstLine).toBeUndefined()
+    const options = paragraphOptions(paragraphBlockOf(NodeType.REMARK, '（联系人：张三）'))
+    expect(options.alignment).toBe('left')
+    expect(options.indent).toEqual({ left: 0 })
   })
-})
 
-// ---- 附件说明段落样式 ----
+  it('公文标题（版头启用）：段前距 = 2 × 正文行距（1184）', () => {
+    const config = configWith((c) => {
+      c.header.enabled = true
+      c.header.orgName = '某某市人民政府文件'
+    })
+    const ast: GongwenAST = { title: [makeNode(NodeType.DOCUMENT_TITLE, '标题')], body: [] }
+    const layout = buildLayout(ast, config, { renderer: 'docx' })
+    const title = layout.blocks[0]
+    if (title.kind !== 'paragraph') throw new Error('预期标题段')
+    expect(title.spacing.beforeTwips).toBe(1184)
+  })
 
-describe('getAttachmentParagraphStyle 附件段落样式', () => {
-  it('单附件：左空 5 字（1575）悬挂 3 字（945），段前一行距（592）', () => {
-    const style = getAttachmentParagraphStyle(false, false, DEFAULT_CONFIG)
-    expect(style.indent).toEqual({ left: 1575, hanging: 945 })
-    expect(style.spacing?.before).toBe(592)
-    expect(style.spacing?.line).toBe(592)
+  it('公文标题（版头关）：段前距 0', () => {
+    const ast: GongwenAST = { title: [makeNode(NodeType.DOCUMENT_TITLE, '标题')], body: [] }
+    const layout = buildLayout(ast, DEFAULT_CONFIG, { renderer: 'docx' })
+    const title = layout.blocks[0]
+    if (title.kind !== 'paragraph') throw new Error('预期标题段')
+    expect(title.spacing.beforeTwips).toBe(0)
+  })
+
+  it('附件单段：左空 5 字（1575）悬挂 3 字（945），段前一行距、无段后距', () => {
+    const blocks = attachmentBlocksOf([{ index: 0, name: '实施细则' }], false)
+    const options = paragraphOptions(blocks[0])
+    expect(options.indent).toEqual({ left: 1575, hanging: 945 })
+    expect(options.spacing).toEqual({ line: 592, lineRule: 'exact', before: 592 })
   })
 
   it('多附件首行：与单附件同构（悬挂缩进对齐换行）', () => {
-    const style = getAttachmentParagraphStyle(true, true, DEFAULT_CONFIG)
-    expect(style.indent).toEqual({ left: 1575, hanging: 945 })
-    expect(style.spacing?.before).toBe(592)
+    const blocks = attachmentBlocksOf(
+      [
+        { index: 1, name: '办法' },
+        { index: 2, name: '清单' },
+      ],
+      true
+    )
+    const options = paragraphOptions(blocks[0])
+    expect(options.indent).toEqual({ left: 1575, hanging: 945 })
+    expect(options.spacing?.before).toBe(592)
   })
 
-  it('多附件后续行：仅左空 5 字，无悬挂无段前距', () => {
-    const style = getAttachmentParagraphStyle(true, false, DEFAULT_CONFIG)
-    expect(style.indent).toEqual({ left: 1575 })
-    expect(style.spacing?.before).toBeUndefined()
-  })
-})
-
-// ---- 文本宽度计量（twip 版 / em 版）【单元3 等价性对照基线】 ----
-
-describe('文本宽度计量', () => {
-  it('twip 版：中文字符 315/字', () => {
-    expect(calculateTextWidth('某某市人民政府', 315)).toBe(2205)
-  })
-
-  it('twip 版：ASCII 字符 0.69×315/字', () => {
-    expect(calculateTextWidth('2026', 315)).toBeCloseTo(869.4, 6)
-    expect(calculateTextWidth('2026年9月11日', 315)).toBeCloseTo(2466.45, 6)
-  })
-
-  it('em 版：中文字符 1/字', () => {
-    expect(calculateTextWidthEm('某某市人民政府')).toBe(7)
-  })
-
-  it('em 版：ASCII 字符 0.69/字', () => {
-    expect(calculateTextWidthEm('2026')).toBeCloseTo(2.76, 9)
-    expect(calculateTextWidthEm('2026年9月11日')).toBeCloseTo(7.83, 9)
-  })
-
-  it('〇（U+3007）不在 CJK 判定范围，按 0.69 窄字符计宽（现状，两版一致）', () => {
-    expect(calculateTextWidthEm('〇')).toBeCloseTo(0.69, 9)
-    expect(calculateTextWidthEm('二〇二六')).toBeCloseTo(3.69, 9)
-    expect(calculateTextWidth('〇', 315)).toBeCloseTo(217.35, 6)
+  it('多附件后续行：仅左空 5 字，段前段后均不设', () => {
+    const blocks = attachmentBlocksOf(
+      [
+        { index: 1, name: '办法' },
+        { index: 2, name: '清单' },
+      ],
+      true
+    )
+    const options = paragraphOptions(blocks[1])
+    expect(options.indent).toEqual({ left: 1575 })
+    expect(options.spacing).toEqual({ line: 592, lineRule: 'exact' })
   })
 })
 
-// ---- 签名缩进 twip 版（styleFactory）【单元3 等价性对照基线】 ----
+// ---- 空行翻译 ----
 
-describe('签名缩进 twip 版（calculateSignatureIndent）', () => {
+describe('空行块翻译（spacerParagraphs）', () => {
+  /** 取决策层空行块（按 reason 定位） */
+  function spacerOf(reason: 'after-title' | 'before-signature' | 'before-remark') {
+    const ast: GongwenAST = {
+      title: [makeNode(NodeType.DOCUMENT_TITLE, '标题')],
+      body: [makeNode(NodeType.SIGNATURE, '某某市政府'), makeNode(NodeType.REMARK, '（备注）')],
+    }
+    const layout = buildLayout(ast, DEFAULT_CONFIG, { renderer: 'docx' })
+    const spacer = layout.blocks.find(
+      (b) => b.kind === 'spacer' && b.reason === reason
+    )
+    if (!spacer || spacer.kind !== 'spacer') throw new Error('缺少空行块')
+    return spacer
+  }
+
+  it('按 lines 数产出空段（署名前 2 空行）', () => {
+    expect(spacerParagraphs(spacerOf('before-signature'))).toHaveLength(2)
+  })
+
+  it('标题后空行：lines 1、固定行距 592（决策字段）', () => {
+    const spacer = spacerOf('after-title')
+    expect(spacer.lines).toBe(1)
+    expect(spacer.lineTwips).toBe(592)
+    expect(spacerParagraphs(spacer)).toHaveLength(1)
+  })
+
+  it('空段 run 规格：决策层给定正文字体四槽与字号（序列化形状由导出快照锁定）', () => {
+    const spacer = spacerOf('after-title')
+    expect(spacer.font).toEqual({
+      ascii: 'Times New Roman',
+      eastAsia: '仿宋_GB2312',
+      hAnsi: '仿宋_GB2312',
+      cs: 'Times New Roman',
+    })
+    expect(spacer.sizeHalfPt).toBe(32)
+  })
+})
+
+// ---- 块流翻译 ----
+
+describe('块流翻译（blocksToDocx / blockToDocx）', () => {
+  const FULL_AST: GongwenAST = {
+    title: [makeNode(NodeType.DOCUMENT_TITLE, '标题', 1)],
+    body: [
+      makeNode(NodeType.PARAGRAPH, '正文。', 2),
+      makeNode(NodeType.SIGNATURE, '某某市政府', 3),
+      makeNode(NodeType.DATE, '二零二六年九月十一日', 4),
+      makeNode(NodeType.REMARK, '（备注）', 5),
+    ],
+  }
+
+  it('空行块按行数展开、块序保持（段落-空行-段落）', () => {
+    const layout = buildLayout(FULL_AST, DEFAULT_CONFIG, { renderer: 'docx' })
+    const docxChildren = blocksToDocx(layout.blocks)
+    // 标题 1 + 空行 1 + 正文 1 + 署名前空行 2 + 署名 1 + 日期 1 + 备注前空行 2 + 备注 1 = 10
+    expect(docxChildren).toHaveLength(10)
+  })
+
+  it('blockToDocx：段落块产出 Paragraph', () => {
+    const block = paragraphBlockOf(NodeType.PARAGRAPH, '正文。')
+    const result = blockToDocx(block)
+    expect(result).toBeInstanceOf(Paragraph)
+  })
+
+  it('blockToDocx：空行块产出首个空段 Paragraph', () => {
+    const ast: GongwenAST = {
+      title: [makeNode(NodeType.DOCUMENT_TITLE, '标题')],
+      body: [],
+    }
+    const layout = buildLayout(ast, DEFAULT_CONFIG, { renderer: 'docx' })
+    const spacer = layout.blocks[1]
+    if (spacer.kind !== 'spacer') throw new Error('预期空行块')
+    expect(blockToDocx(spacer)).toBeInstanceOf(Paragraph)
+  })
+
+  it('blockToDocx：表格块产出 Table', () => {
+    const tableBlock: LayoutBlock = {
+      kind: 'table',
+      sourceType: NodeType.TABLE,
+      headerCells: ['列一'],
+      dataRows: [['值一']],
+      cellAlignment: 'center',
+      font: { ascii: 'Times New Roman', eastAsia: '仿宋_GB2312', hAnsi: 'Times New Roman', cs: 'Times New Roman' },
+      sizeHalfPt: 24,
+      lineTwips: 440,
+      boldHeader: true,
+    }
+    expect(blockToDocx(tableBlock)).toBeInstanceOf(Table)
+  })
+
+  it('paragraphFromBlock 产出 docx Paragraph 实例', () => {
+    expect(paragraphFromBlock(paragraphBlockOf(NodeType.PARAGRAPH, '正文。'))).toBeInstanceOf(
+      Paragraph
+    )
+  })
+
+  it('无标题公文：单块直译（无标题段与标题后空行）', () => {
+    const ast: GongwenAST = { title: [], body: [makeNode(NodeType.PARAGRAPH, '正文。')] }
+    const layout = buildLayout(ast, DEFAULT_CONFIG, { renderer: 'docx' })
+    expect(blocksToDocx(layout.blocks)).toHaveLength(1)
+  })
+})
+
+// ---- 签名缩进基线（原 calculateSignatureIndent 用例迁移，经决策层整链） ----
+
+describe('签名缩进基线（导出侧，经决策层）', () => {
   it('署名与日期等宽（各 10 字）：右缩进即基准 630', () => {
     expect(
-      calculateSignatureIndent('某某市人民政府办公厅', '二零二六年九月十一日', DEFAULT_CONFIG)
-    ).toBe(630)
+      paragraphOptions(signatureBlockOf('某某市人民政府办公厅', '二零二六年九月十一日')).indent
+    ).toEqual({ right: 630 })
   })
 
   it('日期长于署名（10 字 × 5 字）：630 + 2.5×315 = 1417.5', () => {
     expect(
-      calculateSignatureIndent('某某市政府', '二零二六年九月十一日', DEFAULT_CONFIG)
-    ).toBe(1417.5)
+      paragraphOptions(signatureBlockOf('某某市政府', '二零二六年九月十一日')).indent
+    ).toEqual({ right: 1417.5 })
   })
 
   it('有印章（10 字 × 5 字）：1260 + 787.5 = 2047.5', () => {
@@ -324,119 +557,119 @@ describe('签名缩进 twip 版（calculateSignatureIndent）', () => {
       c.specialOptions.hasStamp = true
     })
     expect(
-      calculateSignatureIndent('某某市政府', '二零二六年九月十一日', stamped)
-    ).toBe(2047.5)
+      paragraphOptions(signatureBlockOf('某某市政府', '二零二六年九月十一日', stamped)).indent
+    ).toEqual({ right: 2047.5 })
   })
 
   it('署名长于日期（10 字 × 9 字）：630 − 157.5 = 472.5（不钳制）', () => {
     expect(
-      calculateSignatureIndent('某某市人民政府办公室', '二零二六年九月一日', DEFAULT_CONFIG)
-    ).toBe(472.5)
+      paragraphOptions(signatureBlockOf('某某市人民政府办公室', '二零二六年九月一日')).indent
+    ).toEqual({ right: 472.5 })
   })
 
   it('署名显著长于日期（20 字 × 10 字）：负偏移钳制为 0', () => {
     expect(
-      calculateSignatureIndent(
-        '某某市人民政府办公室政务公开与法治建设科',
-        '二零二六年九月十一日',
-        DEFAULT_CONFIG
-      )
-    ).toBe(0)
+      paragraphOptions(
+        signatureBlockOf('某某市人民政府办公室政务公开与法治建设科', '二零二六年九月十一日')
+      ).indent
+    ).toEqual({ right: 0 })
   })
 
-  it('含〇日期（〇 按 0.69 计）：630 + (3052.35−3150)/2 = 581.175', () => {
-    expect(
-      calculateSignatureIndent('某某市人民政府办公室', '二〇二六年九月十一日', DEFAULT_CONFIG)
-    ).toBeCloseTo(581.175, 6)
+  it('含〇日期（〇 按 0.69 计）：630 − 48.825 = 581.175', () => {
+    const indent = paragraphOptions(
+      signatureBlockOf('某某市人民政府办公室', '二〇二六年九月十一日')
+    ).indent
+    expect(indent && indent.right).toBeCloseTo(581.175, 6)
   })
 
   it('混合字符：数字字母按 0.69 系数计宽（≈1488.375）', () => {
-    expect(calculateSignatureIndent('AB局', '2026年9月11日', DEFAULT_CONFIG)).toBeCloseTo(
-      1488.375,
-      6
-    )
+    const indent = paragraphOptions(signatureBlockOf('AB局', '2026年9月11日')).indent
+    expect(indent && indent.right).toBeCloseTo(1488.375, 6)
   })
 })
 
-// ---- 签名缩进 em 版（A4Page）【单元3 等价性对照基线】 ----
+// ---- 配置双轨现状（单元6 前保持：导出真值在 advanced） ----
 
-describe('签名缩进 em 版（calculateSignatureIndentEm）', () => {
-  it('署名与日期等宽（各 10 字）：右缩进即基准 2 / 4', () => {
-    expect(
-      calculateSignatureIndentEm('某某市人民政府办公厅', '二零二六年九月十一日', false)
-    ).toBe(2)
-    expect(
-      calculateSignatureIndentEm('某某市人民政府办公厅', '二零二六年九月十一日', true)
-    ).toBe(4)
-  })
-
-  it('日期长于署名（10 字 × 5 字）：2 + 2.5 = 4.5；有印章 6.5', () => {
-    expect(calculateSignatureIndentEm('某某市政府', '二零二六年九月十一日', false)).toBe(4.5)
-    expect(calculateSignatureIndentEm('某某市政府', '二零二六年九月十一日', true)).toBe(6.5)
-  })
-
-  it('署名长于日期（10 字 × 9 字）：2 − 0.5 = 1.5（不钳制）', () => {
-    expect(
-      calculateSignatureIndentEm('某某市人民政府办公室', '二零二六年九月一日', false)
-    ).toBe(1.5)
-  })
-
-  it('署名显著长于日期（20 字 × 10 字）：负偏移钳制为 0', () => {
-    expect(
-      calculateSignatureIndentEm('某某市人民政府办公室政务公开与法治建设科', '二零二六年九月十一日', false)
-    ).toBe(0)
-  })
-
-  it('含〇日期（〇 按 0.69 计）：2 − 0.155 = 1.845；有印章 3.845', () => {
-    expect(
-      calculateSignatureIndentEm('某某市人民政府办公室', '二〇二六年九月十一日', false)
-    ).toBeCloseTo(1.845, 9)
-    expect(
-      calculateSignatureIndentEm('某某市人民政府办公室', '二〇二六年九月十一日', true)
-    ).toBeCloseTo(3.845, 9)
-  })
-})
-
-// ---- twip 版与 em 版等价性（单元3 决策层统一实现的验收基线） ----
-
-describe('签名缩进 twip/em 双实现等价性（单元3 基线）', () => {
-  const CHAR_WIDTH = 315 // 默认配置手算值，见文件头注释
-
-  const cases: { sig: string; date: string }[] = [
-    { sig: '某某市人民政府办公厅', date: '二零二六年九月十一日' },
-    { sig: '某某市政府', date: '二零二六年九月十一日' },
-    { sig: '某某市人民政府办公室', date: '二零二六年九月一日' },
-    { sig: '某某市人民政府办公室政务公开与法治建设科', date: '二零二六年九月十一日' },
-    { sig: '某某市人民政府办公室', date: '二〇二六年九月十一日' },
-    { sig: 'AB局', date: '2026年9月11日' },
-    { sig: 'X市发改', date: '2026年12月31日' },
-  ]
-
-  for (const { sig, date } of cases) {
-    for (const hasStamp of [false, true]) {
-      it(`${sig} × ${date}（印章=${hasStamp}）：twip = em × ${CHAR_WIDTH}`, () => {
-        const config = hasStamp
-          ? configWith((c) => {
-              c.specialOptions.hasStamp = true
-            })
-          : DEFAULT_CONFIG
-        const twip = calculateSignatureIndent(sig, date, config)
-        const em = calculateSignatureIndentEm(sig, date, hasStamp)
-        expect(twip / CHAR_WIDTH).toBeCloseTo(em, 9)
-      })
-    }
-  }
-
-  it('等价性前提：twip 版印章开关取 config.specialOptions.hasStamp，em 版为独立参数', () => {
-    // 单元3 收敛时须统一两版的印章开关来源（本用例锁定两者当前数值口径一致）
-    const stamped = configWith((c) => {
-      c.specialOptions.hasStamp = true
+describe('配置双轨现状行为记录', () => {
+  it('改 config.headings.h1 不影响导出字体（真值在 advanced）', () => {
+    const config = configWith((c) => {
+      c.headings.h1.fontFamily = '宋体'
+      c.headings.h1.fontSize = 22
     })
-    const sig = '某某市人民政府办公室'
-    const date = '二〇二六年九月十一日'
-    expect(calculateSignatureIndent(sig, date, stamped)).toBeCloseTo(
-      calculateSignatureIndentEm(sig, date, true) * CHAR_WIDTH,
-      6
+    const block = paragraphBlockOf(NodeType.HEADING_1, '一、标题。', config)
+    const options = runOptions(block.runs[0])
+    expect(options.font).toEqual(expect.objectContaining({ eastAsia: '黑体' }))
+    expect(options.size).toBe(32)
+  })
+
+  it('改 config.advanced.h1 影响导出字体', () => {
+    const config = configWith((c) => {
+      c.advanced.h1.fontFamily = '宋体'
+    })
+    const block = paragraphBlockOf(NodeType.HEADING_1, '一、标题。', config)
+    expect(runOptions(block.runs[0]).font).toEqual(
+      expect.objectContaining({ eastAsia: '宋体' })
     )
+  })
+
+  it('advanced.h1.asciiFontFamily 为空串时回退中文字体（「跟随中文字体」选项）', () => {
+    const config = configWith((c) => {
+      c.advanced.h1.asciiFontFamily = ''
+    })
+    const block = paragraphBlockOf(NodeType.HEADING_1, '一、标题。', config)
+    expect(runOptions(block.runs[0]).font).toEqual(
+      expect.objectContaining({ ascii: '黑体' })
+    )
+  })
+})
+
+// ---- run 分段序列（导出侧整链：拆分决策经决策层供给） ----
+
+describe('run 分段序列（导出侧现状）', () => {
+  it('一级标题：首句黑体、句号后切换正文（原 splitHeadingSentence 行为）', () => {
+    const block = paragraphBlockOf(NodeType.HEADING_1, '一、总体要求。具体内容。')
+    expect(block.runs.map((r) => r.role)).toEqual(['heading1', 'body'])
+    expect(block.runs[0].text).toBe('一、总体要求。')
+    expect(block.runs[1].text).toBe('具体内容。')
+  })
+
+  it('二级标题：句号在末尾不拆分（单 run）', () => {
+    const block = paragraphBlockOf(NodeType.HEADING_2, '（一）指导思想。')
+    expect(block.runs).toHaveLength(1)
+  })
+
+  it('三级标题：序号句点拆分（待办-0001 导出现状：句点用正文字体）', () => {
+    const block = paragraphBlockOf(NodeType.HEADING_3, '1.加强组织领导。')
+    expect(block.runs.map((r) => r.text)).toEqual(['1', '.', '加强组织领导。'])
+    expect(block.runs[1].role).toBe('bodyPunct')
+  })
+
+  it('三级标题（全角句点序号）：不拆分（待办-0004 导出现状）', () => {
+    const block = paragraphBlockOf(NodeType.HEADING_3, '1．加强组织领导。')
+    expect(block.runs.map((r) => r.text)).toEqual(['1．加强组织领导。'])
+  })
+
+  it('三级标题含句号：首句序号拆分 + 剩余时间冒号拆分', () => {
+    const block = paragraphBlockOf(NodeType.HEADING_3, '1.开会时间。9:00开始。')
+    expect(block.runs.map((r) => r.text)).toEqual(['1', '.', '开会时间。', '9', ':', '00', '开始。'])
+  })
+
+  it('正文时间冒号序列（原 splitTimeColonText 行为）', () => {
+    const block = paragraphBlockOf(NodeType.PARAGRAPH, '会议时间为9:00至11:30。')
+    expect(block.runs.map((r) => r.text)).toEqual([
+      '会议时间为', '9', ':', '00', '至', '11', ':', '30', '。',
+    ])
+  })
+
+  it('多附件首行：「附件：」+ 序号句点拆分 4 run；后续行 3 run', () => {
+    const blocks = attachmentBlocksOf(
+      [
+        { index: 1, name: '办法' },
+        { index: 2, name: '清单' },
+      ],
+      true
+    )
+    expect(blocks[0].runs.map((r) => r.text)).toEqual(['附件：', '1', '.', '办法'])
+    expect(blocks[1].runs.map((r) => r.text)).toEqual(['2', '.', '清单'])
   })
 })

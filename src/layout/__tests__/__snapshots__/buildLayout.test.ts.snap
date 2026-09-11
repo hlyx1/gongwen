@@ -1717,6 +1717,7 @@ exports[`buildLayout 版头/版记/页码版式参数 > 版头开（含签发人
   ],
   "footerNote": null,
   "header": {
+    "blankLineTwips": 592,
     "blankLinesAfterOrg": 2,
     "docNumber": "某府发〔2026〕12号",
     "metaFont": {

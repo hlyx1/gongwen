@@ -1,17 +1,47 @@
+/**
+ * docx 渲染器组装层：buildDocument
+ *
+ * task-0001 条款3（单元4）：本文件退化为「决策中间表示 → docx Document」
+ * 的翻译层——先经 src/layout/ buildLayout 得到渲染器无关的版式决策
+ * （块序列 + 版头/版记/页码参数），再按版头/正文/版记三段组装 docx 对象。
+ * 排版决策（字体分段/缩进/空行/度量）不再在此实现。
+ *
+ * 对外签名不变：buildDocument(ast, config) → docx Document；
+ * 导出产物由 exporter/__tests__/docxBuilder.test.ts 的 13 条快照红线锁定
+ * （逐字节不变——本文件与 styleFactory 的任何改动都不得改变快照）。
+ *
+ * 旧内联决策的收编对照（删除清单，详见工作单元-4 汇报）：
+ * - splitHeadingSentence/splitHeading3Text/splitTimeColonText/splitAttachmentText
+ *   → layout/runs.ts（经 buildLayout 产出 runs）
+ * - attachmentToParagraphs/nodeToParagraph → layout/index.ts 块构造
+ * - 版头/版记/页码内联参数 → layout/index.ts buildHeaderLayout 等 + layout/constants.ts
+ */
 import {
   Document, Paragraph, TextRun, Footer, PageNumber,
   AlignmentType, BorderStyle, LineRuleType,
   Table, TableRow, TableCell, WidthType,
   TableAnchorType, RelativeHorizontalPosition, RelativeVerticalPosition, OverlapType,
 } from 'docx'
-import type { IRunOptions, IBorderOptions } from 'docx'
-import type { GongwenAST, DocumentNode, AttachmentNode, TableNode } from '../types/ast'
-import { NodeType } from '../types/ast'
+import type { IBorderOptions } from 'docx'
+import type { GongwenAST } from '../types/ast'
 import type { DocumentConfig } from '../types/documentConfig'
-import { cmToTwip, ptToTwip } from '../types/documentConfig'
-import { getParagraphStyle, getRunStyle, getAttachmentParagraphStyle, getAttachmentRunStyle, getAttachmentPunctuationRunStyle, getHeading3PunctuationRunStyle, getTimeColonRunStyle } from './styleFactory'
+import { cmToTwip } from '../types/documentConfig'
+import { buildLayout } from '../layout'
+import type {
+  FooterNoteLayout,
+  HeaderLayout,
+  PageNumberLayout,
+  RedSeparatorLayout,
+} from '../layout/types'
+import {
+  A4_HEIGHT_TWIPS,
+  A4_WIDTH_TWIPS,
+  HEADER_RED_COLOR,
+  PAGE_NUMBER_DASH,
+} from '../layout/constants'
+import { blocksToDocx, fontOptions } from './styleFactory'
 
-// ---- 无边框定义（用于版头表格） ----
+// ---- 版头/版记表格无边框定义（docx 结构常量） ----
 
 const NO_BORDER: IBorderOptions = {
   style: BorderStyle.NONE,
@@ -28,766 +58,388 @@ const TABLE_NO_BORDERS = {
   insideVertical: NO_BORDER,
 }
 
-// ---- 页码样式 (GB/T 9704: 四号宋体, — X — 格式, 奇右偶左各空一字) ----
+/** 红色分隔线边框与文本的间距（pt）——导出侧现状结构参数 */
+const RED_SEPARATOR_BORDER_SPACE = 1
 
-/** 页码一字线（Unicode EM DASH） */
-const PAGE_NUM_DASH = '\u2014'
+// ---- 版头段（HeaderLayout → 段落/表格序列） ----
 
-/** 页码距版心下边缘 7mm (GB/T 9704)，通过 spacing.before 定位 */
-const PAGE_NUM_SPACING_BEFORE = cmToTwip(0.7) // 7mm = 0.7cm ≈ 397 twips
-
-/** 构建页码段落 */
-function pageNumberParagraph(
-  alignment: typeof AlignmentType.LEFT | typeof AlignmentType.RIGHT,
-  indent: { left?: number; right?: number },
-  pageNumFont: Record<string, string>,
-  pageNumSize: number,
-): Paragraph {
+/**
+ * 红色分隔线段：按决策层选定的导出侧机制（段落下边框）翻译
+ * 形状与现状一致：仅段前距 + 段后 0，无行距
+ */
+function redSeparatorParagraph(separator: RedSeparatorLayout): Paragraph | null {
+  if (separator.mechanism !== 'paragraph-border') {
+    // 预览侧机制（css）不在 docx 渲染范围——按现状由开关保证不出现
+    return null
+  }
   return new Paragraph({
-    alignment,
-    indent,
-    spacing: { before: PAGE_NUM_SPACING_BEFORE },
-    children: [
-      new TextRun({ font: pageNumFont, size: pageNumSize, children: [PAGE_NUM_DASH + ' '] }),
-      new TextRun({ font: pageNumFont, size: pageNumSize, children: [PageNumber.CURRENT] }),
-      new TextRun({ font: pageNumFont, size: pageNumSize, children: [' ' + PAGE_NUM_DASH] }),
+    spacing: { before: separator.beforeTwips, after: 0 },
+    border: {
+      bottom: {
+        style: BorderStyle.SINGLE,
+        size: separator.sizeEighthPt,
+        color: separator.color,
+        space: RED_SEPARATOR_BORDER_SPACE,
+      },
+    },
+    children: [],
+  })
+}
+
+/** 发文机关标志下空行（导出侧现状：空段携带版头元数据字体四槽） */
+function headerBlankParagraphs(header: HeaderLayout): Paragraph[] {
+  const paragraphs: Paragraph[] = []
+  for (let i = 0; i < header.blankLinesAfterOrg; i++) {
+    paragraphs.push(
+      new Paragraph({
+        spacing: { line: header.blankLineTwips, lineRule: LineRuleType.EXACT, before: 0, after: 0 },
+        children: [
+          new TextRun({
+            font: fontOptions(header.metaFont),
+            size: header.metaSizeHalfPt,
+            text: '',
+          }),
+        ],
+      })
+    )
+  }
+  return paragraphs
+}
+
+/** 签发人双栏无边框表：字号居左空一字、签发人居右空一字（导出侧现状结构） */
+function signerTable(header: HeaderLayout): Table {
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: TABLE_NO_BORDERS,
+    rows: [
+      new TableRow({
+        children: [
+          new TableCell({
+            width: { size: 50, type: WidthType.PERCENTAGE },
+            borders: TABLE_NO_BORDERS,
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.LEFT,
+                indent: { left: header.oneCharIndentTwips },
+                children: [
+                  new TextRun({
+                    text: header.docNumber,
+                    font: fontOptions(header.metaFont),
+                    size: header.metaSizeHalfPt,
+                  }),
+                ],
+              }),
+            ],
+          }),
+          new TableCell({
+            width: { size: 50, type: WidthType.PERCENTAGE },
+            borders: TABLE_NO_BORDERS,
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.RIGHT,
+                indent: { right: header.oneCharIndentTwips },
+                children: [
+                  // 「签发人：」三字用版头元数据字体（三号仿宋口径）
+                  new TextRun({
+                    text: '签发人：',
+                    font: fontOptions(header.metaFont),
+                    size: header.metaSizeHalfPt,
+                  }),
+                  // 签发人姓名用楷体
+                  new TextRun({
+                    text: header.signer,
+                    font: fontOptions(header.signerNameFont),
+                    size: header.metaSizeHalfPt,
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  })
+}
+
+/** 版头段组装：机关标志 → 空行 → 字号/签发人 → 红色分隔线 */
+function headerChildren(header: HeaderLayout): (Paragraph | Table)[] {
+  const children: (Paragraph | Table)[] = []
+
+  // 1. 发文机关标志：红色居中大字（颜色为 docx 结构层固定参数）
+  children.push(
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      children: [
+        new TextRun({
+          text: header.orgNameRun.text,
+          font: fontOptions(header.orgNameRun.font),
+          size: header.orgNameRun.sizeHalfPt,
+          color: HEADER_RED_COLOR,
+        }),
+      ],
+    })
+  )
+
+  // 2. 机关标志下空行（行数与行距由决策层给定）
+  children.push(...headerBlankParagraphs(header))
+
+  // 3. 发文字号 / 签发人（位于红线之上）
+  if (header.signer) {
+    children.push(signerTable(header))
+  } else if (header.docNumber) {
+    // 无签发人：发文字号居中
+    children.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        children: [
+          new TextRun({
+            text: header.docNumber,
+            font: fontOptions(header.metaFont),
+            size: header.metaSizeHalfPt,
+          }),
+        ],
+      })
+    )
+  }
+
+  // 4. 红色分隔线
+  const separator = redSeparatorParagraph(header.separator)
+  if (separator) {
+    children.push(separator)
+  }
+
+  return children
+}
+
+// ---- 版记段（FooterNoteLayout → 浮动表格） ----
+
+/** 版记分隔线段（首末粗线/中间细线）：无文本、段前段后 0 */
+function footerNoteLineParagraph(sizeEighthPt: number): Paragraph {
+  return new Paragraph({
+    spacing: { before: 0, after: 0 },
+    border: {
+      bottom: {
+        style: BorderStyle.SINGLE,
+        size: sizeEighthPt,
+        color: '000000',
+      },
+    },
+    children: [],
+  })
+}
+
+/** 印发机关 + 印发日期（嵌套无边框表格：左空一字、右空一字——导出侧现状结构） */
+function printRowTable(footerNote: FooterNoteLayout): Table {
+  const printerText = footerNote.printer || ''
+  const dateText = footerNote.printDate ? `${footerNote.printDate}印发` : ''
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: TABLE_NO_BORDERS,
+    rows: [
+      new TableRow({
+        children: [
+          new TableCell({
+            width: { size: 50, type: WidthType.PERCENTAGE },
+            borders: TABLE_NO_BORDERS,
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.LEFT,
+                indent: { left: footerNote.oneCharIndentTwips },
+                children: printerText
+                  ? [
+                      new TextRun({
+                        text: printerText,
+                        font: fontOptions(footerNote.font),
+                        size: footerNote.sizeHalfPt,
+                      }),
+                    ]
+                  : [],
+              }),
+            ],
+          }),
+          new TableCell({
+            width: { size: 50, type: WidthType.PERCENTAGE },
+            borders: TABLE_NO_BORDERS,
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.RIGHT,
+                indent: { right: footerNote.oneCharIndentTwips },
+                children: dateText
+                  ? [
+                      new TextRun({
+                        text: dateText,
+                        font: fontOptions(footerNote.font),
+                        size: footerNote.sizeHalfPt,
+                      }),
+                    ]
+                  : [],
+              }),
+            ],
+          }),
+        ],
+      }),
     ],
   })
 }
 
 /**
- * 拆分标题首句：首句（到第一个"。"）用标题字体/样式，其余用仿宋正文样式
- * 适用于一至四级标题（黑体/楷体/仿宋加粗 + 仿宋正文）
+ * 版记浮动表格（锚定最后一页版心底部）
+ * 使用 Table Float 吸附页面底部，Word 引擎自动处理文本避让；
+ * 内容序：首条粗线 → 抄送行 → 中间细线 → 印发行 → 末条粗线
  */
-function splitHeadingSentence(content: string, headingStyle: Partial<IRunOptions>, config: DocumentConfig): TextRun[] {
-  const idx = content.indexOf('。')
-  if (idx === -1 || idx === content.length - 1) {
-    return [new TextRun({ ...headingStyle, text: content })]
-  }
+function footerNoteTable(footerNote: FooterNoteLayout): Table {
+  const children: (Paragraph | Table)[] = []
 
-  const headingText = content.slice(0, idx + 1)
-  const bodyText = content.slice(idx + 1)
-  const bodyStyle = getRunStyle(NodeType.PARAGRAPH, config)
+  // 1. 首条粗线
+  children.push(footerNoteLineParagraph(footerNote.thickLineSizeEighthPt))
 
-  return [
-    new TextRun({ ...headingStyle, text: headingText }),
-    new TextRun({ ...bodyStyle, text: bodyText }),
-  ]
-}
-
-/**
- * 拆分三级标题文本：序号后的英文句号使用仿宋
- * 例如："1.xxx" 拆分为 ["1", ".", "xxx"]，其中 "." 使用仿宋
- * @param text 三级标题文本
- * @param runStyle 三级标题基础样式
- * @param punctuationStyle 标点样式（仿宋）
- * @returns TextRun 数组
- */
-function splitHeading3Text(
-  text: string,
-  runStyle: Partial<IRunOptions>,
-  punctuationStyle: Partial<IRunOptions>
-): TextRun[] {
-  const runs: TextRun[] = []
-  // 三级标题格式：数字 + 英文句号 + 内容，如 "1.xxx"
-  const match = text.match(/^(\d+)(\.)(.*)$/)
-  
-  if (match) {
-    const numberPart = match[1]
-    const dotPart = match[2]
-    const contentPart = match[3]
-    
-    // 数字部分使用基础样式
-    runs.push(new TextRun({ ...runStyle, text: numberPart }))
-    // 英文句号使用仿宋样式
-    runs.push(new TextRun({ ...punctuationStyle, text: dotPart }))
-    // 内容部分使用基础样式
-    if (contentPart) {
-      runs.push(new TextRun({ ...runStyle, text: contentPart }))
-    }
-  } else {
-    // 不匹配格式，直接返回原文本
-    runs.push(new TextRun({ ...runStyle, text: text }))
-  }
-  
-  return runs
-}
-
-/** 时间格式正则：匹配半角冒号分隔的时间（如 3:00、14:30） */
-const TIME_COLON_PATTERN = /(\d{1,2})(:)(\d{2})/g
-
-/**
- * 拆分时间格式文本：时间中的半角冒号使用正文字体
- * 解决半角冒号默认使用 Times New Roman 导致视觉不统一的问题
- * 例如："会议时间：9:00-11:30" 中的 ":" 使用仿宋
- * @param text 文本内容
- * @param runStyle 基础样式
- * @param colonStyle 冒号样式（正文字体）
- * @returns TextRun 数组
- */
-function splitTimeColonText(
-  text: string,
-  runStyle: Partial<IRunOptions>,
-  colonStyle: Partial<IRunOptions>
-): TextRun[] {
-  const runs: TextRun[] = []
-  let lastIndex = 0
-  let match: RegExpExecArray | null
-
-  // 重置正则的 lastIndex
-  TIME_COLON_PATTERN.lastIndex = 0
-
-  while ((match = TIME_COLON_PATTERN.exec(text)) !== null) {
-    const matchStart = match.index
-    const matchEnd = matchStart + match[0].length
-
-    // 添加匹配前的普通文本
-    if (matchStart > lastIndex) {
-      runs.push(new TextRun({ ...runStyle, text: text.slice(lastIndex, matchStart) }))
-    }
-
-    // 添加小时部分
-    runs.push(new TextRun({ ...runStyle, text: match[1] }))
-    // 添加冒号（使用正文字体）
-    runs.push(new TextRun({ ...colonStyle, text: match[2] }))
-    // 添加分钟部分
-    runs.push(new TextRun({ ...runStyle, text: match[3] }))
-
-    lastIndex = matchEnd
-  }
-
-  // 添加剩余的普通文本
-  if (lastIndex < text.length) {
-    runs.push(new TextRun({ ...runStyle, text: text.slice(lastIndex) }))
-  }
-
-  // 如果没有匹配到任何时间格式，返回原文本
-  if (runs.length === 0) {
-    runs.push(new TextRun({ ...runStyle, text: text }))
-  }
-
-  return runs
-}
-
-/**
- * 拆分附件说明文本：标点（英文句号）使用仿宋，其他使用 Times New Roman
- * 例如："1.xxx" 拆分为 ["1", "."] 样式分别为正文样式和标点样式
- */
-function splitAttachmentText(
-  text: string,
-  runStyle: Partial<IRunOptions>,
-  punctuationStyle: Partial<IRunOptions>
-): TextRun[] {
-  const runs: TextRun[] = []
-  let currentText = ''
-  let currentStyle = runStyle
-
-  for (const char of text) {
-    // 英文句号使用标点样式（仿宋）
-    if (char === '.') {
-      // 先输出之前累积的文本
-      if (currentText) {
-        runs.push(new TextRun({ ...currentStyle, text: currentText }))
-        currentText = ''
-      }
-      // 输出标点
-      runs.push(new TextRun({ ...punctuationStyle, text: char }))
-    } else {
-      // 非标点字符，累积到当前文本
-      currentText += char
-    }
-  }
-
-  // 输出剩余文本
-  if (currentText) {
-    runs.push(new TextRun({ ...currentStyle, text: currentText }))
-  }
-
-  return runs
-}
-
-/**
- * 将附件说明节点转换为 DOCX 段落
- *
- * 单附件模式：附件：xxx
- * 多附件模式：附件：1.xxx
- *                   2.xxx
- *                   3.xxx
- */
-function attachmentToParagraphs(node: AttachmentNode, config: DocumentConfig): Paragraph[] {
-  const paragraphs: Paragraph[] = []
-  const runStyle = getAttachmentRunStyle(config)
-  const punctuationStyle = getAttachmentPunctuationRunStyle(config)
-
-  if (!node.isMultiple) {
-    // 单附件模式
-    const paragraphStyle = getAttachmentParagraphStyle(false, false, config)
-    paragraphs.push(
+  // 2. 抄送行（左右各空一字）
+  if (footerNote.hasCc) {
+    children.push(
       new Paragraph({
-        ...paragraphStyle,
+        alignment: AlignmentType.LEFT,
+        indent: {
+          left: footerNote.oneCharIndentTwips,
+          right: footerNote.oneCharIndentTwips,
+        },
         children: [
-          new TextRun({ ...runStyle, text: '附件：' }),
-          new TextRun({ ...runStyle, text: node.items[0].name }),
+          new TextRun({
+            text: `抄送：${footerNote.cc}`,
+            font: fontOptions(footerNote.font),
+            size: footerNote.sizeHalfPt,
+          }),
         ],
       })
     )
-  } else {
-    // 多附件模式
-    node.items.forEach((item, index) => {
-      const isFirst = index === 0
-      const paragraphStyle = getAttachmentParagraphStyle(true, isFirst, config)
-
-      if (isFirst) {
-        // 第一个附件：附件：1.xxx
-        paragraphs.push(
-          new Paragraph({
-            ...paragraphStyle,
-            children: [
-              new TextRun({ ...runStyle, text: '附件：' }),
-              ...splitAttachmentText(`${item.index}.${item.name}`, runStyle, punctuationStyle),
-            ],
-          })
-        )
-      } else {
-        // 后续附件：2.xxx
-        paragraphs.push(
-          new Paragraph({
-            ...paragraphStyle,
-            children: splitAttachmentText(`${item.index}.${item.name}`, runStyle, punctuationStyle),
-          })
-        )
-      }
-    })
   }
 
-  return paragraphs
-}
-
-// ---- 表格边框定义（公文标准黑色细线） ----
-
-const TABLE_CELL_BORDER: IBorderOptions = {
-  style: BorderStyle.SINGLE,
-  size: 4, // 0.5pt
-  color: '000000',
-}
-
-const TABLE_BORDERS = {
-  top: TABLE_CELL_BORDER,
-  bottom: TABLE_CELL_BORDER,
-  left: TABLE_CELL_BORDER,
-  right: TABLE_CELL_BORDER,
-  insideHorizontal: TABLE_CELL_BORDER,
-  insideVertical: TABLE_CELL_BORDER,
-}
-
-/**
- * 将表格节点转换为 docx Table
- * @param node 表格节点
- * @param config 文档配置
- * @returns docx Table 对象
- */
-function tableNodeToDocxTable(node: TableNode, config: DocumentConfig): Table {
-  // 使用表格配置项
-  const tableFont = {
-    ascii: 'Times New Roman',
-    eastAsia: config.table.fontFamily,
-    hAnsi: 'Times New Roman',
-    cs: 'Times New Roman',
+  // 3. 中间细线（仅在抄送和印发行同时存在时出现）
+  if (footerNote.hasCc && footerNote.hasPrint) {
+    children.push(footerNoteLineParagraph(footerNote.thinLineSizeEighthPt))
   }
-  const tableFontSize = config.table.fontSize * 2
-  const tableLineSpacing = ptToTwip(config.table.lineSpacing)
 
-  // 构建表头行
-  const headerRow = new TableRow({
-    children: node.header.cells.map((cell) =>
-      new TableCell({
-        borders: TABLE_BORDERS,
-        children: [
-          new Paragraph({
-            alignment: AlignmentType.CENTER,
-            spacing: { line: tableLineSpacing, lineRule: LineRuleType.EXACT },
-            children: [
-              new TextRun({
-                text: cell.content,
-                font: tableFont,
-                size: tableFontSize,
-                bold: config.table.boldHeader,
-              }),
-            ],
-          }),
-        ],
-      })
-    ),
-  })
+  // 4. 印发机关 + 印发日期
+  if (footerNote.hasPrint) {
+    children.push(printRowTable(footerNote))
+  }
 
-  // 构建数据行
-  const dataRows = node.rows.map((row) =>
-    new TableRow({
-      children: row.cells.map((cell) =>
-        new TableCell({
-          borders: TABLE_BORDERS,
-          children: [
-            new Paragraph({
-              alignment: AlignmentType.CENTER,
-              spacing: { line: tableLineSpacing, lineRule: LineRuleType.EXACT },
-              children: [
-                new TextRun({
-                  text: cell.content,
-                  font: tableFont,
-                  size: tableFontSize,
-                }),
-              ],
-            }),
-          ],
-        })
-      ),
-    })
-  )
+  // 5. 末条粗线
+  children.push(footerNoteLineParagraph(footerNote.thickLineSizeEighthPt))
 
+  // 浮动表格包装器：无边框 1×1 表格，锚定在版心底部
   return new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
-    borders: TABLE_BORDERS,
-    rows: [headerRow, ...dataRows],
-  })
-}
-
-/** 将单个 AST 节点转换为 docx Paragraph */
-function nodeToParagraph(
-  node: DocumentNode,
-  config: DocumentConfig,
-  spacingBefore = 0,
-  signatureContent?: string,
-  dateContent?: string
-): Paragraph {
-  let paragraphStyle = getParagraphStyle(node.type, config, signatureContent, dateContent)
-  const runStyle = getRunStyle(node.type, config)
-
-  // 外部传入的额外 spacing.before（如版头后标题空二行）
-  if (spacingBefore > 0) {
-    paragraphStyle = {
-      ...paragraphStyle,
-      spacing: { ...paragraphStyle.spacing, before: spacingBefore },
-    }
-  }
-
-  // 一至四级标题：首句用标题样式，句号后切换为正文样式
-  if (
-    node.type === NodeType.HEADING_1 ||
-    node.type === NodeType.HEADING_2 ||
-    node.type === NodeType.HEADING_3 ||
-    node.type === NodeType.HEADING_4
-  ) {
-    // 三级标题特殊处理：序号后的英文句号使用仿宋
-    if (node.type === NodeType.HEADING_3) {
-      const punctuationStyle = getHeading3PunctuationRunStyle(config)
-      const idx = node.content.indexOf('。')
-      
-      if (idx === -1 || idx === node.content.length - 1) {
-        // 没有中文句号或句号在末尾，只处理序号部分
-        return new Paragraph({
-          ...paragraphStyle,
-          children: splitHeading3Text(node.content, runStyle, punctuationStyle),
-        })
-      }
-      
-      // 有中文句号，拆分首句和剩余内容
-      const headingText = node.content.slice(0, idx + 1)
-      const bodyText = node.content.slice(idx + 1)
-      const bodyStyle = getRunStyle(NodeType.PARAGRAPH, config)
-      const bodyTimeColonStyle = getTimeColonRunStyle(config, bodyStyle.size as number)
-      
-      return new Paragraph({
-        ...paragraphStyle,
+    borders: TABLE_NO_BORDERS,
+    float: {
+      horizontalAnchor: TableAnchorType.MARGIN,
+      verticalAnchor: TableAnchorType.MARGIN,
+      relativeHorizontalPosition: RelativeHorizontalPosition.LEFT,
+      relativeVerticalPosition: RelativeVerticalPosition.BOTTOM,
+      overlap: OverlapType.NEVER,
+    },
+    rows: [
+      new TableRow({
         children: [
-          ...splitHeading3Text(headingText, runStyle, punctuationStyle),
-          ...splitTimeColonText(bodyText, bodyStyle, bodyTimeColonStyle),
+          new TableCell({
+            borders: TABLE_NO_BORDERS,
+            margins: { top: 0, bottom: 0, left: 0, right: 0 },
+            children,
+          }),
         ],
-      })
-    }
-    
-    return new Paragraph({
-      ...paragraphStyle,
-      children: splitHeadingSentence(node.content, runStyle, config),
-    })
-  }
-
-  // 默认情况：处理时间冒号，使其使用正文字体
-  const timeColonStyle = getTimeColonRunStyle(config, runStyle.size as number)
-  return new Paragraph({
-    ...paragraphStyle,
-    children: splitTimeColonText(node.content, runStyle, timeColonStyle),
+      }),
+    ],
   })
 }
 
-/** 将完整 GongwenAST 转换为 docx Document */
+// ---- 页码段（PageNumberLayout → 奇偶页脚） ----
+
+/** 页码段落：— X — 格式，纵向位置按决策层导出侧机制（页脚段前距）翻译 */
+function pageNumberParagraph(
+  pageNumber: PageNumberLayout,
+  alignment: typeof AlignmentType.LEFT | typeof AlignmentType.RIGHT,
+  indent: { left?: number; right?: number }
+): Paragraph | null {
+  if (pageNumber.vertical.mechanism !== 'footer-spacing-before') {
+    // 预览侧机制（css 定位）不在 docx 渲染范围
+    return null
+  }
+  const font = fontOptions(pageNumber.font)
+  const size = pageNumber.sizeHalfPt
+  return new Paragraph({
+    alignment,
+    indent,
+    spacing: { before: pageNumber.vertical.beforeTwips },
+    children: [
+      new TextRun({ font, size, children: [PAGE_NUMBER_DASH + ' '] }),
+      new TextRun({ font, size, children: [PageNumber.CURRENT] }),
+      new TextRun({ font, size, children: [' ' + PAGE_NUMBER_DASH] }),
+    ],
+  })
+}
+
+/** 奇偶页脚：单页码居右空一字，双页码居左空一字（GB/T 9704） */
+function buildFooters(pageNumber: PageNumberLayout) {
+  if (!pageNumber.enabled) {
+    return undefined
+  }
+  const odd = pageNumberParagraph(
+    pageNumber,
+    AlignmentType.RIGHT,
+    { right: pageNumber.oneCharIndentTwips }
+  )
+  const even = pageNumberParagraph(
+    pageNumber,
+    AlignmentType.LEFT,
+    { left: pageNumber.oneCharIndentTwips }
+  )
+  if (!odd || !even) {
+    return undefined
+  }
+  return {
+    default: new Footer({ children: [odd] }),
+    even: new Footer({ children: [even] }),
+  }
+}
+
+// ---- 文档组装 ----
+
+/**
+ * 将 GongwenAST + DocumentConfig 经决策层转换为 docx Document
+ *
+ * 组装序与现状一致：版头段 → 标题/正文流（含空行指令、附件展开、表格、
+ * 署名缩进）→ 版记浮动表 → 页码页脚；页面骨架为 A4 + 配置边距。
+ */
 export function buildDocument(ast: GongwenAST, config: DocumentConfig): Document {
+  const layout = buildLayout(ast, config, { renderer: 'docx' })
+
   const children: (Paragraph | Table)[] = []
 
-  // ---- 版头段落 ----
-  if (config.header.enabled && config.header.orgName) {
-    const headerFont = {
-      ascii: 'Times New Roman',
-      eastAsia: config.body.fontFamily,
-      hAnsi: 'Times New Roman',
-      cs: 'Times New Roman',
-    }
-    const headerFontSize = config.body.fontSize * 2
-    // "空一字"缩进量 = 1 个字号宽度（使用数字 twips，在表格单元格内最可靠）
-    const oneCharIndent = ptToTwip(config.body.fontSize)
-
-    // 1. 发文机关标志：红色居中大字
-    children.push(new Paragraph({
-      alignment: AlignmentType.CENTER,
-      children: [new TextRun({
-        text: config.header.orgName,
-        font: { ascii: 'Times New Roman', eastAsia: '方正小标宋_GBK', hAnsi: 'Times New Roman', cs: 'Times New Roman' },
-        size: 60, // 30pt
-        color: 'E00000',
-      })],
-    }))
-
-    // 发文机关标志下空二行（三号字行高，确保行距精确）
-    const bodyLineSpacing = ptToTwip(config.body.lineSpacing)
-    for (let i = 0; i < 2; i++) {
-      children.push(new Paragraph({
-        spacing: { line: bodyLineSpacing, lineRule: LineRuleType.EXACT, before: 0, after: 0 },
-        children: [new TextRun({ font: headerFont, size: headerFontSize, text: '' })],
-      }))
-    }
-
-    // 2. 发文字号 / 签发人（位于红线之上）
-    if (config.header.signer) {
-      // 有签发人：无边框表格 — 字号居左空一字，签发人居右空一字
-      children.push(new Table({
-        width: { size: 100, type: WidthType.PERCENTAGE },
-        borders: TABLE_NO_BORDERS,
-        rows: [
-          new TableRow({
-            children: [
-              new TableCell({
-                width: { size: 50, type: WidthType.PERCENTAGE },
-                borders: TABLE_NO_BORDERS,
-                children: [new Paragraph({
-                  alignment: AlignmentType.LEFT,
-                  indent: { left: oneCharIndent },
-                  children: [new TextRun({
-                    text: config.header.docNumber,
-                    font: headerFont,
-                    size: headerFontSize,
-                  })],
-                })],
-              }),
-              new TableCell({
-                width: { size: 50, type: WidthType.PERCENTAGE },
-                borders: TABLE_NO_BORDERS,
-                children: [new Paragraph({
-                  alignment: AlignmentType.RIGHT,
-                  indent: { right: oneCharIndent },
-                  children: [
-                    // "签发人："三字用三号仿宋体
-                    new TextRun({
-                      text: '签发人：',
-                      font: headerFont,
-                      size: headerFontSize,
-                    }),
-                    // 签发人姓名用三号楷体
-                    new TextRun({
-                      text: config.header.signer,
-                      font: { ...headerFont, eastAsia: '楷体_GB2312' },
-                      size: headerFontSize,
-                    }),
-                  ],
-                })],
-              }),
-            ],
-          }),
-        ],
-      }))
-    } else if (config.header.docNumber) {
-      // 无签发人：发文字号居中
-      children.push(new Paragraph({
-        alignment: AlignmentType.CENTER,
-        children: [new TextRun({
-          text: config.header.docNumber,
-          font: headerFont,
-          size: headerFontSize,
-        })],
-      }))
-    }
-
-    // 3. 红色分隔线：单条红线（发文字号之下）
-    children.push(new Paragraph({
-      spacing: { before: 80, after: 0 },
-      border: {
-        bottom: {
-          style: BorderStyle.SINGLE,
-          size: 15, // ~1.9pt ≈ 标准红线粗细
-          color: 'E00000',
-          space: 1,
-        },
-      },
-      children: [],
-    }))
+  // ---- 版头段 ----
+  if (layout.header) {
+    children.push(...headerChildren(layout.header))
   }
 
-  // 版头启用时，标题需通过 spacing.before 空二行（56pt = 1120 twips）
-  const titleSpacingBefore = (config.header.enabled && config.header.orgName)
-    ? ptToTwip(config.body.lineSpacing * 2)
-    : 0
+  // ---- 正文流（标题后空行、署名/备注前空行等已由决策层块序列给出） ----
+  children.push(...blocksToDocx(layout.blocks))
 
-  // 渲染多段标题
-  if (ast.title.length > 0) {
-    // 第一个标题段应用 spacingBefore（版头后的空行）
-    children.push(nodeToParagraph(ast.title[0], config, titleSpacingBefore))
-    // 后续标题段正常渲染
-    for (let i = 1; i < ast.title.length; i++) {
-      children.push(nodeToParagraph(ast.title[i], config))
-    }
-    // 标题后添加一个固定行距的空行
-    const bodyLineSpacing = ptToTwip(config.body.lineSpacing)
-    const bodyFont = {
-      ascii: 'Times New Roman',
-      eastAsia: config.body.fontFamily,
-      hAnsi: config.body.fontFamily,
-      cs: 'Times New Roman',
-    }
-    const bodyFontSize = config.body.fontSize * 2
-    children.push(new Paragraph({
-      spacing: { line: bodyLineSpacing, lineRule: LineRuleType.EXACT, before: 0, after: 0 },
-      children: [new TextRun({ font: bodyFont, size: bodyFontSize, text: '' })],
-    }))
+  // ---- 版记浮动表格 ----
+  if (layout.footerNote) {
+    children.push(footerNoteTable(layout.footerNote))
   }
 
-  for (let i = 0; i < ast.body.length; i++) {
-    const node = ast.body[i]
-    
-    // 发文机关署名前插入 2 个空行
-    if (node.type === NodeType.SIGNATURE) {
-      const bodyLineSpacing = ptToTwip(config.body.lineSpacing)
-      const bodyFont = {
-        ascii: 'Times New Roman',
-        eastAsia: config.body.fontFamily,
-        hAnsi: config.body.fontFamily,
-        cs: 'Times New Roman',
-      }
-      const bodyFontSize = config.body.fontSize * 2
-      
-      for (let j = 0; j < 2; j++) {
-        children.push(new Paragraph({
-          spacing: { line: bodyLineSpacing, lineRule: LineRuleType.EXACT, before: 0, after: 0 },
-          children: [new TextRun({ font: bodyFont, size: bodyFontSize, text: '' })],
-        }))
-      }
-    }
-    
-    // 备注前插入 2 个空行
-    if (node.type === NodeType.REMARK) {
-      const bodyLineSpacing = ptToTwip(config.body.lineSpacing)
-      const bodyFont = {
-        ascii: 'Times New Roman',
-        eastAsia: config.body.fontFamily,
-        hAnsi: config.body.fontFamily,
-        cs: 'Times New Roman',
-      }
-      const bodyFontSize = config.body.fontSize * 2
-      
-      for (let j = 0; j < 2; j++) {
-        children.push(new Paragraph({
-          spacing: { line: bodyLineSpacing, lineRule: LineRuleType.EXACT, before: 0, after: 0 },
-          children: [new TextRun({ font: bodyFont, size: bodyFontSize, text: '' })],
-        }))
-      }
-    }
-    
-    // 附件说明特殊处理
-    if (node.type === NodeType.ATTACHMENT) {
-      const attachmentParagraphs = attachmentToParagraphs(node as AttachmentNode, config)
-      children.push(...attachmentParagraphs)
-      continue
-    }
-    
-    // 表格特殊处理
-    if (node.type === NodeType.TABLE) {
-      children.push(tableNodeToDocxTable(node as TableNode, config))
-      continue
-    }
-    
-    // 对于 SIGNATURE 节点，查找下一个节点是否为 DATE
-    if (node.type === NodeType.SIGNATURE && i + 1 < ast.body.length && ast.body[i + 1].type === NodeType.DATE) {
-      children.push(nodeToParagraph(node, config, 0, node.content, ast.body[i + 1].content))
-    } else {
-      children.push(nodeToParagraph(node, config))
-    }
-  }
-
-  // ---- 版记浮动表格（锚定页面底部版心下边缘） ----
-  // 使用 Table Float 将版记吸附到最后一页底部，
-  // 无需计算空行填充，Word 引擎自动处理文本避让。
-  if (config.footerNote.enabled) {
-    const bodyFont = {
-      ascii: 'Times New Roman',
-      eastAsia: config.body.fontFamily,
-      hAnsi: 'Times New Roman',
-      cs: 'Times New Roman',
-    }
-    const footerNoteSize = 28 // 四号 14pt = 28 half-point
-    // 使用 twips 数值（表格内段落缩进更可靠）
-    const fnOneCharIndent = ptToTwip(config.body.fontSize)
-
-    // 粗线（首条、末条分隔线）
-    const thickBorder: IBorderOptions = {
-      style: BorderStyle.SINGLE,
-      size: 12, // 1.5pt
-      color: '000000',
-    }
-    // 细线（抄送与印发之间的分隔线）
-    const thinBorder: IBorderOptions = {
-      style: BorderStyle.SINGLE,
-      size: 4, // 0.5pt
-      color: '000000',
-    }
-
-    const hasCc = !!config.footerNote.cc
-    const hasPrint = !!(config.footerNote.printer || config.footerNote.printDate)
-
-    // 版记内容：全部放入浮动表格的唯一单元格
-    const footerNoteChildren: (Paragraph | Table)[] = []
-
-    // 1. 首条粗线
-    footerNoteChildren.push(new Paragraph({
-      spacing: { before: 0, after: 0 },
-      border: { bottom: thickBorder },
-      children: [],
-    }))
-
-    // 2. 抄送行（左右各空一字）
-    if (hasCc) {
-      footerNoteChildren.push(new Paragraph({
-        alignment: AlignmentType.LEFT,
-        indent: { left: fnOneCharIndent, right: fnOneCharIndent },
-        children: [new TextRun({
-          text: `抄送：${config.footerNote.cc}`,
-          font: bodyFont,
-          size: footerNoteSize,
-        })],
-      }))
-    }
-
-    // 3. 中间细线（仅在抄送和印发行同时存在时出现）
-    if (hasCc && hasPrint) {
-      footerNoteChildren.push(new Paragraph({
-        spacing: { before: 0, after: 0 },
-        border: { bottom: thinBorder },
-        children: [],
-      }))
-    }
-
-    // 4. 印发机关 + 印发日期（嵌套无边框表格：左空一字，右空一字）
-    if (hasPrint) {
-      const printerText = config.footerNote.printer || ''
-      const dateText = config.footerNote.printDate
-        ? `${config.footerNote.printDate}印发`
-        : ''
-
-      footerNoteChildren.push(new Table({
-        width: { size: 100, type: WidthType.PERCENTAGE },
-        borders: TABLE_NO_BORDERS,
-        rows: [
-          new TableRow({
-            children: [
-              new TableCell({
-                width: { size: 50, type: WidthType.PERCENTAGE },
-                borders: TABLE_NO_BORDERS,
-                children: [new Paragraph({
-                  alignment: AlignmentType.LEFT,
-                  indent: { left: fnOneCharIndent },
-                  children: printerText
-                    ? [new TextRun({ text: printerText, font: bodyFont, size: footerNoteSize })]
-                    : [],
-                })],
-              }),
-              new TableCell({
-                width: { size: 50, type: WidthType.PERCENTAGE },
-                borders: TABLE_NO_BORDERS,
-                children: [new Paragraph({
-                  alignment: AlignmentType.RIGHT,
-                  indent: { right: fnOneCharIndent },
-                  children: dateText
-                    ? [new TextRun({ text: dateText, font: bodyFont, size: footerNoteSize })]
-                    : [],
-                })],
-              }),
-            ],
-          }),
-        ],
-      }))
-    }
-
-    // 5. 末条粗线
-    footerNoteChildren.push(new Paragraph({
-      spacing: { before: 0, after: 0 },
-      border: { bottom: thickBorder },
-      children: [],
-    }))
-
-    // 浮动表格包装器：无边框 1×1 表格，锚定在版心底部
-    children.push(new Table({
-      width: { size: 100, type: WidthType.PERCENTAGE },
-      borders: TABLE_NO_BORDERS,
-      float: {
-        horizontalAnchor: TableAnchorType.MARGIN,
-        verticalAnchor: TableAnchorType.MARGIN,
-        relativeHorizontalPosition: RelativeHorizontalPosition.LEFT,
-        relativeVerticalPosition: RelativeVerticalPosition.BOTTOM,
-        overlap: OverlapType.NEVER,
-      },
-      rows: [
-        new TableRow({
-          children: [
-            new TableCell({
-              borders: TABLE_NO_BORDERS,
-              margins: { top: 0, bottom: 0, left: 0, right: 0 },
-              children: footerNoteChildren,
-            }),
-          ],
-        }),
-      ],
-    }))
-  }
-
-  // 页码字体：四号宋体（中英文统一宋体，14pt = 28 half-point）
-  const pageNumFont = {
-    ascii: '宋体',
-    eastAsia: '宋体',
-    hAnsi: '宋体',
-    cs: '宋体',
-  }
-  const pageNumSize = 28 // 四号 14pt
-  // 奇偶页各空一字（四号字 14pt = 280 twips）
-  const pageNumIndent = ptToTwip(14)
-
-  // 页脚配置：单页码居右空一字，双页码居左空一字
-  const footers = config.specialOptions.showPageNumber
-    ? {
-        default: new Footer({
-          children: [pageNumberParagraph(AlignmentType.RIGHT, { right: pageNumIndent }, pageNumFont, pageNumSize)],
-        }),
-        even: new Footer({
-          children: [pageNumberParagraph(AlignmentType.LEFT, { left: pageNumIndent }, pageNumFont, pageNumSize)],
-        }),
-      }
-    : undefined
+  // ---- 页脚（页码） ----
+  const footers = buildFooters(layout.pageNumber)
 
   return new Document({
     // 启用奇偶页不同页脚（单页码居右，双页码居左）
-    evenAndOddHeaderAndFooters: config.specialOptions.showPageNumber,
+    evenAndOddHeaderAndFooters: layout.pageNumber.enabled,
     sections: [
       {
         properties: {
           page: {
             size: {
-              width: 11906, // A4: 210mm
-              height: 16838, // A4: 297mm
+              width: A4_WIDTH_TWIPS, // A4: 210mm
+              height: A4_HEIGHT_TWIPS, // A4: 297mm
             },
             margin: {
               top: cmToTwip(config.margins.top),

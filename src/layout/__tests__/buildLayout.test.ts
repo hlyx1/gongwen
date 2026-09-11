@@ -389,6 +389,7 @@ describe('buildLayout 版头/版记/页码版式参数', () => {
       expect(header.signerNameFont.eastAsia).toBe('楷体_GB2312')
       expect(header.oneCharIndentTwips).toBe(320) // 空一字 = 16pt = 320 twips
       expect(header.blankLinesAfterOrg).toBe(2)
+      expect(header.blankLineTwips).toBe(592) // 机关标志下空行行距＝正文行距
       expect(header.titleSpacingBeforeTwips).toBe(1184) // 2 × 592
       expect(header.separator).toEqual({
         mechanism: 'paragraph-border',

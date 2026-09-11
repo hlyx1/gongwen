@@ -341,6 +341,8 @@ function buildHeaderLayout(
     // 「空一字」缩进 = 1 个正文字号宽度
     oneCharIndentTwips: ptToTwip(config.body.fontSize),
     blankLinesAfterOrg: HEADER_BLANK_LINES_AFTER_ORG,
+    // 机关标志下空行行距＝正文行距（导出侧现状——单元4 接线补齐 IR 字段）
+    blankLineTwips: bodyLineTwips(config),
     // 版头启用时标题前空二行（经段前距实现）
     titleSpacingBeforeTwips: ptToTwip(config.body.lineSpacing * HEADER_TITLE_SPACING_LINES),
     // 红色分隔线：按渲染器给出开关选定的现状参数

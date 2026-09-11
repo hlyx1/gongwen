@@ -147,6 +147,8 @@ export interface HeaderLayout {
   oneCharIndentTwips: number
   /** 机关标志下空行数（导出侧现状：2，正文字号行距） */
   blankLinesAfterOrg: number
+  /** 机关标志下空行的行距（twips，固定值＝正文行距）——导出侧现状 */
+  blankLineTwips: number
   /** 版头启用时首标题段前距（导出侧现状：2 × 正文行距） */
   titleSpacingBeforeTwips: number
   /** 红色分隔线（按渲染器给出最终参数） */

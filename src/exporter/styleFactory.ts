@@ -1,363 +1,245 @@
+/**
+ * docx 渲染器翻译层：决策中间表示 → docx 段落/文本/表格对象
+ *
+ * task-0001 条款3（单元4）：本文件不再做任何排版决策——
+ * 字体角色、run 分段、缩进、间距、空行、表格版式等决策全部由
+ * src/layout/ 决策层供给，这里只做「决策块 → docx 对象」的纯翻译。
+ *
+ * 翻译形状纪律（导出产物快照逐字节保持的机械保证）：
+ * - 可选字段（beforeTwips/afterTwips/indent 各槽）只在决策层给出时翻译，
+ *   不补默认值——docx 对未设属性不产出 XML 属性，但空对象会产出空标签
+ *   （如 indent:{} → <w:ind/>），与「不设」不等价
+ * - 决策层删除的旧决策函数对照关系见工作单元-4 删除清单：
+ *   getParagraphStyle/getRunStyle 系 → layout/fonts.ts roleSpec；
+ *   calculateCharWidth/TextWidth/SignatureIndent → layout/metrics.ts；
+ *   拆分函数 → layout/runs.ts
+ */
 import {
   AlignmentType,
-  type IParagraphOptions,
-  type IRunOptions,
-  type IFontAttributesProperties,
+  BorderStyle,
   LineRuleType,
+  Paragraph,
+  Table,
+  TableCell,
+  TableRow,
+  TextRun,
+  WidthType,
 } from 'docx'
-import { NodeType } from '../types/ast'
-import type { DocumentConfig } from '../types/documentConfig'
-import { ptToTwip, cmToTwip, CHARS_PER_LINE } from '../types/documentConfig'
+import type { IBorderOptions, IParagraphOptions, IRunOptions } from 'docx'
+import type {
+  FontQuad,
+  LayoutBlock,
+  LayoutIndent,
+  LayoutParagraphBlock,
+  LayoutRun,
+  LayoutSpacerBlock,
+  LayoutSpacing,
+  LayoutTableBlock,
+} from '../layout/types'
 
-/**
- * 构建 IFontAttributesProperties，支持中英文字体分离
- * 
- * 字体分配规则：
- * - ascii: 基本西文字符（英文字母、数字）
- * - eastAsia: 东亚文字（中文、日文、韩文）
- * - hAnsi: 高ANSI字符（包括省略号、破折号等中文标点）
- * 
- * 注意：省略号（U+2026）、破折号（U+2014）等字符被 Word 归类为 hAnsi，
- * 因此 hAnsi 需要使用中文字体以确保这些标点使用正确的中文字体。
- */
-function font(eastAsia: string, ascii = 'Times New Roman'): IFontAttributesProperties {
-  return { ascii, eastAsia, hAnsi: eastAsia, cs: ascii }
+// ---- 表格边框定义（公文标准黑色细线——docx 结构常量） ----
+
+const TABLE_CELL_BORDER: IBorderOptions = {
+  style: BorderStyle.SINGLE,
+  size: 4, // 0.5pt
+  color: '000000',
 }
 
-/**
- * 计算首行缩进值（twips）
- * 缩进 = 字符数 × (字号 + 字符间距)
- * 字符间距用于确保每行恰好28字，缩进也需要同步调整
- */
-function calculateFirstLineIndent(config: DocumentConfig): number {
-  return calculateCharWidth(config) * config.body.firstLineIndent
+const TABLE_BORDERS = {
+  top: TABLE_CELL_BORDER,
+  bottom: TABLE_CELL_BORDER,
+  left: TABLE_CELL_BORDER,
+  right: TABLE_CELL_BORDER,
+  insideHorizontal: TABLE_CELL_BORDER,
+  insideVertical: TABLE_CELL_BORDER,
 }
 
-/**
- * 计算单个字符宽度（twips）
- * 字符宽度 = 字号 + 字符间距
- */
-export function calculateCharWidth(config: DocumentConfig): number {
-  const availableTwips = 11906 - cmToTwip(config.margins.left) - cmToTwip(config.margins.right)
-  const charSpacingTwips = Math.floor(availableTwips / CHARS_PER_LINE - config.body.fontSize * 20)
-  return config.body.fontSize * 20 + charSpacingTwips
-}
+// ---- 基础映射 ----
 
-/**
- * 计算文本的实际宽度（twips）
- * - 中文字符（含年月日）：宽度 = 1 个汉字宽度
- * - 阿拉伯数字、英文字母：宽度约为汉字的 0.69 倍
- * - 其他 ASCII 字符：宽度约为汉字的 0.69 倍
- */
-export function calculateTextWidth(text: string, charWidthTwips: number): number {
-  let width = 0
-  for (const char of text) {
-    // 判断是否为中文字符（含年月日等）
-    // CJK 统一汉字范围：\u4e00-\u9fff
-    // CJK 兼容汉字：\u3400-\u4dbf
-    // 中文标点等也在 CJK 范围内
-    if (/[\u4e00-\u9fff\u3400-\u4dbf]/.test(char)) {
-      width += charWidthTwips
-    } else {
-      // 阿拉伯数字、英文字母等 ASCII 字符，宽度约为汉字的 0.69 倍
-      width += charWidthTwips * 0.69
-    }
+/** 渲染器无关对齐 → docx 对齐枚举（纯映射） */
+const ALIGNMENT_MAP = {
+  center: AlignmentType.CENTER,
+  left: AlignmentType.LEFT,
+  right: AlignmentType.RIGHT,
+  justified: AlignmentType.JUSTIFIED,
+} as const
+
+/** 字体四槽 → docx 字体属性（纯搬运） */
+export function fontOptions(font: FontQuad): IRunOptions['font'] {
+  return {
+    ascii: font.ascii,
+    eastAsia: font.eastAsia,
+    hAnsi: font.hAnsi,
+    cs: font.cs,
   }
-  return width
 }
 
 /**
- * 计算发文机关署名的右缩进值
- * 公式：基础右空字数 + (成文日期宽度 - 署名宽度) / 2
- * - 有印章（hasStamp = true）：基础右空四字
- * - 无印章（hasStamp = false）：基础右空二字
- * 注意：居中偏移可能为负数（署名比日期长时），只需保证最终右缩进 >= 0
+ * 决策 run → docx run 选项
+ * characterSpacing/bold 仅在决策层给出时翻译（未设不产出 XML 属性）
  */
-export function calculateSignatureIndent(
-  signatureContent: string,
-  dateContent: string,
-  config: DocumentConfig
-): number {
-  const charWidthTwips = calculateCharWidth(config)
-  const baseIndent = (config.specialOptions.hasStamp ? 4 : 2) * charWidthTwips
-  const signatureWidth = calculateTextWidth(signatureContent, charWidthTwips)
-  const dateWidth = calculateTextWidth(dateContent, charWidthTwips)
-  const centerOffset = (dateWidth - signatureWidth) / 2
-  return Math.max(0, baseIndent + centerOffset)
+export function runOptions(run: LayoutRun): IRunOptions {
+  const options: IRunOptions = {
+    text: run.text,
+    font: fontOptions(run.font),
+    size: run.sizeHalfPt,
+  }
+  if (run.characterSpacingTwips !== undefined) {
+    options.characterSpacing = run.characterSpacingTwips
+  }
+  if (run.bold !== undefined) {
+    options.bold = run.bold
+  }
+  return options
 }
 
-/** 节点类型 → 段落样式 */
-export function getParagraphStyle(
-  type: NodeType,
-  config: DocumentConfig,
-  signatureContent?: string,
-  dateContent?: string
-): Partial<IParagraphOptions> {
-  const lineSpacingValue = ptToTwip(config.body.lineSpacing)
-  const firstLineIndentTwips = calculateFirstLineIndent(config)
-  const charWidthTwips = calculateCharWidth(config)
+/** 决策 run → docx TextRun */
+export function textRunFromLayout(run: LayoutRun): TextRun {
+  return new TextRun(runOptions(run))
+}
 
-  const BASE_SPACING = {
-    line: lineSpacingValue,
+/** 段落间距翻译：只翻译存在的字段（附件段落现状＝仅 before 或两者皆无） */
+function spacingOptions(spacing: LayoutSpacing) {
+  const result: { line: number; lineRule: LineRuleType; before?: number; after?: number } = {
+    line: spacing.lineTwips,
     lineRule: LineRuleType.EXACT,
-    before: 0,
-    after: 0,
-  } as const
+  }
+  if (spacing.beforeTwips !== undefined) {
+    result.before = spacing.beforeTwips
+  }
+  if (spacing.afterTwips !== undefined) {
+    result.after = spacing.afterTwips
+  }
+  return result
+}
 
-  const BODY_INDENT = { firstLine: firstLineIndentTwips, left: 0 } as const
+/** 段落缩进翻译：只翻译存在的槽；空缩进不设属性（空对象会产出 <w:ind/> 空标签） */
+function indentOptions(indent?: LayoutIndent) {
+  if (!indent) {
+    return undefined
+  }
+  const result: { firstLine?: number; left?: number; right?: number; hanging?: number } = {}
+  if (indent.firstLineTwips !== undefined) {
+    result.firstLine = indent.firstLineTwips
+  }
+  if (indent.leftTwips !== undefined) {
+    result.left = indent.leftTwips
+  }
+  if (indent.rightTwips !== undefined) {
+    result.right = indent.rightTwips
+  }
+  if (indent.hangingTwips !== undefined) {
+    result.hanging = indent.hangingTwips
+  }
+  return Object.keys(result).length > 0 ? result : undefined
+}
 
-  switch (type) {
-    case NodeType.DOCUMENT_TITLE:
-      return {
-        alignment: AlignmentType.CENTER,
+/** 决策段落块 → docx 段落选项（对齐/间距/缩进按决策翻译，不做默认补齐） */
+export function paragraphOptions(block: LayoutParagraphBlock): Partial<IParagraphOptions> {
+  return {
+    alignment: ALIGNMENT_MAP[block.alignment],
+    spacing: spacingOptions(block.spacing),
+    indent: indentOptions(block.indent),
+  }
+}
+
+/** 决策段落块 → docx Paragraph（runs 逐个翻译） */
+export function paragraphFromBlock(block: LayoutParagraphBlock): Paragraph {
+  return new Paragraph({
+    ...paragraphOptions(block),
+    children: block.runs.map(textRunFromLayout),
+  })
+}
+
+/**
+ * 决策空行块 → N 个空段
+ * 导出侧现状形状：空段携带决策层给定的字体四槽与字号、固定行距、段前段后 0，
+ * 内含一个空文本 run
+ */
+export function spacerParagraphs(spacer: LayoutSpacerBlock): Paragraph[] {
+  const paragraphs: Paragraph[] = []
+  for (let i = 0; i < spacer.lines; i++) {
+    paragraphs.push(
+      new Paragraph({
         spacing: {
-          line: ptToTwip(config.title.lineSpacing),
+          line: spacer.lineTwips,
           lineRule: LineRuleType.EXACT,
           before: 0,
           after: 0,
         },
-      }
-
-    case NodeType.ADDRESSEE:
-      return {
-        alignment: AlignmentType.JUSTIFIED,
-        spacing: BASE_SPACING,
-        indent: { left: 0 },
-      }
-
-    case NodeType.ATTACHMENT:
-      return {
-        alignment: AlignmentType.JUSTIFIED,
-        spacing: BASE_SPACING,
-        indent: { left: 2 * charWidthTwips },
-      }
-
-    case NodeType.SIGNATURE:
-      if (!signatureContent || !dateContent) {
-        return {
-          alignment: AlignmentType.RIGHT,
-          spacing: BASE_SPACING,
-          indent: { right: (config.specialOptions.hasStamp ? 4 : 2) * charWidthTwips },
-        }
-      }
-      return {
-        alignment: AlignmentType.RIGHT,
-        spacing: BASE_SPACING,
-        indent: { right: calculateSignatureIndent(signatureContent, dateContent, config) },
-      }
-
-    case NodeType.DATE:
-      // GB/T 9704: 加盖印章右空四字，不加盖印章右空二字
-      return {
-        alignment: AlignmentType.RIGHT,
-        spacing: BASE_SPACING,
-        indent: { right: (config.specialOptions.hasStamp ? 4 : 2) * charWidthTwips },
-      }
-
-    case NodeType.REMARK:
-      // 备注：与正文相同字体，但不缩进，左对齐
-      return {
-        alignment: AlignmentType.LEFT,
-        spacing: BASE_SPACING,
-        indent: { left: 0 },
-      }
-
-    // 正文及所有标题级别：两端对齐 + 首行缩进
-    default:
-      return {
-        alignment: AlignmentType.JUSTIFIED,
-        spacing: BASE_SPACING,
-        indent: BODY_INDENT,
-      }
+        children: [
+          new TextRun({ font: fontOptions(spacer.font), size: spacer.sizeHalfPt, text: '' }),
+        ],
+      })
+    )
   }
+  return paragraphs
 }
 
-/** 节点类型 → 文本样式 (font / size / bold) */
-export function getRunStyle(type: NodeType, config: DocumentConfig): Partial<IRunOptions> {
-  const bodyFontSize = config.body.fontSize * 2 // pt → half-point
-  const titleFontSize = config.title.fontSize * 2
-
-  // 字符间距微调：使每行恰好 28 字 (GB/T 9704)
-  // characterSpacing 单位为 twips (1/20 pt)，向下取整确保不超出可用宽度
-  const availableTwips = 11906 - cmToTwip(config.margins.left) - cmToTwip(config.margins.right)
-  const charSpacing = Math.floor(availableTwips / CHARS_PER_LINE - config.body.fontSize * 20)
-
-  switch (type) {
-    case NodeType.DOCUMENT_TITLE:
-      return {
-        font: font(config.title.fontFamily),
-        size: titleFontSize,
-      }
-
-    case NodeType.HEADING_1:
-      return {
-        font: font(config.advanced.h1.fontFamily, config.advanced.h1.asciiFontFamily || config.advanced.h1.fontFamily),
-        size: config.advanced.h1.fontSize * 2,
-        characterSpacing: charSpacing,
-      }
-
-    case NodeType.HEADING_2:
-      return {
-        font: font(config.advanced.h2.fontFamily, config.advanced.h2.asciiFontFamily || config.advanced.h2.fontFamily),
-        size: config.advanced.h2.fontSize * 2,
-        characterSpacing: charSpacing,
-      }
-
-    case NodeType.HEADING_3:
-      return {
-        font: font(config.advanced.h3.fontFamily, config.advanced.h3.asciiFontFamily || config.advanced.h3.fontFamily),
-        size: config.advanced.h3.fontSize * 2,
-        characterSpacing: charSpacing,
-      }
-
-    case NodeType.ADDRESSEE:
-      return {
-        font: font(
-          config.advanced.addressee.fontFamily,
-          config.advanced.addressee.asciiFontFamily || config.advanced.addressee.fontFamily,
-        ),
-        size: config.advanced.addressee.fontSize * 2,
-        characterSpacing: charSpacing,
-      }
-
-    case NodeType.HEADING_4:
-    case NodeType.PARAGRAPH:
-    case NodeType.DATE:
-    case NodeType.SIGNATURE:
-    case NodeType.REMARK:
-    default:
-      return {
-        font: font(config.body.fontFamily),
-        size: bodyFontSize,
-        characterSpacing: charSpacing,
-      }
+/** 表格单元格 → docx TableCell（黑细线边框 + 居中 + 表格行距；表头可加粗） */
+function tableCell(cellText: string, block: LayoutTableBlock, bold?: boolean): TableCell {
+  const runOptions_: IRunOptions = {
+    text: cellText,
+    font: fontOptions(block.font),
+    size: block.sizeHalfPt,
   }
+  if (bold !== undefined) {
+    runOptions_.bold = bold
+  }
+  return new TableCell({
+    borders: TABLE_BORDERS,
+    children: [
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { line: block.lineTwips, lineRule: LineRuleType.EXACT },
+        children: [new TextRun(runOptions_)],
+      }),
+    ],
+  })
 }
 
-/**
- * 附件说明段落样式
- *
- * @param isMultiple 是否为多附件模式
- * @param isFirst 是否为多附件的第一行（仅多附件模式有效）
- * @param config 文档配置
- */
-export function getAttachmentParagraphStyle(
-  isMultiple: boolean,
-  isFirst: boolean,
-  config: DocumentConfig
-): Partial<IParagraphOptions> {
-  const lineSpacingValue = ptToTwip(config.body.lineSpacing)
-  const charWidthTwips = calculateCharWidth(config)
+/** 决策表格块 → docx Table（表头行加粗跟随 boldHeader 决策） */
+export function tableFromBlock(block: LayoutTableBlock): Table {
+  const headerRow = new TableRow({
+    children: block.headerCells.map(function (cell) {
+      return tableCell(cell, block, block.boldHeader)
+    }),
+  })
+  const dataRows = block.dataRows.map(function (row) {
+    return new TableRow({
+      children: row.map(function (cell) {
+        return tableCell(cell, block)
+      }),
+    })
+  })
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: TABLE_BORDERS,
+    rows: [headerRow, ...dataRows],
+  })
+}
 
-  if (!isMultiple) {
-    // 单附件：左空 5 字符（2 + 3），悬挂缩进 3 字符（用于换行对齐）
-    return {
-      alignment: AlignmentType.JUSTIFIED,
-      spacing: { line: lineSpacingValue, lineRule: LineRuleType.EXACT, before: lineSpacingValue },
-      indent: {
-        left: 5 * charWidthTwips,
-        hanging: 3 * charWidthTwips,
-      },
+/** 任意正文流决策块 → docx 对象（docxBuilder 正文段组装入口） */
+export function blockToDocx(block: LayoutBlock): Paragraph | Table {
+  if (block.kind === 'paragraph') {
+    return paragraphFromBlock(block)
+  }
+  if (block.kind === 'spacer') {
+    // 空行块至少产出 1 段（lines ≥ 1 由决策层保证；多行取首段由调用方展开）
+    return spacerParagraphs(block)[0]
+  }
+  return tableFromBlock(block)
+}
+
+/** 正文流决策块序列 → docx 对象序列（空行块按行数展开） */
+export function blocksToDocx(blocks: LayoutBlock[]): (Paragraph | Table)[] {
+  const result: (Paragraph | Table)[] = []
+  for (const block of blocks) {
+    if (block.kind === 'spacer') {
+      result.push(...spacerParagraphs(block))
+    } else {
+      result.push(blockToDocx(block))
     }
   }
-
-  if (isFirst) {
-    // 多附件第一行：左空 5 字符（2 + 3），悬挂缩进 3 字符
-    // 首行从 2 字符位置开始（5 - 3 = 2），换行后从 5 字符位置开始
-    return {
-      alignment: AlignmentType.JUSTIFIED,
-      spacing: { line: lineSpacingValue, lineRule: LineRuleType.EXACT, before: lineSpacingValue },
-      indent: {
-        left: 5 * charWidthTwips,
-        hanging: 3 * charWidthTwips,
-      },
-    }
-  }
-
-  // 多附件后续行：左空 5 字符（2 + 3），首行和换行后都从 5 字符开始
-  return {
-    alignment: AlignmentType.JUSTIFIED,
-    spacing: { line: lineSpacingValue, lineRule: LineRuleType.EXACT },
-    indent: {
-      left: 5 * charWidthTwips,
-    },
-  }
-}
-
-/**
- * 附件说明文本样式：数字英文使用 Times New Roman，中文使用仿宋
- * 与正文保持一致的字体口径
- */
-export function getAttachmentRunStyle(config: DocumentConfig): Partial<IRunOptions> {
-  const bodyFontSize = config.body.fontSize * 2
-  const availableTwips = 11906 - cmToTwip(config.margins.left) - cmToTwip(config.margins.right)
-  const charSpacing = Math.floor(availableTwips / CHARS_PER_LINE - config.body.fontSize * 20)
-
-  return {
-    font: font(config.body.fontFamily),
-    size: bodyFontSize,
-    characterSpacing: charSpacing,
-  }
-}
-
-/**
- * 附件说明标点样式：标点（序号后的英文句号）使用正文字体
- */
-export function getAttachmentPunctuationRunStyle(config: DocumentConfig): Partial<IRunOptions> {
-  const bodyFontSize = config.body.fontSize * 2
-  const availableTwips = 11906 - cmToTwip(config.margins.left) - cmToTwip(config.margins.right)
-  const charSpacing = Math.floor(availableTwips / CHARS_PER_LINE - config.body.fontSize * 20)
-
-  return {
-    font: {
-      ascii: config.body.fontFamily,
-      eastAsia: config.body.fontFamily,
-      hAnsi: config.body.fontFamily,
-      cs: config.body.fontFamily,
-    },
-    size: bodyFontSize,
-    characterSpacing: charSpacing,
-  }
-}
-
-/**
- * 三级标题标点样式：序号后的英文句号使用正文字体
- * 与三级标题保持一致的字号
- */
-export function getHeading3PunctuationRunStyle(config: DocumentConfig): Partial<IRunOptions> {
-  const availableTwips = 11906 - cmToTwip(config.margins.left) - cmToTwip(config.margins.right)
-  const charSpacing = Math.floor(availableTwips / CHARS_PER_LINE - config.body.fontSize * 20)
-
-  return {
-    font: {
-      ascii: config.body.fontFamily,
-      eastAsia: config.body.fontFamily,
-      hAnsi: config.body.fontFamily,
-      cs: config.body.fontFamily,
-    },
-    size: config.advanced.h3.fontSize * 2,
-    characterSpacing: charSpacing,
-  }
-}
-
-/**
- * 时间冒号样式：时间格式中的半角冒号使用正文字体
- * 解决半角冒号默认使用 Times New Roman 导致视觉不统一的问题
- * @param config 文档配置
- * @param fontSize 字号（half-point）
- */
-export function getTimeColonRunStyle(config: DocumentConfig, fontSize: number): Partial<IRunOptions> {
-  const availableTwips = 11906 - cmToTwip(config.margins.left) - cmToTwip(config.margins.right)
-  const charSpacing = Math.floor(availableTwips / CHARS_PER_LINE - config.body.fontSize * 20)
-
-  return {
-    font: {
-      ascii: config.body.fontFamily,
-      eastAsia: config.body.fontFamily,
-      hAnsi: config.body.fontFamily,
-      cs: config.body.fontFamily,
-    },
-    size: fontSize,
-    characterSpacing: charSpacing,
-  }
+  return result
 }
