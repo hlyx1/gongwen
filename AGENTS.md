@@ -32,9 +32,11 @@ parseGongwen() - 文本解析为 AST
     ↓
 GongwenAST - 公文抽象语法树
     ↓
+buildLayout() - 排版决策层（src/layout/，渲染器无关的单一真值）
+    ↓
 ┌─────────────┬──────────────┐
 │  Preview    │  DOCX 导出    │
-│  (实时预览)  │  (Word下载)   │
+│  (实时预览)  │  (翻译层渲染) │
 └─────────────┴──────────────┘
 ```
 
@@ -55,15 +57,23 @@ src/
 │   └── Toolbar/         # 顶部工具栏
 ├── contexts/            # React Context 全局状态
 │   └── DocumentConfigContext.tsx  # 文档配置状态管理
-├── exporter/            # DOCX 导出模块
-│   ├── docxBuilder.ts   # AST → docx Document 转换
-│   ├── styleFactory.ts  # 段落/文本样式工厂
+├── exporter/            # DOCX 导出（翻译层：决策中间表示 → docx 对象）
+│   ├── docxBuilder.ts   # 版头/正文/版记三段组装（消费 buildLayout）
+│   ├── styleFactory.ts  # 决策块 → docx 段落/文本/表格纯翻译
 │   └── download.ts      # 文件下载封装
 ├── hooks/               # 自定义 Hooks
 │   ├── useDocumentParser.ts  # 文本 → AST 解析
 │   ├── usePagination.ts      # 分页计算
 │   ├── useCustomFonts.ts     # 自定义字体加载
 │   └── useDetectionData.ts   # 检测数据计算（标题层级、序号检测）
+├── layout/              # 排版决策层（渲染器无关的单一真值，纯函数）
+│   ├── index.ts         # buildLayout：AST+配置 → 块序列+版头/版记/页码参数
+│   ├── types.ts         # 决策中间表示（IR）类型
+│   ├── fonts.ts         # 字体角色规格（roleSpec/bodyPunctSpec）
+│   ├── runs.ts          # run 分段决策（标题首句/时间冒号/序号句点拆分）
+│   ├── metrics.ts       # 度量与缩进决策（charSpacing/charWidth/签名缩进）
+│   ├── deviations.ts    # 已知预览/导出偏差显式开关（默认＝现状）
+│   └── constants.ts     # 版式常量单源
 ├── parser/              # 公文文本解析器
 │   ├── parser.ts        # 主解析器
 │   └── matchers.ts      # 正则匹配规则
@@ -141,34 +151,47 @@ interface DocumentConfig {
 - 「XXXX年X月X日」格式 → 成文日期
 - 成文日期前的短句（含机关关键词）→ 发文机关署名
 
-### 2. 导出器 (exporter/)
+### 2. 排版决策层 (layout/)
+
+**buildLayout(ast: GongwenAST, config: DocumentConfig, options): LayoutDocument**
+
+排版决策的单一真值（渲染器无关的纯函数模块，禁止 import docx/react/DOM）：
+- 输入 AST + 配置 + 目标渲染器（`preview` / `docx`），输出块序列
+  （段落/空行指令/表格，含对齐、缩进、行距、字体角色分段 runs）
+  与版头/版记/页码版式参数
+- 字体角色规格：`fonts.ts` 的 `roleSpec`（节点类型 → 字体四槽/字号/字符间距）
+- run 分段决策：`runs.ts`（标题首句、时间冒号、三级标题序号句点、附件序号句点拆分）
+- 度量与缩进：`metrics.ts`（charSpacing/charWidth/首行缩进/签名居中缩进）
+- 已知偏差开关：`deviations.ts` 集中定义（待办-0001~0004，默认值＝两渲染器现状；
+  偏差修复＝晋升待办并翻转开关）
+- **docx 导出已接线决策层**（exporter/ 为纯翻译层）；预览侧接线属后续单元
+
+### 3. 导出器 (exporter/)
 
 **buildDocument(ast: GongwenAST, config: DocumentConfig): Document**
 
-将 AST 转换为 docx 库的 Document 对象：
-- 支持版头（发文机关标志、发文字号、签发人、红色分隔线）
-- 支持版记（抄送机关、印发机关、印发日期）
-- 支持奇偶页不同页码位置
-- 支持附件说明的单/多附件模式
-- 支持时间格式中的半角冒号使用正文字体（避免使用 Times New Roman）
+docx 渲染器翻译层——先经 `buildLayout(ast, config, { renderer: 'docx' })` 取得
+决策中间表示，再按三段组装为 docx Document：
+- **docxBuilder.ts**：版头段（机关标志/空行/字号签发人/红色分隔线）→
+  正文流（`blocksToDocx` 逐块翻译）→ 版记浮动表格 + 奇偶页码页脚 + A4 页面骨架
+- **styleFactory.ts**：决策块 → docx 段落/文本/表格的纯翻译
+  （可选字段只在决策层给出时翻译，不补默认值——docx 对空对象产出空标签）
+- 行为锚点：`exporter/__tests__/docxBuilder.test.ts` 的 13 条导出快照
+  （Packer 序列化核心部件结构快照，改动导出行为前先看该测试）
 
-**特殊字符处理：**
+**特殊字符处理（决策在 layout/，导出侧为翻译）：**
 
-1. **时间格式中的半角冒号**（如 `9:00`、`14:30`）会自动使用正文字体渲染：
-   - **清洗阶段**：`sanitize.ts` 将时间格式的全角冒号还原为半角冒号（`3：00` → `3:00`）
-   - **导出阶段**：`splitTimeColonText` 函数检测时间格式，将半角冒号单独拆分，应用正文字体样式（如仿宋），而不是默认的 Times New Roman
-
+1. **时间格式中的半角冒号**（如 `9:00`、`14:30`）使用正文字体四槽：
+   - 清洗阶段：`sanitize.ts` 将时间格式的全角冒号还原为半角冒号（`3：00` → `3:00`）
+   - 决策阶段：`layout/runs.ts` 的 `splitTimeColonRuns` 将半角冒号独立成
+     bodyPunct 角色 run（字号随宿主段落）
 2. **三级标题序号后的英文句号**（如 `1.xxx` 中的 `.`）使用正文字体：
-   - **样式函数**：`getHeading3PunctuationRunStyle(config)` 返回正文字体样式
-   - **拆分函数**：`splitHeading3Text()` 将 `1.xxx` 拆分为 `1`（三级标题样式）+ `.`（正文字体）+ `xxx`（三级标题样式）
-   - **目的**：避免英文句号使用 Times New Roman 导致视觉不统一，使其与正文保持一致
+   - 决策阶段：`splitHeading3NumberDotRuns`（受待办-0001/0004 偏差开关控制，
+     docx 现状＝拆分且全角句点不拆）
+3. **附件说明序号后的英文句号**（多附件模式）使用正文字体：
+   - 决策阶段：`layout/runs.ts` 的 `splitAttachmentRuns`（单附件不拆分）
 
-3. **附件说明序号后的英文句号**（如 `1.xxx` 中的 `.`）使用正文字体：
-   - **样式函数**：`getAttachmentPunctuationRunStyle(config)` 返回正文字体样式
-   - **拆分函数**：`splitAttachmentText()` 将 `1.xxx` 拆分为 `1`（Times New Roman）+ `.`（正文字体）+ `xxx`（Times New Roman）
-   - **目的**：符合公文排版习惯，使英文句号与正文保持一致
-
-### 3. 预览组件 (components/Preview/)
+### 4. 预览组件 (components/Preview/)
 
 **Preview.tsx**: 预览容器
 - 注入 CSS 自定义属性（字体、字号、行距、页边距）
@@ -180,14 +203,14 @@ interface DocumentConfig {
 - 通过 offsetY + clipHeight 实现分页裁剪
 - 渲染版头、正文、版记、页码
 
-### 4. 配置管理 (contexts/DocumentConfigContext.tsx)
+### 5. 配置管理 (contexts/DocumentConfigContext.tsx)
 
 **DocumentConfigProvider**: 全局配置状态
 - 支持多配置保存/切换
 - localStorage 持久化
 - 提供 updateConfig、switchConfig、saveAsCustomConfig 等方法
 
-### 5. 检测点面板 (components/DetectionPanel/)
+### 6. 检测点面板 (components/DetectionPanel/)
 
 **DetectionPanel.tsx**: 检测点面板组件
 - 实时展示公文解析结果的关键节点信息
@@ -358,7 +381,7 @@ npm run lint
 1. 在 `types/ast.ts` 中添加 NodeType 枚举值
 2. 在 `parser/matchers.ts` 中添加正则匹配规则
 3. 在 `parser/parser.ts` 的 detectNodeType 中添加识别逻辑
-4. 在 `exporter/styleFactory.ts` 中添加样式映射
+4. 在 `layout/fonts.ts`（角色规格）与 `layout/index.ts`（对齐/缩进/分段）中添加排版决策
 5. 在 `components/Preview/A4Page.tsx` 中添加渲染逻辑
 
 ### 修改默认配置
@@ -375,7 +398,7 @@ npm run lint
 
 ## 测试
 
-测试文件位于 `parser/__tests__/`、`utils/__tests__/`、`exporter/__tests__/` 目录（公文解析、清洗规则、AI 响应解析、导出样式与产物结构），使用 Vitest 框架：
+测试文件位于 `parser/__tests__/`、`utils/__tests__/`、`layout/__tests__/`、`exporter/__tests__/` 目录（公文解析、清洗规则、AI 响应解析、排版决策、导出翻译与产物结构），使用 Vitest 框架：
 
 ```bash
 # 运行测试

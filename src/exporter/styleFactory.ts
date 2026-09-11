@@ -79,18 +79,15 @@ export function fontOptions(font: FontQuad): IRunOptions['font'] {
  * characterSpacing/bold 仅在决策层给出时翻译（未设不产出 XML 属性）
  */
 export function runOptions(run: LayoutRun): IRunOptions {
-  const options: IRunOptions = {
+  return {
     text: run.text,
     font: fontOptions(run.font),
     size: run.sizeHalfPt,
+    ...(run.characterSpacingTwips !== undefined
+      ? { characterSpacing: run.characterSpacingTwips }
+      : {}),
+    ...(run.bold !== undefined ? { bold: run.bold } : {}),
   }
-  if (run.characterSpacingTwips !== undefined) {
-    options.characterSpacing = run.characterSpacingTwips
-  }
-  if (run.bold !== undefined) {
-    options.bold = run.bold
-  }
-  return options
 }
 
 /** 决策 run → docx TextRun */
@@ -100,7 +97,12 @@ export function textRunFromLayout(run: LayoutRun): TextRun {
 
 /** 段落间距翻译：只翻译存在的字段（附件段落现状＝仅 before 或两者皆无） */
 function spacingOptions(spacing: LayoutSpacing) {
-  const result: { line: number; lineRule: LineRuleType; before?: number; after?: number } = {
+  const result: {
+    line: number
+    lineRule: (typeof LineRuleType)[keyof typeof LineRuleType]
+    before?: number
+    after?: number
+  } = {
     line: spacing.lineTwips,
     lineRule: LineRuleType.EXACT,
   }
@@ -178,13 +180,11 @@ export function spacerParagraphs(spacer: LayoutSpacerBlock): Paragraph[] {
 
 /** 表格单元格 → docx TableCell（黑细线边框 + 居中 + 表格行距；表头可加粗） */
 function tableCell(cellText: string, block: LayoutTableBlock, bold?: boolean): TableCell {
-  const runOptions_: IRunOptions = {
+  const options: IRunOptions = {
     text: cellText,
     font: fontOptions(block.font),
     size: block.sizeHalfPt,
-  }
-  if (bold !== undefined) {
-    runOptions_.bold = bold
+    ...(bold !== undefined ? { bold } : {}),
   }
   return new TableCell({
     borders: TABLE_BORDERS,
@@ -192,7 +192,7 @@ function tableCell(cellText: string, block: LayoutTableBlock, bold?: boolean): T
       new Paragraph({
         alignment: AlignmentType.CENTER,
         spacing: { line: block.lineTwips, lineRule: LineRuleType.EXACT },
-        children: [new TextRun(runOptions_)],
+        children: [new TextRun(options)],
       }),
     ],
   })

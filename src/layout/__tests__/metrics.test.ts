@@ -122,8 +122,10 @@ describe('决策层签名缩进 twip 版（手算锚点）', () => {
   ]
 
   for (const { sig, date, noStamp, stamp } of cases) {
-    it(`${sig} × ${date}：无印 ${noStamp} / 有印 ${stamp}`, () => {
+    it(`${sig} × ${date}（印章=否）：${noStamp}`, () => {
       expect(signatureRightIndentTwips(sig, date, configOf(false))).toBeCloseTo(noStamp, 9)
+    })
+    it(`${sig} × ${date}（印章=是）：${stamp}`, () => {
       expect(signatureRightIndentTwips(sig, date, configOf(true))).toBeCloseTo(stamp, 9)
     })
   }
