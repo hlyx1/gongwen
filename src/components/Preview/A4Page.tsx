@@ -27,7 +27,7 @@ export const NODE_CLASS_MAP: Record<NodeType, string> = {
  * - 阿拉伯数字、英文字母：宽度约为汉字的 0.69 倍
  * - 其他 ASCII 字符：宽度约为汉字的 0.69 倍
  */
-function calculateTextWidthEm(text: string): number {
+export function calculateTextWidthEm(text: string): number {
   let width = 0
   for (const char of text) {
     if (/[\u4e00-\u9fff\u3400-\u4dbf]/.test(char)) {

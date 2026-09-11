@@ -37,7 +37,7 @@ function calculateFirstLineIndent(config: DocumentConfig): number {
  * 计算单个字符宽度（twips）
  * 字符宽度 = 字号 + 字符间距
  */
-function calculateCharWidth(config: DocumentConfig): number {
+export function calculateCharWidth(config: DocumentConfig): number {
   const availableTwips = 11906 - cmToTwip(config.margins.left) - cmToTwip(config.margins.right)
   const charSpacingTwips = Math.floor(availableTwips / CHARS_PER_LINE - config.body.fontSize * 20)
   return config.body.fontSize * 20 + charSpacingTwips
@@ -49,7 +49,7 @@ function calculateCharWidth(config: DocumentConfig): number {
  * - 阿拉伯数字、英文字母：宽度约为汉字的 0.69 倍
  * - 其他 ASCII 字符：宽度约为汉字的 0.69 倍
  */
-function calculateTextWidth(text: string, charWidthTwips: number): number {
+export function calculateTextWidth(text: string, charWidthTwips: number): number {
   let width = 0
   for (const char of text) {
     // 判断是否为中文字符（含年月日等）
@@ -73,7 +73,7 @@ function calculateTextWidth(text: string, charWidthTwips: number): number {
  * - 无印章（hasStamp = false）：基础右空二字
  * 注意：居中偏移可能为负数（署名比日期长时），只需保证最终右缩进 >= 0
  */
-function calculateSignatureIndent(
+export function calculateSignatureIndent(
   signatureContent: string,
   dateContent: string,
   config: DocumentConfig

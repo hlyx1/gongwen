@@ -375,7 +375,7 @@ npm run lint
 
 ## 测试
 
-测试文件位于 `parser/__tests__/`、`utils/__tests__/` 目录（清洗规则、AI 响应解析、公文解析），使用 Vitest 框架：
+测试文件位于 `parser/__tests__/`、`utils/__tests__/`、`exporter/__tests__/` 目录（公文解析、清洗规则、AI 响应解析、导出样式与产物结构），使用 Vitest 框架：
 
 ```bash
 # 运行测试
