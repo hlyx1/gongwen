@@ -321,6 +321,9 @@ function tableToBlock(node: TableNode, config: DocumentConfig): LayoutTableBlock
   return {
     kind: 'table',
     sourceType: NodeType.TABLE,
+    // 原始 Markdown 源文本原样保留：预览度量容器现状按段落测量表格
+    // （渲染为携带源文本的 a4-table 段落，待办-0005 冻结）；docx 渲染器不消费
+    rawContent: node.content,
     headerCells: node.header.cells.map(function (cell) {
       return cell.content
     }),

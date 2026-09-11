@@ -513,6 +513,7 @@ describe('块流翻译（blocksToDocx / blockToDocx）', () => {
     const tableBlock: LayoutBlock = {
       kind: 'table',
       sourceType: NodeType.TABLE,
+      rawContent: '|列一|\n|---|\n|值一|',
       headerCells: ['列一'],
       dataRows: [['值一']],
       cellAlignment: 'center',

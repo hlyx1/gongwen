@@ -1,8 +1,4 @@
 import { describe, it, expect } from 'vitest'
-import {
-  calculateSignatureIndentEm,
-  calculateTextWidthEm,
-} from '../../components/Preview/A4Page'
 import { DEFAULT_CONFIG } from '../../types/documentConfig'
 import type { DocumentConfig } from '../../types/documentConfig'
 import {
@@ -19,17 +15,46 @@ import {
 } from '../metrics'
 
 /**
- * 决策层度量决策测试（单元3 建立、单元4 迁移改写）
+ * 决策层度量决策测试（单元3 建立、单元4/5 迁移改写）
  *
  * 单元3 时本文件通过与 styleFactory（twip 版）/ A4Page（em 版）双实现对照验证等价；
  * 单元4 接线后 styleFactory 旧决策函数删除（其行为由 13 条导出快照红线锁定），
  * twip 版对照改为手算锚点直接锁定（数值与原对照基线一致）；
- * em 版对照保留（A4Page 为预览侧现状，单元5 前不动）。
+ * 单元5 预览接线后 A4Page 旧 em 函数删除（calculateTextWidthEm /
+ * calculateSignatureIndentEm），em 版对照锚迁为下方测试内参考实现——
+ * 公式逐字符拷贝自旧 A4Page.tsx，锁定决策层 em 口径不漂移
+ * （预览署名右缩进经 LayoutIndent.rightEm 消费该口径）。
  *
  * 手算口径（DEFAULT_CONFIG）：可用宽度 8844、charSpacing=−5、charWidth=315、
  * 署名缩进 = (印章?4:2)×315 + (日期宽−署名宽)/2，下限 0；
  * 中文 1×315、ASCII/〇 0.69×315。
  */
+
+/** 参考实现＝迁移前 A4Page.calculateTextWidthEm（预览侧现状公式，行为锚） */
+function referenceTextWidthEm(text: string): number {
+  let width = 0
+  for (const char of text) {
+    if (/[\u4e00-\u9fff\u3400-\u4dbf]/.test(char)) {
+      width += 1
+    } else {
+      width += 0.69
+    }
+  }
+  return width
+}
+
+/** 参考实现＝迁移前 A4Page.calculateSignatureIndentEm（预览侧现状公式，行为锚） */
+function referenceSignatureIndentEm(
+  signatureContent: string,
+  dateContent: string,
+  hasStamp: boolean
+): number {
+  const baseIndent = hasStamp ? 4 : 2
+  const signatureWidth = referenceTextWidthEm(signatureContent)
+  const dateWidth = referenceTextWidthEm(dateContent)
+  const centerOffset = (dateWidth - signatureWidth) / 2
+  return Math.max(0, baseIndent + centerOffset)
+}
 
 /** 深拷贝默认配置后打补丁（测试专用，避免污染共享对象） */
 function configWith(patch: (c: DocumentConfig) => void): DocumentConfig {
@@ -87,10 +112,10 @@ describe('决策层文本宽度计量（双口径）', () => {
     expect(textWidthTwips('2026年9月11日', 315)).toBeCloseTo(2466.45, 9)
   })
 
-  it('em 版与 A4Page.calculateTextWidthEm 同值（预览侧现状）', () => {
-    expect(textWidthEm('某某市人民政府')).toBe(calculateTextWidthEm('某某市人民政府'))
+  it('em 版与旧 A4Page.calculateTextWidthEm 公式同值（预览侧现状）', () => {
+    expect(textWidthEm('某某市人民政府')).toBe(referenceTextWidthEm('某某市人民政府'))
     expect(textWidthEm('2026年9月11日')).toBeCloseTo(
-      calculateTextWidthEm('2026年9月11日'),
+      referenceTextWidthEm('2026年9月11日'),
       9
     )
   })
@@ -156,7 +181,7 @@ describe('决策层签名缩进 twip 版（手算锚点）', () => {
   })
 })
 
-// ---- 签名缩进 em 版（与 A4Page.calculateSignatureIndentEm 对照） ----
+// ---- 签名缩进 em 版（与旧 A4Page.calculateSignatureIndentEm 公式对照） ----
 
 describe('决策层签名缩进 em 版（与预览侧现状对照）', () => {
   const cases: { sig: string; date: string }[] = [
@@ -169,9 +194,9 @@ describe('决策层签名缩进 em 版（与预览侧现状对照）', () => {
 
   for (const { sig, date } of cases) {
     for (const hasStamp of [false, true]) {
-      it(`${sig} × ${date}（印章=${hasStamp}）：与 calculateSignatureIndentEm 逐值一致`, () => {
+      it(`${sig} × ${date}（印章=${hasStamp}）：与旧 calculateSignatureIndentEm 公式逐值一致`, () => {
         expect(signatureRightIndentEm(sig, date, hasStamp)).toBe(
-          calculateSignatureIndentEm(sig, date, hasStamp)
+          referenceSignatureIndentEm(sig, date, hasStamp)
         )
       })
     }

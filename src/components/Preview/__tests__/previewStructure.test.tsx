@@ -3,10 +3,11 @@ import React from 'react'
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import { renderToStaticMarkup } from 'react-dom/server'
 import { DEFAULT_CONFIG } from '../../../types/documentConfig'
-import type { DocumentConfig, HeaderConfig, FooterNoteConfig } from '../../../types/documentConfig'
+import type { DocumentConfig } from '../../../types/documentConfig'
 import { NodeType } from '../../../types/ast'
 import type { GongwenAST, DocumentNode, AttachmentNode, TableNode, TableRowData } from '../../../types/ast'
 import type { AIProofreadResult } from '../../../types/aiProofread'
+import { buildLayout } from '../../../layout'
 import { A4Page } from '../A4Page'
 
 /**
@@ -14,15 +15,16 @@ import { A4Page } from '../A4Page'
  *
  * 用 react-dom/server 的 renderToStaticMarkup（既有依赖，零新增）对
  * A4Page 与 Preview 度量容器做 className＋文本结构快照：
- * - 本文件在单元5 动刀前建立基线，重构全程快照零变化——预览侧
- *   行为保持的机械证据（A4Page.css 零改动、DOM 类名与层级不变）。
+ * - 本文件在单元5 动刀前建立基线（旧 props 直渲），重构后测试外壳改经
+ *   buildLayout(renderer='preview') 驱动新装配层——快照文件全程零变化，
+ *   是预览侧行为保持的机械证据（A4Page.css 零改动、DOM 类名与层级不变）
  * - Preview 依赖 context 与 DOM 度量 hook，测试中以 vi.mock 固定
  *   useDocumentConfig（DEFAULT_CONFIG 打补丁）与 usePagination（固定分页片），
- *   快照覆盖度量容器（a4-measurer）与分页后的 A4Page 全量 DOM。
+ *   快照覆盖度量容器（a4-measurer）与分页后的 A4Page 全量 DOM
  * - 事件处理器（onMouseEnter/onMouseLeave）不出现在静态标记中，
- *   AI 高亮的锁定面为 span 结构与 className（a4-highlight-sentence）。
+ *   AI 高亮的锁定面为 span 结构与 className（a4-highlight-sentence）
  * - 快照中的署名右缩进（如 4.414999999999999em）是预览侧 em 口径的
- *   浮点现状特征，用于锁定决策层供给的换算口径逐位一致（待办-0018 族）。
+ *   浮点现状特征，用于锁定决策层供给的换算口径逐位一致（待办-0018 族）
  */
 
 // ---- Preview 依赖 mock（vi.mock 提升到文件顶部执行，配置经 vi.hoisted 传递） ----
@@ -82,12 +84,6 @@ function configWith(patch: (c: DocumentConfig) => void): DocumentConfig {
   return cloned
 }
 
-/** 版头默认关闭 */
-const HEADER_OFF: HeaderConfig = { enabled: false, orgName: '', docNumber: '', signer: '' }
-
-/** 版记默认关闭 */
-const FOOTER_OFF: FooterNoteConfig = { enabled: false, cc: '', printer: '', printDate: '' }
-
 /**
  * 全节点类型样例公文（覆盖：多段标题、主送、正文多句、一至四级标题、
  * 时间冒号、表格、单附件、多附件（名称含英文句点）、署名＋日期＋备注）
@@ -145,90 +141,115 @@ function makeAiResults(): Map<string, AIProofreadResult> {
   return map
 }
 
-/** 渲染 A4Page 为静态标记 */
-function renderA4Page(props: Partial<Parameters<typeof A4Page>[0]>): string {
+/** 渲染 A4Page 为静态标记：AST＋配置补丁经决策层（renderer='preview'）驱动新装配层 */
+function renderA4Page(
+  patch: (c: DocumentConfig) => void,
+  pageProps: Partial<Parameters<typeof A4Page>[0]>,
+  ast: GongwenAST = FULL_AST
+): string {
+  const config = configWith(patch)
+  const layout = buildLayout(ast, config, { renderer: 'preview' })
   return renderToStaticMarkup(
     <A4Page
-      title={FULL_AST.title}
-      body={FULL_AST.body}
+      layout={layout}
       pageNumber={1}
-      totalPages={1}
       offsetY={0}
       clipHeight={800}
-      showPageNumber
-      headerConfig={HEADER_OFF}
-      footerNoteConfig={FOOTER_OFF}
       isFirstPage
       isLastPage
-      hasStamp={false}
-      {...props}
+      {...pageProps}
     />
   )
 }
 
-// ---- A4Page 结构快照（基线＝动刀前现状） ----
+/** 空补丁（保持默认配置） */
+function noPatch(): void {
+  /* 保持默认 */
+}
+
+// ---- A4Page 结构快照（基线＝动刀前现状，重构后经决策层驱动须逐字节复现） ----
 
 describe('A4Page 结构特征快照（className＋文本结构）', () => {
   it('全节点样例·首页·无 AI·无版头版记·页码开（奇数页）', () => {
-    expect(renderA4Page({})).toMatchSnapshot()
+    expect(renderA4Page(noPatch, {})).toMatchSnapshot()
   })
 
   it('全节点样例·第 2 页（偶数页码类）', () => {
     expect(
-      renderA4Page({ pageNumber: 2, isFirstPage: false, isLastPage: false, offsetY: 300, clipHeight: 420 })
+      renderA4Page(noPatch, { pageNumber: 2, isFirstPage: false, isLastPage: false, offsetY: 300, clipHeight: 420 })
     ).toMatchSnapshot()
   })
 
   it('版头开·含签发人', () => {
     expect(
-      renderA4Page({
-        headerConfig: { enabled: true, orgName: '某某市人民政府文件', docNumber: '某政发〔2026〕1号', signer: '张三' },
-      })
+      renderA4Page(function (c) {
+        c.header.enabled = true
+        c.header.orgName = '某某市人民政府文件'
+        c.header.docNumber = '某政发〔2026〕1号'
+        c.header.signer = '张三'
+      }, {})
     ).toMatchSnapshot()
   })
 
   it('版头开·无签发人', () => {
     expect(
-      renderA4Page({
-        headerConfig: { enabled: true, orgName: '某某市人民政府文件', docNumber: '某政发〔2026〕1号', signer: '' },
-      })
+      renderA4Page(function (c) {
+        c.header.enabled = true
+        c.header.orgName = '某某市人民政府文件'
+        c.header.docNumber = '某政发〔2026〕1号'
+        c.header.signer = ''
+      }, {})
     ).toMatchSnapshot()
   })
 
   it('版记开·抄送＋印发（末页）', () => {
     expect(
-      renderA4Page({
-        footerNoteConfig: { enabled: true, cc: '市委各部门，市人大常委会办公室', printer: '某某市人民政府办公室', printDate: '2026年9月11日' },
-      })
+      renderA4Page(function (c) {
+        c.footerNote.enabled = true
+        c.footerNote.cc = '市委各部门，市人大常委会办公室'
+        c.footerNote.printer = '某某市人民政府办公室'
+        c.footerNote.printDate = '2026年9月11日'
+      }, {})
     ).toMatchSnapshot()
   })
 
   it('版记开·仅印发无抄送', () => {
     expect(
-      renderA4Page({
-        footerNoteConfig: { enabled: true, cc: '', printer: '某某市人民政府办公室', printDate: '2026年9月11日' },
-      })
+      renderA4Page(function (c) {
+        c.footerNote.enabled = true
+        c.footerNote.cc = ''
+        c.footerNote.printer = '某某市人民政府办公室'
+        c.footerNote.printDate = '2026年9月11日'
+      }, {})
     ).toMatchSnapshot()
   })
 
   it('页码关闭', () => {
-    expect(renderA4Page({ showPageNumber: false })).toMatchSnapshot()
+    expect(
+      renderA4Page(function (c) {
+        c.specialOptions.showPageNumber = false
+      }, {})
+    ).toMatchSnapshot()
   })
 
   it('AI 校对结果：标题/正文句子/一级标题首句高亮', () => {
-    expect(renderA4Page({ aiProofreadResults: makeAiResults() })).toMatchSnapshot()
+    expect(renderA4Page(noPatch, { aiProofreadResults: makeAiResults() })).toMatchSnapshot()
   })
 
   it('AI 校对结果为空 Map：退化为无高亮', () => {
-    expect(renderA4Page({ aiProofreadResults: new Map() })).toMatchSnapshot()
+    expect(renderA4Page(noPatch, { aiProofreadResults: new Map<string, AIProofreadResult>() })).toMatchSnapshot()
   })
 
   it('加盖印章：日期右空四字、署名基准四字', () => {
-    expect(renderA4Page({ hasStamp: true })).toMatchSnapshot()
+    expect(
+      renderA4Page(function (c) {
+        c.specialOptions.hasStamp = true
+      }, {})
+    ).toMatchSnapshot()
   })
 
   it('空文档：占位段落', () => {
-    expect(renderA4Page({ title: [], body: [] })).toMatchSnapshot()
+    expect(renderA4Page(noPatch, {}, EMPTY_AST)).toMatchSnapshot()
   })
 })
 

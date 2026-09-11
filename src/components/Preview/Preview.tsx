@@ -1,11 +1,13 @@
-import React, { useRef, useMemo, type CSSProperties } from 'react'
-import { NodeType } from '../../types/ast'
-import type { GongwenAST, DocumentNode, AttachmentNode } from '../../types/ast'
+import { useRef, useMemo, type CSSProperties } from 'react'
+import type { GongwenAST } from '../../types/ast'
 import type { AIProofreadResult } from '../../types/aiProofread'
 import { useDocumentConfig } from '../../contexts/DocumentConfigContext'
 import { cmToPagePercent, CHARS_PER_LINE } from '../../types/documentConfig'
+import { buildLayout } from '../../layout'
 import { usePagination } from '../../hooks/usePagination'
-import { A4Page, NODE_CLASS_MAP, renderHeading1, renderHeading2, renderHeading3, renderHeading4, renderAttachment, calculateSignatureIndentEm } from './A4Page'
+import { renderContentFlow } from './renderContentFlow'
+import { A4FooterNote } from './A4FooterNote'
+import { A4Page } from './A4Page'
 import './A4Page.css'
 import './Preview.css'
 
@@ -16,34 +18,24 @@ interface PreviewProps {
 }
 
 /**
- * 计算节点的动态样式（用于 measurer）
- * - SIGNATURE: 以成文日期为基准居中
- * - DATE: 根据 hasStamp 右空四字或二字
+ * 预览容器（工作单元-5 重构后）
+ *
+ * - 一次性调用决策层 buildLayout（renderer='preview'），A4Page 页面内容
+ *   与度量容器消费同一份块序列渲染输出——消灭旧实现中度量容器的
+ *   第三次节点遍历复制（勘探 §3.2）
+ * - 度量容器 DOM 类名结构保持不变（usePagination 的
+ *   `:scope > p` 选择器依赖；表格分支缺失现状保留＝待办-0005 冻结）
+ * - CSS 变量注入保持双轨现状（预览读 config.headings——消费点收敛属单元6）
  */
-function getNodeStyle(
-  node: DocumentNode,
-  index: number,
-  body: DocumentNode[],
-  hasStamp: boolean
-): CSSProperties | undefined {
-  if (node.type === NodeType.SIGNATURE) {
-    const nextNode = body[index + 1]
-    if (nextNode && nextNode.type === NodeType.DATE) {
-      const indent = calculateSignatureIndentEm(node.content, nextNode.content, hasStamp)
-      return { paddingRight: `${indent}em` }
-    }
-    return { paddingRight: `${hasStamp ? 4 : 2}em` }
-  }
-  if (node.type === NodeType.DATE) {
-    return { paddingRight: `${hasStamp ? 4 : 2}em` }
-  }
-  return undefined
-}
-
 export function Preview({ ast, aiProofreadResults }: PreviewProps) {
   const measurerRef = useRef<HTMLDivElement>(null)
   const { config } = useDocumentConfig()
   const pages = usePagination(ast.title, ast.body, measurerRef)
+
+  /** 排版决策：AST + 配置 → 预览渲染决策（块序列 + 版头/版记/页码参数） */
+  const layout = useMemo(function () {
+    return buildLayout(ast, config, { renderer: 'preview' })
+  }, [ast, config])
 
   /** 将 config 转换为 CSS 自定义属性 */
   const cssVars = useMemo((): CSSProperties => {
@@ -91,107 +83,27 @@ export function Preview({ ast, aiProofreadResults }: PreviewProps) {
   return (
     <div className="preview-container">
       <div className="preview-scroll" style={cssVars}>
-        {/* 隐藏度量容器：渲染全部节点用于高度测量（与 A4Page 使用相同的 CSS 类和渲染逻辑） */}
+        {/* 隐藏度量容器：渲染与 A4Page 同源的决策层块序列用于高度测量
+            （不注入 AI 高亮上下文——测量无需高亮，纯文本渲染；
+            mode='measurer'——表格按段落测量，待办-0005 冻结现状） */}
         <div ref={measurerRef} className="a4-measurer" aria-hidden="true">
           <div className="a4-measurer-content">
-            {/* 渲染多段标题 */}
-            {ast.title.length > 0 && ast.title.map((titleNode, titleIndex) => (
-              <p key={`title-${titleIndex}`} className={NODE_CLASS_MAP[titleNode.type]}>
-                {titleNode.content}
-              </p>
-            ))}
-            {/* 标题后添加一个固定行距的空行 */}
-            {ast.title.length > 0 && (
-              <p className="a4-empty-line">{'\u200B'}</p>
-            )}
-            {ast.body.flatMap((node, index) => {
-              const elements: React.ReactNode[] = []
-              
-              // 发文机关署名前插入 2 个空行
-              if (node.type === NodeType.SIGNATURE) {
-                for (let j = 0; j < 2; j++) {
-                  elements.push(
-                    <p key={`empty-${node.lineNumber}-${j}`} className="a4-empty-line">{'\u200B'}</p>
-                  )
-                }
-              }
-              
-              // 备注前插入 2 个空行
-              if (node.type === NodeType.REMARK) {
-                for (let j = 0; j < 2; j++) {
-                  elements.push(
-                    <p key={`empty-remark-${node.lineNumber}-${j}`} className="a4-empty-line">{'\u200B'}</p>
-                  )
-                }
-              }
-              
-              if (node.type === NodeType.ATTACHMENT) {
-                elements.push(
-                  <React.Fragment key={node.lineNumber}>
-                    {renderAttachment(node as AttachmentNode)}
-                  </React.Fragment>
-                )
-              } else {
-                elements.push(
-                  <p
-                    key={node.lineNumber}
-                    className={
-                      node.type === NodeType.HEADING_1 ? 'a4-h1'
-                      : node.type === NodeType.HEADING_2 ? 'a4-h2'
-                      : NODE_CLASS_MAP[node.type]
-                    }
-                    style={getNodeStyle(node, index, ast.body, config.specialOptions.hasStamp)}
-                  >
-                    {node.type === NodeType.HEADING_1
-                      ? renderHeading1(node.content)
-                      : node.type === NodeType.HEADING_2
-                        ? renderHeading2(node.content)
-                        : node.type === NodeType.HEADING_3
-                          ? renderHeading3(node.content)
-                          : node.type === NodeType.HEADING_4
-                            ? renderHeading4(node.content)
-                            : node.content}
-                  </p>
-                )
-              }
-              
-              return elements
-            })}
+            {renderContentFlow(layout.blocks, layout.metrics, undefined, 'measurer')}
           </div>
           {/* 隐藏版记：用于度量版记高度，始终渲染以便在分页计算时获取高度 */}
-          {config.footerNote.enabled && (
-            <div className="a4-footer-note a4-footer-note--measurer">
-              <div className="a4-footer-note-line-top"></div>
-              {config.footerNote.cc && (
-                <div className="a4-footer-note-cc">抄送：{config.footerNote.cc}</div>
-              )}
-              {(config.footerNote.printer || config.footerNote.printDate) && (
-                <div className="a4-footer-note-printer">
-                  <span>{config.footerNote.printer}</span>
-                  <span>{config.footerNote.printDate}{config.footerNote.printDate && '印发'}</span>
-                </div>
-              )}
-              <div className="a4-footer-note-line-bottom"></div>
-            </div>
-          )}
+          {layout.footerNote && <A4FooterNote note={layout.footerNote} measurer />}
         </div>
 
         {/* 渲染分页后的多个 A4 页面（每页渲染完整内容流，通过 offsetY 裁剪） */}
         {pages.map((slice, index) => (
           <A4Page
             key={index}
-            title={ast.title}
-            body={ast.body}
+            layout={layout}
             pageNumber={index + 1}
-            totalPages={pages.length}
             offsetY={slice.offsetY}
             clipHeight={slice.clipHeight}
-            showPageNumber={config.specialOptions.showPageNumber}
-            headerConfig={config.header}
-            footerNoteConfig={config.footerNote}
             isFirstPage={index === 0}
             isLastPage={index === pages.length - 1}
-            hasStamp={config.specialOptions.hasStamp}
             aiProofreadResults={aiProofreadResults}
           />
         ))}
