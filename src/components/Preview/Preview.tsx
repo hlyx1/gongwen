@@ -25,7 +25,7 @@ interface PreviewProps {
  *   第三次节点遍历复制（勘探 §3.2）
  * - 度量容器 DOM 类名结构保持不变（usePagination 的
  *   `:scope > p` 选择器依赖；表格分支缺失现状保留＝待办-0005 冻结）
- * - CSS 变量注入保持双轨现状（预览读 config.headings——消费点收敛属单元6）
+ * - CSS 变量读 config.headings（单元6 双轨合并后单一真值：预览与导出同源）
  */
 export function Preview({ ast, aiProofreadResults }: PreviewProps) {
   const measurerRef = useRef<HTMLDivElement>(null)
@@ -70,7 +70,7 @@ export function Preview({ ast, aiProofreadResults }: PreviewProps) {
       '--h1-size': `${config.headings.h1.fontSize}px`,
       '--h2-font': config.headings.h2.fontFamily,
       '--h2-size': `${config.headings.h2.fontSize}px`,
-      '--h3-font': config.advanced.h3.fontFamily,
+      '--h3-font': config.headings.h3.fontFamily,
       '--page-number-font': config.specialOptions.pageNumberFont,
       // 表格配置
       '--table-font': config.table.fontFamily,

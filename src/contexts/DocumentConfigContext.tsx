@@ -7,6 +7,8 @@ import {
 } from 'react'
 import {
   DEFAULT_CONFIG,
+  CONFIG_STORAGE_KEY,
+  loadMigratedConfigStorage,
   type DocumentConfig,
   type DeepPartial,
   type SavedConfig,
@@ -16,8 +18,6 @@ import {
   DEFAULT_AI_PROOFREAD_CONFIG,
   type AIProofreadConfig,
 } from '../types/aiProofread'
-
-const STORAGE_KEY = 'docx-document-config-v2'
 
 // ---- 深合并工具 ----
 
@@ -155,25 +155,11 @@ function configReducer(state: ConfigState, action: Action): ConfigState {
   }
 }
 
-/** 从 localStorage 读取存储结构 */
+/** 从 localStorage 读取存储结构（单元6：读时自动升级旧双轨结构——
+ * 迁移前旧内容原样备份至 docx-document-config-v2.backup-<时间戳> 键，
+ * 详见 types/documentConfig.ts 的 loadMigratedConfigStorage） */
 function loadStorage(): ConfigStorage {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) {
-      const parsed = JSON.parse(raw) as ConfigStorage
-      return {
-        activeConfigId: parsed.activeConfigId || null,
-        savedConfigs: parsed.savedConfigs || [],
-        aiProofreadConfig: parsed.aiProofreadConfig,
-      }
-    }
-  } catch {
-    // 解析失败则使用默认值
-  }
-  return {
-    activeConfigId: null,
-    savedConfigs: [],
-  }
+  return loadMigratedConfigStorage(localStorage)
 }
 
 /** 从存储结构初始化状态 */
@@ -261,7 +247,7 @@ export function DocumentConfigProvider({ children }: { children: ReactNode }) {
       savedConfigs: state.savedConfigs,
       aiProofreadConfig: state.aiProofreadConfig,
     }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(storage))
+    localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(storage))
   }, [state.activeConfigId, state.savedConfigs, state.aiProofreadConfig])
 
   return (

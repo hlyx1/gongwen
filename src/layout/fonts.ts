@@ -3,8 +3,8 @@
  *
  * 收编 styleFactory.getRunStyle 系列的字体分配规则（勘探 §3.4），
  * 以「角色 → 规格」表驱动，渲染器无需重复决策。
- * 消费 config.advanced 的字段（h1/h2/h3/addressee）保持现状口径——
- * 配置双轨合并是单元6 的范围，本层不预改。
+ * 消费 config.headings（单元6 双轨合并后单一真值：h1/h2/h3/addressee
+ * 每级中文字体/英数字体/字号——预览与导出同源）。
  */
 import { NodeType } from '../types/ast'
 import type { DocumentConfig } from '../types/documentConfig'
@@ -77,40 +77,40 @@ export function roleSpec(role: FontRole, config: DocumentConfig): RoleSpec {
       return {
         role,
         font: fontQuad(
-          config.advanced.h1.fontFamily,
-          config.advanced.h1.asciiFontFamily || config.advanced.h1.fontFamily
+          config.headings.h1.fontFamily,
+          config.headings.h1.asciiFontFamily || config.headings.h1.fontFamily
         ),
-        sizeHalfPt: config.advanced.h1.fontSize * 2,
+        sizeHalfPt: config.headings.h1.fontSize * 2,
         characterSpacingTwips: charSpacing,
       }
     case 'heading2':
       return {
         role,
         font: fontQuad(
-          config.advanced.h2.fontFamily,
-          config.advanced.h2.asciiFontFamily || config.advanced.h2.fontFamily
+          config.headings.h2.fontFamily,
+          config.headings.h2.asciiFontFamily || config.headings.h2.fontFamily
         ),
-        sizeHalfPt: config.advanced.h2.fontSize * 2,
+        sizeHalfPt: config.headings.h2.fontSize * 2,
         characterSpacingTwips: charSpacing,
       }
     case 'heading3':
       return {
         role,
         font: fontQuad(
-          config.advanced.h3.fontFamily,
-          config.advanced.h3.asciiFontFamily || config.advanced.h3.fontFamily
+          config.headings.h3.fontFamily,
+          config.headings.h3.asciiFontFamily || config.headings.h3.fontFamily
         ),
-        sizeHalfPt: config.advanced.h3.fontSize * 2,
+        sizeHalfPt: config.headings.h3.fontSize * 2,
         characterSpacingTwips: charSpacing,
       }
     case 'addressee':
       return {
         role,
         font: fontQuad(
-          config.advanced.addressee.fontFamily,
-          config.advanced.addressee.asciiFontFamily || config.advanced.addressee.fontFamily
+          config.headings.addressee.fontFamily,
+          config.headings.addressee.asciiFontFamily || config.headings.addressee.fontFamily
         ),
-        sizeHalfPt: config.advanced.addressee.fontSize * 2,
+        sizeHalfPt: config.headings.addressee.fontSize * 2,
         characterSpacingTwips: charSpacing,
       }
     default:

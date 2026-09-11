@@ -249,49 +249,12 @@
   margin: 8px 0 0;
 }
 
-/* 折叠按钮 */
-.settings-section-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  padding: 8px 0;
-  border: none;
-  background: none;
-  font-size: 14px;
-  font-weight: 600;
-  color: #374151;
-  cursor: pointer;
-  border-bottom: 1px solid #f3f4f6;
-}
-
-.settings-section-toggle:hover {
-  color: #111827;
-}
-
-.settings-arrow {
-  font-size: 12px;
-  transition: transform 0.2s;
-}
-
-.settings-arrow--open {
-  transform: rotate(90deg);
-}
-
-/* 高级设置 */
-.settings-advanced {
+/* 标题字体区行（单元6：单一「标题字体」区，取代原高级设置行样式） */
+.settings-heading-row {
   margin-top: 12px;
 }
 
-.settings-advanced-row {
-  margin-bottom: 12px;
-}
-
-.settings-advanced-row:last-child {
-  margin-bottom: 0;
-}
-
-.settings-advanced-label {
+.settings-heading-label {
   display: block;
   font-size: 13px;
   font-weight: 500;

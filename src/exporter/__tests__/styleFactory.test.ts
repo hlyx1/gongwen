@@ -27,8 +27,8 @@ import type { GongwenAST, DocumentNode, AttachmentNode } from '../../types/ast'
  *   不产出属性——逐字节保持快照的机械保证），数值与原基线一致
  *   （charSpacing −5、charWidth 315、首行缩进 630、签名缩进 1417.5 等）。
  *
- * 双轨现状行为记录（单元6 前保持）：导出真值在 config.advanced，
- * 改 config.headings 不影响导出。
+ * 单一真值（单元6 双轨合并后）：标题字体真值在 config.headings
+ * （h1/h2/h3/addressee），预览与导出同源。
  */
 
 // ---- 测试辅助 ----
@@ -178,21 +178,21 @@ describe('决策块 run 数值基线（原 getRunStyle 对照迁移）', () => {
     expect(options.size).toBe(44)
   })
 
-  it('一级标题：eastAsia/hAnsi 黑体（读 config.advanced.h1）', () => {
+  it('一级标题：eastAsia/hAnsi 黑体（读 config.headings.h1）', () => {
     const block = paragraphBlockOf(NodeType.HEADING_1, '一、总体要求。')
     expect(runOptions(block.runs[0]).font).toEqual(
       expect.objectContaining({ eastAsia: '黑体', hAnsi: '黑体' })
     )
   })
 
-  it('二级标题：eastAsia 楷体_GB2312（读 config.advanced.h2）', () => {
+  it('二级标题：eastAsia 楷体_GB2312（读 config.headings.h2）', () => {
     const block = paragraphBlockOf(NodeType.HEADING_2, '（一）指导思想。')
     expect(runOptions(block.runs[0]).font).toEqual(
       expect.objectContaining({ eastAsia: '楷体_GB2312' })
     )
   })
 
-  it('三级标题：eastAsia 仿宋_GB2312（读 config.advanced.h3）', () => {
+  it('三级标题：eastAsia 仿宋_GB2312（读 config.headings.h3）', () => {
     const block = paragraphBlockOf(NodeType.HEADING_3, '1.加强组织领导。')
     expect(runOptions(block.runs[0]).font).toEqual(
       expect.objectContaining({ eastAsia: '仿宋_GB2312' })
@@ -208,7 +208,7 @@ describe('决策块 run 数值基线（原 getRunStyle 对照迁移）', () => {
     expect(options.size).toBe(32)
   })
 
-  it('主送机关读 config.advanced.addressee（仿宋 + Times New Roman）', () => {
+  it('主送机关读 config.headings.addressee（仿宋 + Times New Roman）', () => {
     const block = paragraphBlockOf(NodeType.ADDRESSEE, '各县（市、区）人民政府：')
     const options = runOptions(block.runs[0])
     expect(options.font).toEqual(
@@ -589,33 +589,23 @@ describe('签名缩进基线（导出侧，经决策层）', () => {
   })
 })
 
-// ---- 配置双轨现状（单元6 前保持：导出真值在 advanced） ----
+// ---- 单一真值（单元6 双轨合并后：标题字体真值在 config.headings） ----
 
-describe('配置双轨现状行为记录', () => {
-  it('改 config.headings.h1 不影响导出字体（真值在 advanced）', () => {
+describe('标题字体单一真值行为记录', () => {
+  it('改 config.headings.h1 影响导出字体（预览与导出同源）', () => {
     const config = configWith((c) => {
       c.headings.h1.fontFamily = '宋体'
       c.headings.h1.fontSize = 22
     })
     const block = paragraphBlockOf(NodeType.HEADING_1, '一、标题。', config)
     const options = runOptions(block.runs[0])
-    expect(options.font).toEqual(expect.objectContaining({ eastAsia: '黑体' }))
-    expect(options.size).toBe(32)
+    expect(options.font).toEqual(expect.objectContaining({ eastAsia: '宋体' }))
+    expect(options.size).toBe(44)
   })
 
-  it('改 config.advanced.h1 影响导出字体', () => {
+  it('headings.h1.asciiFontFamily 为空串时回退中文字体（「跟随中文字体」选项）', () => {
     const config = configWith((c) => {
-      c.advanced.h1.fontFamily = '宋体'
-    })
-    const block = paragraphBlockOf(NodeType.HEADING_1, '一、标题。', config)
-    expect(runOptions(block.runs[0]).font).toEqual(
-      expect.objectContaining({ eastAsia: '宋体' })
-    )
-  })
-
-  it('advanced.h1.asciiFontFamily 为空串时回退中文字体（「跟随中文字体」选项）', () => {
-    const config = configWith((c) => {
-      c.advanced.h1.asciiFontFamily = ''
+      c.headings.h1.asciiFontFamily = ''
     })
     const block = paragraphBlockOf(NodeType.HEADING_1, '一、标题。', config)
     expect(runOptions(block.runs[0]).font).toEqual(

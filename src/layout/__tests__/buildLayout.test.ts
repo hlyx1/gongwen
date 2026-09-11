@@ -165,7 +165,7 @@ describe('buildLayout 各 NodeType 决策输出', () => {
     expect(block.runs[0].characterSpacingTwips).toBe(-5)
   })
 
-  it('HEADING_2：楷体（读 advanced.h2）', () => {
+  it('HEADING_2：楷体（读 headings.h2）', () => {
     const ast: GongwenAST = {
       title: [],
       body: [makeNode(NodeType.HEADING_2, '（一）指导思想。', 1)],

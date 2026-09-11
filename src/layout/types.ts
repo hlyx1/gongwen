@@ -21,12 +21,12 @@ export type LayoutAlignment = 'center' | 'left' | 'right' | 'justified'
  */
 export type FontRole =
   | 'title' // 公文标题（方正小标宋）
-  | 'heading1' // 一级标题（黑体，读 config.advanced.h1）
-  | 'heading2' // 二级标题（楷体，读 config.advanced.h2）
-  | 'heading3' // 三级标题（仿宋，读 config.advanced.h3）
+  | 'heading1' // 一级标题（黑体，读 config.headings.h1）
+  | 'heading2' // 二级标题（楷体，读 config.headings.h2）
+  | 'heading3' // 三级标题（仿宋，读 config.headings.h3）
   | 'heading4' // 四级标题（仿宋，与正文同字体——现状落入正文默认分支）
   | 'body' // 正文（仿宋）
-  | 'addressee' // 主送机关（读 config.advanced.addressee）
+  | 'addressee' // 主送机关（读 config.headings.addressee）
   | 'bodyPunct' // 标点专用正文字体四槽（时间冒号/三级标题句点/附件句点，导出侧现状）
   | 'table' // 表格（读 config.table）
 

@@ -199,7 +199,6 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
     deleteCustomConfig,
   } = useDocumentConfig()
   const { customFonts, addFont, removeFont } = useCustomFonts()
-  const [showAdvanced, setShowAdvanced] = useState(false)
   const [showMarginHint, setShowMarginHint] = useState(false)
   const [showSaveDialog, setShowSaveDialog] = useState(false)
   const [showSaveSuccess, setShowSaveSuccess] = useState(false)
@@ -430,35 +429,52 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
             </div>
           </section>
 
-          {/* 区块 3: 各级标题字体 */}
+          {/* 区块 3: 标题字体（单元6 双轨合并：单一真值，每级一组三控件，
+              废止原「各级标题」区（仅中文字体+字号）与「高级设置」区的重复入口，
+              原 advanced 的主送机关/三级标题扩展字段并入本区） */}
           <section className="settings-section">
-            <h3 className="settings-section-title">各级标题</h3>
-            <div className="settings-grid settings-grid--2">
-              <FontSelectField
-                label="一级标题字体"
-                value={config.headings.h1.fontFamily}
-                {...fontFieldProps}
-                onChange={(v) => patch({ headings: { h1: { fontFamily: v } } })}
-              />
-              <SelectField
-                label="一级标题字号"
-                value={config.headings.h1.fontSize}
-                options={FONT_SIZE_OPTIONS}
-                onChange={(v) => patch({ headings: { h1: { fontSize: Number(v) } } })}
-              />
-              <FontSelectField
-                label="二级标题字体"
-                value={config.headings.h2.fontFamily}
-                {...fontFieldProps}
-                onChange={(v) => patch({ headings: { h2: { fontFamily: v } } })}
-              />
-              <SelectField
-                label="二级标题字号"
-                value={config.headings.h2.fontSize}
-                options={FONT_SIZE_OPTIONS}
-                onChange={(v) => patch({ headings: { h2: { fontSize: Number(v) } } })}
-              />
-            </div>
+            <h3 className="settings-section-title">标题字体</h3>
+            <p className="settings-hint">每级标题与主送机关独立配置中文字体、英数字体和字号，同时作用于预览与导出</p>
+            {(
+              [
+                ['h1', '一级标题'],
+                ['h2', '二级标题'],
+                ['h3', '三级标题'],
+                ['addressee', '主送机关'],
+              ] as const
+            ).map(function ([key, label]) {
+              return (
+                <div key={key} className="settings-heading-row">
+                  <span className="settings-heading-label">{label}</span>
+                  <div className="settings-grid settings-grid--3">
+                    <FontSelectField
+                      label="中文字体"
+                      value={config.headings[key].fontFamily}
+                      {...fontFieldProps}
+                      onChange={(v) =>
+                        patch({ headings: { [key]: { fontFamily: v } } })
+                      }
+                    />
+                    <FontSelectField
+                      label="英数字体"
+                      value={config.headings[key].asciiFontFamily}
+                      {...asciiFontFieldProps}
+                      onChange={(v) =>
+                        patch({ headings: { [key]: { asciiFontFamily: v } } })
+                      }
+                    />
+                    <SelectField
+                      label="字号"
+                      value={config.headings[key].fontSize}
+                      options={FONT_SIZE_OPTIONS}
+                      onChange={(v) =>
+                        patch({ headings: { [key]: { fontSize: Number(v) } } })
+                      }
+                    />
+                  </div>
+                </div>
+              )
+            })}
           </section>
 
           {/* 区块 4: 正文格式 */}
@@ -558,64 +574,6 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                 发文机关署名自动识别：成文日期上一行、不超过15字、不以标点结尾的段落
               </p>
             </div>
-          </section>
-
-          {/* 区块 7: 高级设置（折叠面板） */}
-          <section className="settings-section">
-            <button
-              className="settings-section-toggle"
-              onClick={() => setShowAdvanced(!showAdvanced)}
-            >
-              <span>高级设置</span>
-              <span className={'settings-arrow' + (showAdvanced ? ' settings-arrow--open' : '')}>
-                &gt;
-              </span>
-            </button>
-            {showAdvanced && (
-              <div className="settings-advanced">
-                <p className="settings-hint">按元素类型独立配置中文字体、英数字体和字号</p>
-                {(
-                  [
-                    ['addressee', '主送机关'],
-                    ['h1', '一级标题'],
-                    ['h2', '二级标题'],
-                    ['h3', '三级标题'],
-                  ] as const
-                ).map(function ([key, label]) {
-                  return (
-                    <div key={key} className="settings-advanced-row">
-                      <span className="settings-advanced-label">{label}</span>
-                      <div className="settings-grid settings-grid--3">
-                        <FontSelectField
-                          label="中文字体"
-                          value={config.advanced[key].fontFamily}
-                          {...fontFieldProps}
-                          onChange={(v) =>
-                            patch({ advanced: { [key]: { fontFamily: v } } })
-                          }
-                        />
-                        <FontSelectField
-                          label="英数字体"
-                          value={config.advanced[key].asciiFontFamily}
-                          {...asciiFontFieldProps}
-                          onChange={(v) =>
-                            patch({ advanced: { [key]: { asciiFontFamily: v } } })
-                          }
-                        />
-                        <SelectField
-                          label="字号"
-                          value={config.advanced[key].fontSize}
-                          options={FONT_SIZE_OPTIONS}
-                          onChange={(v) =>
-                            patch({ advanced: { [key]: { fontSize: Number(v) } } })
-                          }
-                        />
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
           </section>
         </div>
 

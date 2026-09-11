@@ -5,7 +5,7 @@ import { NodeType } from '../../types/ast'
 import { bodyPunctSpec, nodeFontRole, roleSpec } from '../fonts'
 
 /**
- * 决策层字体角色规格测试（单元3 建立、单元4 迁移改写）
+ * 决策层字体角色规格测试（单元3 建立、单元4 迁移改写、单元6 双轨合并改写）
  *
  * 单元3 时本文件通过与 styleFactory.getRunStyle 系列逐字段对照验证等价；
  * 单元4 接线后 styleFactory 旧决策函数删除（其行为由
@@ -13,7 +13,8 @@ import { bodyPunctSpec, nodeFontRole, roleSpec } from '../fonts'
  * 本文件改为直接锁定数值基线（数值与原对照基线一致）：
  *   - 正文 16pt=32 half-point，charSpacing=−5，四槽 ascii/cs=Times New Roman、
  *     hAnsi=中文字体
- *   - 一/二/三级标题与主送读 config.advanced（双轨现状：真值在 advanced）
+ *   - 一/二/三级标题与主送读 config.headings（单元6 后单一真值：
+ *     预览与导出同源——原 advanced 轨道的默认值）
  *   - 公文标题 22pt=44 half-point，无字符间距
  */
 
@@ -56,7 +57,7 @@ describe('roleSpec 角色规格数值基线', () => {
     expect(spec.characterSpacingTwips).toBeUndefined()
   })
 
-  it('heading1：读 config.advanced.h1（黑体 + Times New Roman，32）', () => {
+  it('heading1：读 config.headings.h1（黑体 + Times New Roman，32）', () => {
     const spec = roleSpec('heading1', DEFAULT_CONFIG)
     expect(spec.font).toEqual({
       ascii: 'Times New Roman',
@@ -68,21 +69,21 @@ describe('roleSpec 角色规格数值基线', () => {
     expect(spec.characterSpacingTwips).toBe(-5)
   })
 
-  it('heading2：读 config.advanced.h2（楷体_GB2312，32）', () => {
+  it('heading2：读 config.headings.h2（楷体_GB2312，32）', () => {
     const spec = roleSpec('heading2', DEFAULT_CONFIG)
     expect(spec.font.eastAsia).toBe('楷体_GB2312')
     expect(spec.sizeHalfPt).toBe(32)
     expect(spec.characterSpacingTwips).toBe(-5)
   })
 
-  it('heading3：读 config.advanced.h3（仿宋_GB2312，32）', () => {
+  it('heading3：读 config.headings.h3（仿宋_GB2312，32）', () => {
     const spec = roleSpec('heading3', DEFAULT_CONFIG)
     expect(spec.font.eastAsia).toBe('仿宋_GB2312')
     expect(spec.sizeHalfPt).toBe(32)
     expect(spec.characterSpacingTwips).toBe(-5)
   })
 
-  it('addressee：读 config.advanced.addressee（仿宋 + Times New Roman，32）', () => {
+  it('addressee：读 config.headings.addressee（仿宋 + Times New Roman，32）', () => {
     const spec = roleSpec('addressee', DEFAULT_CONFIG)
     expect(spec.font.ascii).toBe('Times New Roman')
     expect(spec.font.eastAsia).toBe('仿宋_GB2312')
@@ -101,33 +102,26 @@ describe('roleSpec 角色规格数值基线', () => {
     expect(spec.characterSpacingTwips).toBe(-5)
   })
 
-  it('改 config.headings.h1 不影响决策层字体（双轨现状：真值在 advanced）', () => {
+  it('改 config.headings.h1 影响决策层字体（单元6 单一真值：预览与导出同源）', () => {
     const config = configWith((c) => {
       c.headings.h1.fontFamily = '宋体'
       c.headings.h1.fontSize = 22
     })
     const spec = roleSpec('heading1', config)
-    expect(spec.font.eastAsia).toBe('黑体')
-    expect(spec.sizeHalfPt).toBe(32)
+    expect(spec.font.eastAsia).toBe('宋体')
+    expect(spec.sizeHalfPt).toBe(44)
   })
 
-  it('改 config.advanced.h1 影响决策层字体', () => {
+  it('headings.h1.asciiFontFamily 为空串时回退中文字体（「跟随中文字体」选项）', () => {
     const config = configWith((c) => {
-      c.advanced.h1.fontFamily = '宋体'
-    })
-    expect(roleSpec('heading1', config).font.eastAsia).toBe('宋体')
-  })
-
-  it('advanced.h1.asciiFontFamily 为空串时回退中文字体（「跟随中文字体」选项）', () => {
-    const config = configWith((c) => {
-      c.advanced.h1.asciiFontFamily = ''
+      c.headings.h1.asciiFontFamily = ''
     })
     expect(roleSpec('heading1', config).font.ascii).toBe('黑体')
   })
 
-  it('advanced.h1.asciiFontFamily 显式指定时使用之', () => {
+  it('headings.h1.asciiFontFamily 显式指定时使用之', () => {
     const config = configWith((c) => {
-      c.advanced.h1.asciiFontFamily = 'Arial'
+      c.headings.h1.asciiFontFamily = 'Arial'
     })
     const spec = roleSpec('heading1', config)
     expect(spec.font.ascii).toBe('Arial')
