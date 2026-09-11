@@ -20,6 +20,7 @@ exports[`buildLayout 全节点样例快照 > docx 渲染器：体现导出侧现
           "text": "某某市人民政府办公室",
         },
       ],
+      "sourceLineNumber": 1,
       "sourceType": "DOCUMENT_TITLE",
       "spacing": {
         "afterTwips": 0,
@@ -45,6 +46,7 @@ exports[`buildLayout 全节点样例快照 > docx 渲染器：体现导出侧现
           "text": "关于印发《公文排版管理办法》的通知",
         },
       ],
+      "sourceLineNumber": 2,
       "sourceType": "DOCUMENT_TITLE",
       "spacing": {
         "afterTwips": 0,
@@ -86,6 +88,7 @@ exports[`buildLayout 全节点样例快照 > docx 渲染器：体现导出侧现
           "text": "各县（市、区）人民政府，市政府各部门：",
         },
       ],
+      "sourceLineNumber": 4,
       "sourceType": "ADDRESSEE",
       "spacing": {
         "afterTwips": 0,
@@ -115,6 +118,7 @@ exports[`buildLayout 全节点样例快照 > docx 渲染器：体现导出侧现
           "text": "为规范公文排版工作，提高公文处理质量，经市政府同意，现将《公文排版管理办法》印发给你们，请认真贯彻执行。",
         },
       ],
+      "sourceLineNumber": 5,
       "sourceType": "PARAGRAPH",
       "spacing": {
         "afterTwips": 0,
@@ -156,6 +160,7 @@ exports[`buildLayout 全节点样例快照 > docx 渲染器：体现导出侧现
           "text": "坚持以体式规范为基准，以要件齐全为底线。",
         },
       ],
+      "sourceLineNumber": 6,
       "sourceType": "HEADING_1",
       "spacing": {
         "afterTwips": 0,
@@ -185,6 +190,7 @@ exports[`buildLayout 全节点样例快照 > docx 渲染器：体现导出侧现
           "text": "公文排版应当符合党政机关公文格式国家标准，做到整洁美观、庄重规范。",
         },
       ],
+      "sourceLineNumber": 7,
       "sourceType": "PARAGRAPH",
       "spacing": {
         "afterTwips": 0,
@@ -214,6 +220,7 @@ exports[`buildLayout 全节点样例快照 > docx 渲染器：体现导出侧现
           "text": "（一）指导思想。",
         },
       ],
+      "sourceLineNumber": 8,
       "sourceType": "HEADING_2",
       "spacing": {
         "afterTwips": 0,
@@ -243,6 +250,7 @@ exports[`buildLayout 全节点样例快照 > docx 渲染器：体现导出侧现
           "text": "以提升公文质量为核心，强化格式规范的刚性约束。",
         },
       ],
+      "sourceLineNumber": 9,
       "sourceType": "PARAGRAPH",
       "spacing": {
         "afterTwips": 0,
@@ -308,6 +316,7 @@ exports[`buildLayout 全节点样例快照 > docx 渲染器：体现导出侧现
           "text": "要压实各方责任。",
         },
       ],
+      "sourceLineNumber": 10,
       "sourceType": "HEADING_3",
       "spacing": {
         "afterTwips": 0,
@@ -337,6 +346,7 @@ exports[`buildLayout 全节点样例快照 > docx 渲染器：体现导出侧现
           "text": "各部门主要负责同志是本部门公文质量的第一责任人。",
         },
       ],
+      "sourceLineNumber": 11,
       "sourceType": "PARAGRAPH",
       "spacing": {
         "afterTwips": 0,
@@ -366,6 +376,7 @@ exports[`buildLayout 全节点样例快照 > docx 渲染器：体现导出侧现
           "text": "（1）制定实施方案。",
         },
       ],
+      "sourceLineNumber": 12,
       "sourceType": "HEADING_4",
       "spacing": {
         "afterTwips": 0,
@@ -491,6 +502,7 @@ exports[`buildLayout 全节点样例快照 > docx 渲染器：体现导出侧现
           "text": "，请提前入场。",
         },
       ],
+      "sourceLineNumber": 13,
       "sourceType": "PARAGRAPH",
       "spacing": {
         "afterTwips": 0,
@@ -532,6 +544,7 @@ exports[`buildLayout 全节点样例快照 > docx 渲染器：体现导出侧现
     },
     {
       "alignment": "justified",
+      "attachmentVariant": "multi-first",
       "indent": {
         "hangingTwips": 945,
         "leftTwips": 1575,
@@ -587,6 +600,7 @@ exports[`buildLayout 全节点样例快照 > docx 渲染器：体现导出侧现
           "text": "公文排版管理办法",
         },
       ],
+      "sourceLineNumber": 15,
       "sourceType": "ATTACHMENT",
       "spacing": {
         "beforeTwips": 592,
@@ -596,6 +610,7 @@ exports[`buildLayout 全节点样例快照 > docx 渲染器：体现导出侧现
     },
     {
       "alignment": "justified",
+      "attachmentVariant": "multi-item",
       "indent": {
         "leftTwips": 1575,
       },
@@ -638,6 +653,7 @@ exports[`buildLayout 全节点样例快照 > docx 渲染器：体现导出侧现
           "text": "公文格式自查清单",
         },
       ],
+      "sourceLineNumber": 15,
       "sourceType": "ATTACHMENT",
       "spacing": {
         "lineRule": "exact",
@@ -646,6 +662,7 @@ exports[`buildLayout 全节点样例快照 > docx 渲染器：体现导出侧现
     },
     {
       "alignment": "justified",
+      "attachmentVariant": "multi-item",
       "indent": {
         "leftTwips": 1575,
       },
@@ -688,6 +705,7 @@ exports[`buildLayout 全节点样例快照 > docx 渲染器：体现导出侧现
           "text": "责任分工表",
         },
       ],
+      "sourceLineNumber": 15,
       "sourceType": "ATTACHMENT",
       "spacing": {
         "lineRule": "exact",
@@ -727,6 +745,7 @@ exports[`buildLayout 全节点样例快照 > docx 渲染器：体现导出侧现
           "text": "某某市人民政府办公室",
         },
       ],
+      "sourceLineNumber": 16,
       "sourceType": "SIGNATURE",
       "spacing": {
         "afterTwips": 0,
@@ -755,6 +774,7 @@ exports[`buildLayout 全节点样例快照 > docx 渲染器：体现导出侧现
           "text": "二零二六年九月十一日",
         },
       ],
+      "sourceLineNumber": 17,
       "sourceType": "DATE",
       "spacing": {
         "afterTwips": 0,
@@ -796,6 +816,7 @@ exports[`buildLayout 全节点样例快照 > docx 渲染器：体现导出侧现
           "text": "（联系人：张三，电话0001-1234567）",
         },
       ],
+      "sourceLineNumber": 18,
       "sourceType": "REMARK",
       "spacing": {
         "afterTwips": 0,
@@ -854,6 +875,7 @@ exports[`buildLayout 全节点样例快照 > preview 渲染器：体现预览侧
           "text": "某某市人民政府办公室",
         },
       ],
+      "sourceLineNumber": 1,
       "sourceType": "DOCUMENT_TITLE",
       "spacing": {
         "afterTwips": 0,
@@ -879,6 +901,7 @@ exports[`buildLayout 全节点样例快照 > preview 渲染器：体现预览侧
           "text": "关于印发《公文排版管理办法》的通知",
         },
       ],
+      "sourceLineNumber": 2,
       "sourceType": "DOCUMENT_TITLE",
       "spacing": {
         "afterTwips": 0,
@@ -920,6 +943,7 @@ exports[`buildLayout 全节点样例快照 > preview 渲染器：体现预览侧
           "text": "各县（市、区）人民政府，市政府各部门：",
         },
       ],
+      "sourceLineNumber": 4,
       "sourceType": "ADDRESSEE",
       "spacing": {
         "afterTwips": 0,
@@ -949,6 +973,7 @@ exports[`buildLayout 全节点样例快照 > preview 渲染器：体现预览侧
           "text": "为规范公文排版工作，提高公文处理质量，经市政府同意，现将《公文排版管理办法》印发给你们，请认真贯彻执行。",
         },
       ],
+      "sourceLineNumber": 5,
       "sourceType": "PARAGRAPH",
       "spacing": {
         "afterTwips": 0,
@@ -990,6 +1015,7 @@ exports[`buildLayout 全节点样例快照 > preview 渲染器：体现预览侧
           "text": "坚持以体式规范为基准，以要件齐全为底线。",
         },
       ],
+      "sourceLineNumber": 6,
       "sourceType": "HEADING_1",
       "spacing": {
         "afterTwips": 0,
@@ -1019,6 +1045,7 @@ exports[`buildLayout 全节点样例快照 > preview 渲染器：体现预览侧
           "text": "公文排版应当符合党政机关公文格式国家标准，做到整洁美观、庄重规范。",
         },
       ],
+      "sourceLineNumber": 7,
       "sourceType": "PARAGRAPH",
       "spacing": {
         "afterTwips": 0,
@@ -1048,6 +1075,7 @@ exports[`buildLayout 全节点样例快照 > preview 渲染器：体现预览侧
           "text": "（一）指导思想。",
         },
       ],
+      "sourceLineNumber": 8,
       "sourceType": "HEADING_2",
       "spacing": {
         "afterTwips": 0,
@@ -1077,6 +1105,7 @@ exports[`buildLayout 全节点样例快照 > preview 渲染器：体现预览侧
           "text": "以提升公文质量为核心，强化格式规范的刚性约束。",
         },
       ],
+      "sourceLineNumber": 9,
       "sourceType": "PARAGRAPH",
       "spacing": {
         "afterTwips": 0,
@@ -1118,6 +1147,7 @@ exports[`buildLayout 全节点样例快照 > preview 渲染器：体现预览侧
           "text": "要压实各方责任。",
         },
       ],
+      "sourceLineNumber": 10,
       "sourceType": "HEADING_3",
       "spacing": {
         "afterTwips": 0,
@@ -1147,6 +1177,7 @@ exports[`buildLayout 全节点样例快照 > preview 渲染器：体现预览侧
           "text": "各部门主要负责同志是本部门公文质量的第一责任人。",
         },
       ],
+      "sourceLineNumber": 11,
       "sourceType": "PARAGRAPH",
       "spacing": {
         "afterTwips": 0,
@@ -1176,6 +1207,7 @@ exports[`buildLayout 全节点样例快照 > preview 渲染器：体现预览侧
           "text": "（1）制定实施方案。",
         },
       ],
+      "sourceLineNumber": 12,
       "sourceType": "HEADING_4",
       "spacing": {
         "afterTwips": 0,
@@ -1202,105 +1234,10 @@ exports[`buildLayout 全节点样例快照 > preview 渲染器：体现预览侧
           },
           "role": "body",
           "sizeHalfPt": 32,
-          "text": "会议时间为",
-        },
-        {
-          "characterSpacingTwips": -5,
-          "font": {
-            "ascii": "Times New Roman",
-            "cs": "Times New Roman",
-            "eastAsia": "仿宋_GB2312",
-            "hAnsi": "仿宋_GB2312",
-          },
-          "role": "body",
-          "sizeHalfPt": 32,
-          "text": "9",
-        },
-        {
-          "characterSpacingTwips": -5,
-          "font": {
-            "ascii": "仿宋_GB2312",
-            "cs": "仿宋_GB2312",
-            "eastAsia": "仿宋_GB2312",
-            "hAnsi": "仿宋_GB2312",
-          },
-          "role": "bodyPunct",
-          "sizeHalfPt": 32,
-          "text": ":",
-        },
-        {
-          "characterSpacingTwips": -5,
-          "font": {
-            "ascii": "Times New Roman",
-            "cs": "Times New Roman",
-            "eastAsia": "仿宋_GB2312",
-            "hAnsi": "仿宋_GB2312",
-          },
-          "role": "body",
-          "sizeHalfPt": 32,
-          "text": "00",
-        },
-        {
-          "characterSpacingTwips": -5,
-          "font": {
-            "ascii": "Times New Roman",
-            "cs": "Times New Roman",
-            "eastAsia": "仿宋_GB2312",
-            "hAnsi": "仿宋_GB2312",
-          },
-          "role": "body",
-          "sizeHalfPt": 32,
-          "text": "至",
-        },
-        {
-          "characterSpacingTwips": -5,
-          "font": {
-            "ascii": "Times New Roman",
-            "cs": "Times New Roman",
-            "eastAsia": "仿宋_GB2312",
-            "hAnsi": "仿宋_GB2312",
-          },
-          "role": "body",
-          "sizeHalfPt": 32,
-          "text": "11",
-        },
-        {
-          "characterSpacingTwips": -5,
-          "font": {
-            "ascii": "仿宋_GB2312",
-            "cs": "仿宋_GB2312",
-            "eastAsia": "仿宋_GB2312",
-            "hAnsi": "仿宋_GB2312",
-          },
-          "role": "bodyPunct",
-          "sizeHalfPt": 32,
-          "text": ":",
-        },
-        {
-          "characterSpacingTwips": -5,
-          "font": {
-            "ascii": "Times New Roman",
-            "cs": "Times New Roman",
-            "eastAsia": "仿宋_GB2312",
-            "hAnsi": "仿宋_GB2312",
-          },
-          "role": "body",
-          "sizeHalfPt": 32,
-          "text": "30",
-        },
-        {
-          "characterSpacingTwips": -5,
-          "font": {
-            "ascii": "Times New Roman",
-            "cs": "Times New Roman",
-            "eastAsia": "仿宋_GB2312",
-            "hAnsi": "仿宋_GB2312",
-          },
-          "role": "body",
-          "sizeHalfPt": 32,
-          "text": "，请提前入场。",
+          "text": "会议时间为9:00至11:30，请提前入场。",
         },
       ],
+      "sourceLineNumber": 13,
       "sourceType": "PARAGRAPH",
       "spacing": {
         "afterTwips": 0,
@@ -1342,6 +1279,7 @@ exports[`buildLayout 全节点样例快照 > preview 渲染器：体现预览侧
     },
     {
       "alignment": "justified",
+      "attachmentVariant": "multi-first",
       "indent": {
         "hangingTwips": 945,
         "leftTwips": 1575,
@@ -1397,6 +1335,7 @@ exports[`buildLayout 全节点样例快照 > preview 渲染器：体现预览侧
           "text": "公文排版管理办法",
         },
       ],
+      "sourceLineNumber": 15,
       "sourceType": "ATTACHMENT",
       "spacing": {
         "beforeTwips": 592,
@@ -1406,6 +1345,7 @@ exports[`buildLayout 全节点样例快照 > preview 渲染器：体现预览侧
     },
     {
       "alignment": "justified",
+      "attachmentVariant": "multi-item",
       "indent": {
         "leftTwips": 1575,
       },
@@ -1448,6 +1388,7 @@ exports[`buildLayout 全节点样例快照 > preview 渲染器：体现预览侧
           "text": "公文格式自查清单",
         },
       ],
+      "sourceLineNumber": 15,
       "sourceType": "ATTACHMENT",
       "spacing": {
         "lineRule": "exact",
@@ -1456,6 +1397,7 @@ exports[`buildLayout 全节点样例快照 > preview 渲染器：体现预览侧
     },
     {
       "alignment": "justified",
+      "attachmentVariant": "multi-item",
       "indent": {
         "leftTwips": 1575,
       },
@@ -1498,6 +1440,7 @@ exports[`buildLayout 全节点样例快照 > preview 渲染器：体现预览侧
           "text": "责任分工表",
         },
       ],
+      "sourceLineNumber": 15,
       "sourceType": "ATTACHMENT",
       "spacing": {
         "lineRule": "exact",
@@ -1520,6 +1463,7 @@ exports[`buildLayout 全节点样例快照 > preview 渲染器：体现预览侧
     {
       "alignment": "right",
       "indent": {
+        "rightEm": 2,
         "rightTwips": 630,
       },
       "kind": "paragraph",
@@ -1537,6 +1481,7 @@ exports[`buildLayout 全节点样例快照 > preview 渲染器：体现预览侧
           "text": "某某市人民政府办公室",
         },
       ],
+      "sourceLineNumber": 16,
       "sourceType": "SIGNATURE",
       "spacing": {
         "afterTwips": 0,
@@ -1565,6 +1510,7 @@ exports[`buildLayout 全节点样例快照 > preview 渲染器：体现预览侧
           "text": "二零二六年九月十一日",
         },
       ],
+      "sourceLineNumber": 17,
       "sourceType": "DATE",
       "spacing": {
         "afterTwips": 0,
@@ -1606,6 +1552,7 @@ exports[`buildLayout 全节点样例快照 > preview 渲染器：体现预览侧
           "text": "（联系人：张三，电话0001-1234567）",
         },
       ],
+      "sourceLineNumber": 18,
       "sourceType": "REMARK",
       "spacing": {
         "afterTwips": 0,
@@ -1664,6 +1611,7 @@ exports[`buildLayout 版头/版记/页码版式参数 > 版头开（含签发人
           "text": "测试公文标题",
         },
       ],
+      "sourceLineNumber": 1,
       "sourceType": "DOCUMENT_TITLE",
       "spacing": {
         "afterTwips": 0,
@@ -1706,6 +1654,7 @@ exports[`buildLayout 版头/版记/页码版式参数 > 版头开（含签发人
           "text": "正文段落内容。",
         },
       ],
+      "sourceLineNumber": 1,
       "sourceType": "PARAGRAPH",
       "spacing": {
         "afterTwips": 0,

@@ -70,6 +70,22 @@ describe('偏差开关默认值＝两渲染器现状', () => {
     expect(DEVIATION_SWITCHES_DEFAULT.heading3FullwidthDot.preview).toBe('no-split')
     expect(DEVIATION_SWITCHES_DEFAULT.heading3FullwidthDot.docx).toBe('no-split')
   })
+
+  it('0022 timeColonSplit：预览 no-split / 导出 split（单元5 接线补设，裁定 §八）', () => {
+    expect(DEVIATION_SWITCHES_DEFAULT.timeColonSplit.preview).toBe('no-split')
+    expect(DEVIATION_SWITCHES_DEFAULT.timeColonSplit.docx).toBe('split')
+  })
+
+  it('0023 pageNumberFont：预览 CSS 栈（TNR 优先）/ 导出四槽宋体', () => {
+    expect(DEVIATION_SWITCHES_DEFAULT.pageNumberFont.preview).toEqual({
+      mechanism: 'css-stack',
+      primary: 'Times New Roman',
+    })
+    expect(DEVIATION_SWITCHES_DEFAULT.pageNumberFont.docx).toEqual({
+      mechanism: 'quad',
+      eastAsia: '宋体',
+    })
+  })
 })
 
 // ---- 开关解析 ----
@@ -175,6 +191,65 @@ describe('buildLayout 按开关产出各渲染器决策（默认＝现状）', (
     if (block.kind === 'paragraph') {
       expect(block.runs.map((r) => r.text)).toEqual(['1．全角句点标题'])
       expect(block.runs[0].role).toBe('heading3')
+    } else {
+      throw new Error('首块应为段落')
+    }
+  })
+
+  it('0022：时间冒号分段——预览决策不拆分（单 run），导出决策拆分（冒号为正文字体）', () => {
+    const timeAst: GongwenAST = {
+      title: [],
+      body: [makeNode(NodeType.PARAGRAPH, '会议时间为9:00至11:30。', 1)],
+    }
+    const previewLayout = buildLayout(timeAst, DEFAULT_CONFIG, { renderer: 'preview' })
+    const docxLayout = buildLayout(timeAst, DEFAULT_CONFIG, { renderer: 'docx' })
+
+    const previewBlock = previewLayout.blocks[0]
+    const docxBlock = docxLayout.blocks[0]
+    if (previewBlock.kind === 'paragraph' && docxBlock.kind === 'paragraph') {
+      expect(previewBlock.runs.map((r) => r.text)).toEqual(['会议时间为9:00至11:30。'])
+      expect(docxBlock.runs.map((r) => r.text)).toEqual([
+        '会议时间为',
+        '9',
+        ':',
+        '00',
+        '至',
+        '11',
+        ':',
+        '30',
+        '。',
+      ])
+      expect(docxBlock.runs[2].role).toBe('bodyPunct')
+      expect(docxBlock.runs[2].font.ascii).toBe('仿宋_GB2312')
+    } else {
+      throw new Error('首块应为段落')
+    }
+  })
+
+  it('开关翻转生效：0022 预览翻为 split 后时间冒号拆分（偏差修复演示）', () => {
+    const timeAst: GongwenAST = {
+      title: [],
+      body: [makeNode(NodeType.PARAGRAPH, '会议时间为9:00至11:30。', 1)],
+    }
+    const layout = buildLayout(timeAst, DEFAULT_CONFIG, {
+      renderer: 'preview',
+      deviations: {
+        timeColonSplit: { preview: 'split', docx: 'split' },
+      },
+    })
+    const block = layout.blocks[0]
+    if (block.kind === 'paragraph') {
+      expect(block.runs.map((r) => r.text)).toEqual([
+        '会议时间为',
+        '9',
+        ':',
+        '00',
+        '至',
+        '11',
+        ':',
+        '30',
+        '。',
+      ])
     } else {
       throw new Error('首块应为段落')
     }

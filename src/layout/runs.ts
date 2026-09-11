@@ -120,14 +120,15 @@ export function splitHeading3NumberDotRuns(
 
 /**
  * 三级标题完整分段：首句「。」拆分 + 序号句点拆分（开关控制）+ 剩余时间冒号拆分
- * 与导出侧 nodeToParagraph 的 HEADING_3 分支行为一致
+ * 与导出侧 nodeToParagraph 的 HEADING_3 分支行为一致；
+ * bodyColonSpec 缺省时剩余部分不分段（待办-0022 预览现状：单 run）
  */
 export function splitHeading3Runs(
   content: string,
   h3Spec: RoleSpec,
   h3DotPunctSpec: RoleSpec,
   bodySpec: RoleSpec,
-  bodyColonSpec: RoleSpec,
+  bodyColonSpec: RoleSpec | undefined,
   options: Heading3SplitOptions
 ): LayoutRun[] {
   const idx = content.indexOf('。')
@@ -137,12 +138,15 @@ export function splitHeading3Runs(
     return splitHeading3NumberDotRuns(content, h3Spec, h3DotPunctSpec, options)
   }
 
-  // 有中文句号：首句走序号句点拆分，剩余走时间冒号拆分
+  // 有中文句号：首句走序号句点拆分，剩余按 0022 开关决定是否做时间冒号拆分
   const headingText = content.slice(0, idx + 1)
   const bodyText = content.slice(idx + 1)
+  const bodyRuns = bodyColonSpec
+    ? splitTimeColonRuns(bodyText, bodySpec, bodyColonSpec)
+    : [makeRun(bodySpec, bodyText)]
   return [
     ...splitHeading3NumberDotRuns(headingText, h3Spec, h3DotPunctSpec, options),
-    ...splitTimeColonRuns(bodyText, bodySpec, bodyColonSpec),
+    ...bodyRuns,
   ]
 }
 

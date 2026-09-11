@@ -60,6 +60,14 @@ export interface LayoutIndent {
   leftTwips?: number
   rightTwips?: number
   hangingTwips?: number
+  /**
+   * 预览侧右缩进的 em 口径值（仅 renderer='preview' 时给出）
+   * em 累加与旧 A4Page.calculateSignatureIndentEm 逐位一致；
+   * twips / charWidthTwips 的除法回算存在末位浮点舍入差
+   * （如 4.414999999999999 vs 4.415，待办-0018 族），故预览缩进
+   * 以本字段为优先供给，缺省时才用 rightTwips 换算
+   */
+  rightEm?: number
 }
 
 /**
@@ -80,10 +88,18 @@ export interface LayoutParagraphBlock {
   kind: 'paragraph'
   /** 源 AST 节点类型（对齐/缩进决策的依据） */
   sourceType: NodeType
+  /** 源 AST 节点行号（AI 高亮 sentenceId「nodeType-lineNumber-localSeq」链路依赖） */
+  sourceLineNumber: number
   alignment: LayoutAlignment
   spacing: LayoutSpacing
   indent?: LayoutIndent
   runs: LayoutRun[]
+  /**
+   * 附件说明段落的形态（仅 sourceType=ATTACHMENT 时给出）
+   * 预览渲染器据此决定 DOM 类名（--single / --multi-first / --item--multi）
+   * 与「附件：」前缀的渲染方式；docx 渲染器不消费
+   */
+  attachmentVariant?: 'single' | 'multi-first' | 'multi-item'
 }
 
 /** 结构性空行指令（两渲染器现状一致：标题后 1 行、署名/备注前各 2 行） */
@@ -178,6 +194,12 @@ export interface FooterNoteLayout {
 /** 页码版式参数 */
 export interface PageNumberLayout {
   enabled: boolean
+  /**
+   * 页码四槽字体——docx 渲染器直接消费（现状四槽全宋体）
+   * 预览侧半角字符字体为 CSS 字体栈单源（A4Page.css .a4-footer，
+   * 'Times New Roman' 优先），预览渲染器不消费本字段（待办-0023，
+   * 形态登记于 deviations.pageNumberFont）
+   */
   font: FontQuad
   sizeHalfPt: number
   /** 「空一字」缩进（四号 14pt = 280 twips） */

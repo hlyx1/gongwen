@@ -18,6 +18,17 @@
  * - 0003 导出侧：docxBuilder.ts 红线段 { size: 15, before: 80 }
  * - 0004 预览侧：无句点拆分机制（全角句点自然跟随标题字体）
  * - 0004 导出侧：splitHeading3Text 正则 ^(\d+)(\.)(.*)$ 只认半角句点
+ * - 0022 预览侧：A4Page 无时间冒号分段机制（整段单字体渲染）
+ * - 0022 导出侧：docxBuilder splitTimeColonText（冒号用正文字体四槽）
+ * - 0023 预览侧：A4Page.css .a4-footer 字体栈 'Times New Roman' 优先（CSS 单源）
+ * - 0023 导出侧：docxBuilder 页码四槽全宋体
+ *
+ * 接线期新暴露偏差按裁定 §八 处置：补设开关（默认值＝现状）＋对应池行，
+ * 不在接线单元内顺手统一。0022/0023 即单元5（预览接线）补设：
+ * - 0022（时间冒号分段）：预览默认 no-split（预览现状），导出默认 split（导出现状）
+ * - 0023（页码半角字符字体）：预览现状为 CSS 字体栈单源（.a4-footer，
+ *   'Times New Roman' 优先）——决策层不内联该值，预览渲染器不消费
+ *   PageNumberLayout.font（该字段为 docx 渲染器消费的四槽真值）
  */
 import type {
   PageNumberVerticalLayout,
@@ -28,6 +39,7 @@ import {
   HEADER_RED_COLOR,
   HEADER_SEPARATOR_BEFORE_TWIPS,
   HEADER_SEPARATOR_SIZE_EIGHTH_PT,
+  PAGE_NUMBER_FONT,
   PAGE_NUMBER_GAP_TWIPS,
 } from './constants'
 
@@ -45,7 +57,7 @@ export type Heading3FullwidthDotBehavior =
   /** 全角句点与半角同法拆分（修复目标，待裁定确认） */
   | 'split'
 
-/** 四项偏差开关集合（每个开关按渲染器各持一槽） */
+/** 偏差开关集合（0001~0004 四项已知偏差＋接线期补设的 0022/0023，每个开关按渲染器各持一槽） */
 export interface DeviationSwitchSet {
   /** 待办-0001：三级标题序号后英文句点字体 */
   heading3DotFont: Record<RendererKind, Heading3DotFontBehavior>
@@ -55,7 +67,31 @@ export interface DeviationSwitchSet {
   pageNumberVertical: Record<RendererKind, PageNumberVerticalLayout>
   /** 待办-0003：版头红色分隔线 */
   redSeparator: Record<RendererKind, RedSeparatorLayout>
+  /** 待办-0022：时间冒号分段（半角冒号是否独立为正文字体 run） */
+  timeColonSplit: Record<RendererKind, TimeColonSplitBehavior>
+  /** 待办-0023：页码半角字符（数字/一字线）字体形态 */
+  pageNumberFont: Record<RendererKind, PageNumberFontLayout>
 }
+
+/** 待办-0022：时间冒号分段行为 */
+export type TimeColonSplitBehavior =
+  /** 不分段（时间冒号随宿主字体整段渲染）——预览侧现状 */
+  | 'no-split'
+  /** 冒号独立为正文字体四槽 run——导出侧现状 */
+  | 'split'
+
+/** 待办-0023：页码半角字符字体形态 */
+export type PageNumberFontLayout =
+  /**
+   * 预览机制：CSS 字体栈单源（A4Page.css .a4-footer，'Times New Roman' 优先，
+   * 回退 var(--page-number-font)）——决策层仅登记，预览渲染器不内联该值
+   */
+  | { mechanism: 'css-stack'; primary: string }
+  /**
+   * 导出机制：四槽字体（PageNumberLayout.font 的来源，
+   * docx 渲染器直接消费——现状四槽全宋体）
+   */
+  | { mechanism: 'quad'; eastAsia: string }
 
 /**
  * 偏差开关默认值＝两渲染器现状（冻结：详细需求条款9，
@@ -91,6 +127,18 @@ export const DEVIATION_SWITCHES_DEFAULT: Readonly<DeviationSwitchSet> = {
       beforeTwips: HEADER_SEPARATOR_BEFORE_TWIPS,
       color: HEADER_RED_COLOR,
     },
+  },
+  // 待办-0022（单元5 预览接线补设，裁定 §八）：时间冒号分段
+  timeColonSplit: {
+    preview: 'no-split',
+    docx: 'split',
+  },
+  // 待办-0023（单元5 预览接线补设，裁定 §八）：页码半角字符字体
+  pageNumberFont: {
+    // 预览现状：CSS 字体栈单源（.a4-footer），'Times New Roman' 优先
+    preview: { mechanism: 'css-stack', primary: 'Times New Roman' },
+    // 导出现状：四槽全宋体（PageNumberLayout.font 来源）
+    docx: { mechanism: 'quad', eastAsia: PAGE_NUMBER_FONT },
   },
 }
 

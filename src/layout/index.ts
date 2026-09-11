@@ -35,6 +35,8 @@ import type {
 import {
   ATTACHMENT_HANGING_CHARS,
   ATTACHMENT_LEFT_CHARS,
+  DATE_INDENT_CHARS_NO_STAMP,
+  DATE_INDENT_CHARS_STAMPED,
   FOOTER_NOTE_SIZE_HALF_PT,
   FOOTER_NOTE_THICK_LINE_EIGHTH_PT,
   FOOTER_NOTE_THIN_LINE_EIGHTH_PT,
@@ -43,6 +45,7 @@ import {
   HEADER_ORG_NAME_SIZE_HALF_PT,
   HEADER_SIGNER_NAME_FONT,
   HEADER_TITLE_SPACING_LINES,
+  PAGE_NUMBER_FONT,
   PAGE_NUMBER_ONE_CHAR_PT,
   PAGE_NUMBER_SIZE_HALF_PT,
   SPACER_LINES_AFTER_TITLE,
@@ -58,6 +61,7 @@ import {
   dateRightIndentTwips,
   firstLineIndentTwips,
   charSpacingTwips,
+  signatureRightIndentEm,
   signatureRightIndentTwips,
 } from './metrics'
 import { bodyPunctSpec, makeRun, nodeFontRole, roleSpec, type RoleSpec } from './fonts'
@@ -160,6 +164,8 @@ function nodeToParagraphBlock(
 ): LayoutParagraphBlock {
   const baseSpec = roleSpec(nodeFontRole(node.type), config)
   const bodySpec = roleSpec('body', config)
+  // 待办-0022：时间冒号分段按渲染器开关取现状（预览 no-split / 导出 split）
+  const colonSplitOn = switches.timeColonSplit[renderer] === 'split'
 
   // runs 分段决策（按节点类型）
   let runs: LayoutRun[]
@@ -171,9 +177,12 @@ function nodeToParagraphBlock(
     // 一、二、四级标题：首句用标题字体，句号后切换为正文（剩余不做时间冒号拆分）
     runs = splitHeadingSentenceRuns(node.content, baseSpec, bodySpec)
   } else if (node.type === NodeType.HEADING_3) {
-    // 三级标题：序号句点拆分受 0001/0004 开关控制（默认＝该渲染器现状）
+    // 三级标题：序号句点拆分受 0001/0004 开关控制（默认＝该渲染器现状），
+    // 剩余时间冒号拆分受 0022 开关控制
     const h3DotSpec = bodyPunctSpec(config, roleSpec('heading3', config).sizeHalfPt)
-    const bodyColonSpec = bodyPunctSpec(config, bodySpec.sizeHalfPt)
+    const bodyColonSpec = colonSplitOn
+      ? bodyPunctSpec(config, bodySpec.sizeHalfPt)
+      : undefined
     runs = splitHeading3Runs(
       node.content,
       baseSpec,
@@ -185,10 +194,13 @@ function nodeToParagraphBlock(
         fullwidthDot: switches.heading3FullwidthDot[renderer],
       }
     )
-  } else {
-    // 标题/主送/正文/署名/日期/备注：时间冒号拆分（统一真值＝导出侧现状）
+  } else if (colonSplitOn) {
+    // 标题/主送/正文/署名/日期/备注：时间冒号拆分（导出侧现状）
     const colonSpec = bodyPunctSpec(config, baseSpec.sizeHalfPt)
     runs = splitTimeColonRuns(node.content, baseSpec, colonSpec)
+  } else {
+    // 0022 预览现状：整段单 run，不做时间冒号拆分
+    runs = [makeRun(baseSpec, node.content)]
   }
 
   // 缩进：署名在成文日期上下文中按日期宽度居中
@@ -198,11 +210,25 @@ function nodeToParagraphBlock(
       ? signatureRightIndentTwips(node.content, signatureDateContent, config)
       : dateRightIndentTwips(config)
     indent = { rightTwips }
+    if (renderer === 'preview') {
+      // 预览侧 em 口径：与旧 A4Page.calculateSignatureIndentEm 逐位一致
+      // （twips / charWidthTwips 回算存在末位浮点舍入差，见 LayoutIndent.rightEm）
+      indent.rightEm = signatureDateContent
+        ? signatureRightIndentEm(
+            node.content,
+            signatureDateContent,
+            config.specialOptions.hasStamp
+          )
+        : config.specialOptions.hasStamp
+          ? DATE_INDENT_CHARS_STAMPED
+          : DATE_INDENT_CHARS_NO_STAMP
+    }
   }
 
   return {
     kind: 'paragraph',
     sourceType: node.type,
+    sourceLineNumber: node.lineNumber,
     alignment: paragraphAlignment(node.type),
     spacing: {
       lineTwips:
@@ -242,6 +268,8 @@ function attachmentToBlocks(
     blocks.push({
       kind: 'paragraph',
       sourceType: NodeType.ATTACHMENT,
+      sourceLineNumber: node.lineNumber,
+      attachmentVariant: 'single',
       alignment: 'justified',
       spacing: { lineTwips, lineRule: 'exact', beforeTwips: lineTwips },
       indent: {
@@ -267,6 +295,8 @@ function attachmentToBlocks(
     blocks.push({
       kind: 'paragraph',
       sourceType: NodeType.ATTACHMENT,
+      sourceLineNumber: node.lineNumber,
+      attachmentVariant: isFirst ? 'multi-first' : 'multi-item',
       alignment: 'justified',
       // 缺陷修正（单元4 接线发现）：spacing 形状与导出侧现状一致——
       // 首行仅 before、后续行两者皆无
@@ -376,12 +406,16 @@ function buildPageNumberLayout(
   switches: DeviationSwitchSet,
   renderer: RendererKind
 ) {
-  // 页码字体：四槽全宋体（导出侧现状——统一真值）
+  // 页码四槽字体：统一真值取 0023 开关的导出分支（现状四槽全宋体）；
+  // 预览侧半角字符字体为 CSS 栈单源（.a4-footer），预览渲染器不消费本字段
+  const fontBehavior = switches.pageNumberFont.docx
+  const fontFamily =
+    fontBehavior.mechanism === 'quad' ? fontBehavior.eastAsia : PAGE_NUMBER_FONT
   const quadSong: FontQuad = {
-    ascii: '宋体',
-    eastAsia: '宋体',
-    hAnsi: '宋体',
-    cs: '宋体',
+    ascii: fontFamily,
+    eastAsia: fontFamily,
+    hAnsi: fontFamily,
+    cs: fontFamily,
   }
   return {
     enabled: config.specialOptions.showPageNumber,
