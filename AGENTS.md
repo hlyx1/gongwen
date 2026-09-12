@@ -222,10 +222,10 @@ interface HeadingsConfig {
 预览侧为排版决策层渲染器，DOM 类名与层级结构由 `__tests__/previewStructure.test.tsx` 的 14 条结构特征快照＋2 条 cssVars 注入断言锁定（A4Page.css 与快照基线为行为保持红线）。
 
 - **Preview.tsx**：注入 CSS 自定义属性；一次性调用 buildLayout，页面与度量容器消费同一份块序列；调用 usePagination 分页
-- **renderContentFlow.tsx**：决策块序列 → React 节点共享渲染器（measurer 模式下表格按段落测量＝待办-0005 冻结现状；正文族 run 级渲染＝0022 案二最小 DOM：同宿主 run 合并纯文本、仅标点 run 包 `.a4-body-punctuation` span，句序号节点内跨 run 连续）
+- **renderContentFlow.tsx**：决策块序列 → React 节点共享渲染器（表格页面/度量容器双消费方同构渲染结构化 `a4-table-element`＝task-0005 度量修复，旧 measurer 表格按段落测量分叉与 mode 参数已删；正文族 run 级渲染＝0022 案二最小 DOM：同宿主 run 合并纯文本、仅标点 run 包 `.a4-body-punctuation` span，句序号节点内跨 run 连续）
 - **aiHighlight.tsx**：AI 高亮包装层（切句正则与 sentenceId 拼接为冻结项）
 - **A4Page.tsx**：单页装配（offsetY + clipHeight 分页裁剪，AI 悬停浮层状态）
-- **usePagination.ts**：隐藏度量容器中 DOM 度量逐行计算分页断点（首页扣版头、末页避让版记），ResizeObserver 监听重算
+- **usePagination.ts**：隐藏度量容器中 DOM 度量逐行计算分页断点（首页扣版头、末页避让版记）；行收集含 `:scope > p, :scope > table`，表格整块一个 line 不可分割（task-0005，断点不落表格内部）；ResizeObserver 监听重算
 
 ### 5. 配置管理 (contexts/DocumentConfigContext.tsx)
 
