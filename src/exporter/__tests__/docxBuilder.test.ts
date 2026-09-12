@@ -34,9 +34,9 @@ import type {
 
 // ---- 测试辅助 ----
 
-/** 构造普通 AST 节点 */
+/** 构造普通 AST 节点（as 收窄：宽松 NodeType 参数 → 判别联合，待办-0029） */
 function makeNode(type: NodeType, content: string, lineNumber = 1): DocumentNode {
-  return { type, content, lineNumber }
+  return { type, content, lineNumber } as DocumentNode
 }
 
 /** 构造附件说明节点 */

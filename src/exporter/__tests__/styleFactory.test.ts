@@ -40,9 +40,9 @@ function configWith(patch: (c: DocumentConfig) => void): DocumentConfig {
   return cloned
 }
 
-/** 构造普通 AST 节点 */
+/** 构造普通 AST 节点（as 收窄：宽松 NodeType 参数 → 判别联合，待办-0029） */
 function makeNode(type: NodeType, content: string, lineNumber = 1): DocumentNode {
-  return { type, content, lineNumber }
+  return { type, content, lineNumber } as DocumentNode
 }
 
 /** 构造单节点公文并取其首个段落块（署名/备注前有空行块，须跳过） */

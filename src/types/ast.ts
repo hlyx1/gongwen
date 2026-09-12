@@ -26,13 +26,42 @@ export enum NodeType {
   TABLE = 'TABLE',
 }
 
-/** 单个文档节点 */
-export interface DocumentNode {
-  type: NodeType
+/** 同形状节点共享基形状（type 判别键由各联合成员具体化） */
+interface DocumentNodeBase {
   content: string
   /** 原始文本中的行号（从 1 开始） */
   lineNumber: number
 }
+
+/**
+ * 单个文档节点（按 type 判别的封闭联合，待办-0029）
+ *
+ * 11 个同形状成员（仅 type 判别值不同）＋附件/表格两个带专属字段的成员。
+ * 运行时形状与封闭前完全一致（纯类型层封闭）；新增 NodeType 枚举成员时
+ * 须在此联合与各 Record<NodeType, …>/穷尽 switch 同步补齐，tsc 强制报错。
+ */
+export type DocumentNode =
+  | (DocumentNodeBase & { type: NodeType.DOCUMENT_TITLE })
+  | (DocumentNodeBase & { type: NodeType.HEADING_1 })
+  | (DocumentNodeBase & { type: NodeType.HEADING_2 })
+  | (DocumentNodeBase & { type: NodeType.HEADING_3 })
+  | (DocumentNodeBase & { type: NodeType.HEADING_4 })
+  | (DocumentNodeBase & { type: NodeType.PARAGRAPH })
+  | (DocumentNodeBase & { type: NodeType.ADDRESSEE })
+  | (DocumentNodeBase & { type: NodeType.SIGNATURE })
+  | (DocumentNodeBase & { type: NodeType.DATE })
+  | (DocumentNodeBase & { type: NodeType.REMARK })
+  | AttachmentNode
+  | TableNode
+
+/**
+ * switch 穷尽断言辅助（纯类型层，待办-0029）
+ *
+ * 消费 NodeType 的 switch 穷尽全部成员后，在 default 分支调用本函数：
+ * 新增枚举成员未补分支时实参不再是 never，tsc 即报错（编译期强制补分支）。
+ * 函数体刻意为空——零运行时行为。
+ */
+export function assertNever(_value: never): void {}
 
 /** 附件项 */
 export interface AttachmentItem {
@@ -43,7 +72,7 @@ export interface AttachmentItem {
 }
 
 /** 附件说明节点 */
-export interface AttachmentNode extends DocumentNode {
+export interface AttachmentNode extends DocumentNodeBase {
   type: NodeType.ATTACHMENT
   /** 是否为多附件模式 */
   isMultiple: boolean
@@ -62,7 +91,7 @@ export interface TableRowData {
 }
 
 /** 表格节点 */
-export interface TableNode extends DocumentNode {
+export interface TableNode extends DocumentNodeBase {
   type: NodeType.TABLE
   /** 表头行 */
   header: TableRowData

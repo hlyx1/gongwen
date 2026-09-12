@@ -303,8 +303,11 @@ export function parseGongwen(text: string): GongwenAST {
     }
 
     // 正则检测类型
+    // 纯类型层窄化（待办-0029）：detectNodeType 的宽松返回含 ATTACHMENT/TABLE 宽集，
+    // 但调用点前 ATTACHMENT 已由上方分流、TABLE 由表格分支分流，实际可达返回值
+    // 仅同形状成员——as 断言收窄，零运行时路径变化
     const type = detectNodeType(trimmed)
-    body.push({ type, content: trimmed, lineNumber })
+    body.push({ type, content: trimmed, lineNumber } as DocumentNode)
     i++
   }
 

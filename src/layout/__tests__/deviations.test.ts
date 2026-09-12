@@ -20,9 +20,9 @@ import { buildLayout } from '../index'
  * 现状值来源见 deviations.ts 文件头注释（A4Page.css / docxBuilder.ts 行号）。
  */
 
-/** 构造普通 AST 节点 */
+/** 构造普通 AST 节点（as 收窄：宽松 NodeType 参数 → 判别联合，待办-0029） */
 function makeNode(type: NodeType, content: string, lineNumber = 1): DocumentNode {
-  return { type, content, lineNumber }
+  return { type, content, lineNumber } as DocumentNode
 }
 
 /** 深拷贝默认配置后打补丁（测试专用，避免污染共享对象） */

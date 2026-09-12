@@ -481,15 +481,15 @@ export function buildLayout(
       blocks.push(spacerBlock('before-remark', SPACER_LINES_BEFORE_REMARK, config))
     }
 
-    // 附件说明：展开为 1..n 个段落块
+    // 附件说明：展开为 1..n 个段落块（联合封闭后 if 守卫即窄化为 AttachmentNode）
     if (node.type === NodeType.ATTACHMENT) {
-      blocks.push(...attachmentToBlocks(node as AttachmentNode, config))
+      blocks.push(...attachmentToBlocks(node, config))
       continue
     }
 
-    // 表格：结构化表格块
+    // 表格：结构化表格块（联合封闭后 if 守卫即窄化为 TableNode）
     if (node.type === NodeType.TABLE) {
-      blocks.push(tableToBlock(node as TableNode, config))
+      blocks.push(tableToBlock(node, config))
       continue
     }
 
