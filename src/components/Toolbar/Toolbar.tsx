@@ -10,8 +10,9 @@ interface ToolbarProps {
 }
 
 export function Toolbar({ ast, onExport }: ToolbarProps) {
-  const hasContent = ast.title !== null || ast.body.length > 0
-  const nodeCount = (ast.title ? 1 : 0) + ast.body.length
+  // title 自 ef2eb62 起为数组，判空以 length 为准（空文档口径＝title/body 均空数组）
+  const hasContent = ast.title.length > 0 || ast.body.length > 0
+  const nodeCount = (ast.title.length > 0 ? 1 : 0) + ast.body.length
   const [showSettings, setShowSettings] = useState(false)
   const [showStandard, setShowStandard] = useState(false)
 
