@@ -2,16 +2,19 @@ import React from 'react'
 import type { AIProofreadResult } from '../../types/aiProofread'
 
 /**
- * AI 高亮包装层（工作单元-5 交付物）
+ * AI 高亮包装层（工作单元-5 交付物；task-0004 0022 接线调整结构）
  *
  * 从旧 A4Page 的 8 个渲染函数（renderHeading1~4 / renderHeading1~4WithHighlight）
  * 中抽出句子级高亮横切逻辑，与字体 run 渲染解耦：
  * - 切句正则与 sentenceId 生成规则（nodeType-lineNumber-localSeq）自旧实现
  *   原样迁移——这是冻结项：与 utils/sentenceSplitter.ts 的既有差异不统一
- *   （差异已入池为待办-0013），高亮切句文本切片边界不得变
+ *   （差异已入池为待办-0013），高亮切句文本切片边界不得变。
+ *   task-0004 0022 run 级接线把切句部分抽为 splitHighlightSentences 供
+ *   renderContentFlow 段级渲染共用——正则本体与 trim 口径一字未动
  * - 已知冻结特征：标题（一至四级）首句取 seq=1，剩余部分重新从 seq=1 起算
  *   ——同一节点内首句与剩余首句的 sentenceId 相同（旧实现现状，双高亮副作用
- *   由结构快照锁定）
+ *   由结构快照锁定）；0022 接线后正文族句序号在节点内跨 run 连续
+ *   （sentenceId 冻结红线的裁定3 约定）
  * - 校对结果为空（无 Map 或 size=0）时全部退化为纯文本，与旧实现一致
  */
 
@@ -23,20 +26,11 @@ export interface AIHighlightContext {
 }
 
 /**
- * 按句子拆分文本并渲染高亮（旧 renderTextWithHighlight 原样迁移）
- * 句子以句号、问号、感叹号、分号、省略号结尾
+ * 按冻结切句正则拆分文本为句子（原 renderSentenceHighlight 的切句部分，
+ * 0022 run 级接线抽出共用——正则与 trim 口径一字未动，冻结项见文件头注释）
+ * 句子以句号、问号、感叹号、分号、省略号结尾；trim 后空句跳过
  */
-export function renderSentenceHighlight(
-  content: string,
-  sourceType: string,
-  sourceLineNumber: number,
-  ai: AIHighlightContext | undefined
-): React.ReactNode {
-  // 如果没有校对结果，直接返回原文（保持纯文本子节点）
-  if (!ai || ai.results.size === 0) {
-    return content
-  }
-
+export function splitHighlightSentences(content: string): string[] {
   // 按句子拆分文本（正则与旧实现逐字符一致——冻结项，见文件头注释）
   const sentenceEndRegex = /[^。！？；…]*[。！？；…]|[^。！？；…]+/g
   const sentences: string[] = []
@@ -49,38 +43,7 @@ export function renderSentenceHighlight(
     }
   }
 
-  // 如果没有拆分出句子，直接返回原文
-  if (sentences.length === 0) {
-    return content
-  }
-
-  // 为每个句子查找对应的校对结果（sentenceId：nodeType-lineNumber-localSeq）
-  const elements: React.ReactNode[] = []
-  let sentenceSeqInNode = 1
-
-  sentences.forEach(function (sentence, idx) {
-    const sentenceId = sourceType + '-' + sourceLineNumber + '-' + sentenceSeqInNode
-    const result = ai.results.get(sentenceId)
-
-    if (result && result.hasIssue) {
-      // 有问题的句子，添加高亮
-      elements.push(
-        <span
-          key={idx}
-          className="a4-highlight-sentence"
-          onMouseEnter={function () { ai.onEnter(result) }}
-          onMouseLeave={ai.onLeave}
-        >
-          {sentence}
-        </span>
-      )
-    } else {
-      elements.push(<span key={idx}>{sentence}</span>)
-    }
-    sentenceSeqInNode++
-  })
-
-  return <>{elements}</>
+  return sentences
 }
 
 /**

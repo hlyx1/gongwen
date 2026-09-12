@@ -18,6 +18,7 @@ import { buildLayout } from '../index'
  *   （裁定1 冻结维持现状——定标后再翻转）
  * - 0003 红色分隔线：预览=css 2px+8px / 导出=border size 15 + before 80
  * - 0004 三级标题全角句点：两侧均=split（已对齐，翻转前两侧=no-split）
+ * - 0022 时间冒号分段：两侧均=split（已对齐，翻转前预览=no-split）
  * 取值来源见 deviations.ts 文件头注释。
  */
 
@@ -72,8 +73,8 @@ describe('偏差开关默认值＝两渲染器现状', () => {
     expect(DEVIATION_SWITCHES_DEFAULT.heading3FullwidthDot.docx).toBe('split')
   })
 
-  it('0022 timeColonSplit：预览 no-split / 导出 split（单元5 接线补设，裁定 §八）', () => {
-    expect(DEVIATION_SWITCHES_DEFAULT.timeColonSplit.preview).toBe('no-split')
+  it('0022 timeColonSplit：两侧均 split（task-0004 对齐后）', () => {
+    expect(DEVIATION_SWITCHES_DEFAULT.timeColonSplit.preview).toBe('split')
     expect(DEVIATION_SWITCHES_DEFAULT.timeColonSplit.docx).toBe('split')
   })
 
@@ -205,7 +206,7 @@ describe('buildLayout 按开关产出各渲染器决策（默认＝现状）', (
     }
   })
 
-  it('0022：时间冒号分段——预览决策不拆分（单 run），导出决策拆分（冒号为正文字体）', () => {
+  it('0022：时间冒号分段——两渲染器决策均拆分（冒号为正文字体，task-0004 对齐后）', () => {
     const timeAst: GongwenAST = {
       title: [],
       body: [makeNode(NodeType.PARAGRAPH, '会议时间为9:00至11:30。', 1)],
@@ -216,8 +217,7 @@ describe('buildLayout 按开关产出各渲染器决策（默认＝现状）', (
     const previewBlock = previewLayout.blocks[0]
     const docxBlock = docxLayout.blocks[0]
     if (previewBlock.kind === 'paragraph' && docxBlock.kind === 'paragraph') {
-      expect(previewBlock.runs.map((r) => r.text)).toEqual(['会议时间为9:00至11:30。'])
-      expect(docxBlock.runs.map((r) => r.text)).toEqual([
+      const splitTexts = [
         '会议时间为',
         '9',
         ':',
@@ -227,7 +227,11 @@ describe('buildLayout 按开关产出各渲染器决策（默认＝现状）', (
         ':',
         '30',
         '。',
-      ])
+      ]
+      expect(previewBlock.runs.map((r) => r.text)).toEqual(splitTexts)
+      expect(docxBlock.runs.map((r) => r.text)).toEqual(splitTexts)
+      expect(previewBlock.runs[2].role).toBe('bodyPunct')
+      expect(previewBlock.runs[2].font.ascii).toBe('仿宋_GB2312')
       expect(docxBlock.runs[2].role).toBe('bodyPunct')
       expect(docxBlock.runs[2].font.ascii).toBe('仿宋_GB2312')
     } else {
@@ -235,7 +239,7 @@ describe('buildLayout 按开关产出各渲染器决策（默认＝现状）', (
     }
   })
 
-  it('开关翻转生效：0022 预览翻为 split 后时间冒号拆分（偏差修复演示）', () => {
+  it('开关覆盖生效：0022 预览覆写回 no-split 后不拆分（旧现状可回滚）', () => {
     const timeAst: GongwenAST = {
       title: [],
       body: [makeNode(NodeType.PARAGRAPH, '会议时间为9:00至11:30。', 1)],
@@ -243,22 +247,12 @@ describe('buildLayout 按开关产出各渲染器决策（默认＝现状）', (
     const layout = buildLayout(timeAst, DEFAULT_CONFIG, {
       renderer: 'preview',
       deviations: {
-        timeColonSplit: { preview: 'split', docx: 'split' },
+        timeColonSplit: { preview: 'no-split', docx: 'split' },
       },
     })
     const block = layout.blocks[0]
     if (block.kind === 'paragraph') {
-      expect(block.runs.map((r) => r.text)).toEqual([
-        '会议时间为',
-        '9',
-        ':',
-        '00',
-        '至',
-        '11',
-        ':',
-        '30',
-        '。',
-      ])
+      expect(block.runs.map((r) => r.text)).toEqual(['会议时间为9:00至11:30。'])
     } else {
       throw new Error('首块应为段落')
     }

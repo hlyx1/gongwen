@@ -1,9 +1,10 @@
 import React, { type CSSProperties } from 'react'
 import { NodeType } from '../../types/ast'
-import type { LayoutBlock, LayoutMetrics, LayoutParagraphBlock } from '../../layout/types'
+import type { AIProofreadResult } from '../../types/aiProofread'
+import type { LayoutBlock, LayoutMetrics, LayoutParagraphBlock, LayoutRun } from '../../layout/types'
 import { twipsToEm } from '../../layout/metrics'
 import type { AIHighlightContext } from './aiHighlight'
-import { renderSentenceHighlight, renderTitleHighlight } from './aiHighlight'
+import { splitHighlightSentences, renderTitleHighlight } from './aiHighlight'
 
 /**
  * 预览内容流共享渲染器（工作单元-5 交付物）
@@ -79,9 +80,174 @@ function blockText(block: LayoutParagraphBlock): string {
   }).join('')
 }
 
-/** sentenceId：nodeType-lineNumber-localSeq（与 AI 校对链路一致） */
+/** sentenceId：nodeType-lineNumber-localSeq（与 AI 校对链路一致，冻结格式） */
 function sentenceId(block: LayoutParagraphBlock, seq: number): string {
   return block.sourceType + '-' + block.sourceLineNumber + '-' + seq
+}
+
+/**
+ * 段序列（0022 裁定3 案二：仅标点 span 的最小 DOM）
+ *
+ * 决策层 runs 中相邻同宿主（非 bodyPunct）run 合并为一个文本段纯文本直出，
+ * bodyPunct run 独立成标点段包 .a4-body-punctuation span——
+ * 无时间冒号的段落段序列退化为单文本段，DOM 与旧实现零变化
+ */
+interface FlowSegment {
+  /** true＝正文字体标点段（时间冒号等，独立 span）；false＝宿主文本段 */
+  punct: boolean
+  text: string
+}
+
+/** runs → 最小 DOM 段序列（相邻同宿主 run 合并） */
+function mergeRunsToSegments(runs: LayoutRun[]): FlowSegment[] {
+  const segments: FlowSegment[] = []
+  runs.forEach(function (run) {
+    const punct = run.role === 'bodyPunct'
+    const last = segments.length > 0 ? segments[segments.length - 1] : undefined
+    if (!punct && last && !last.punct) {
+      last.text += run.text
+    } else {
+      segments.push({ punct, text: run.text })
+    }
+  })
+  return segments
+}
+
+/** 句子片段 span：命中＝高亮类＋悬停；未命中＝纯 span（旧 renderSentenceHighlight 口径） */
+function renderSentenceSpan(
+  piece: string,
+  result: AIProofreadResult | undefined,
+  ai: AIHighlightContext
+): React.ReactNode {
+  if (result && result.hasIssue) {
+    return (
+      <span
+        className="a4-highlight-sentence"
+        onMouseEnter={function () { ai.onEnter(result) }}
+        onMouseLeave={ai.onLeave}
+      >
+        {piece}
+      </span>
+    )
+  }
+  return <span>{piece}</span>
+}
+
+/**
+ * 段序列 → 句子级高亮 DOM（0022 案二）
+ *
+ * - 无 AI 结果（ai 缺省＝度量容器或结果为空）：宿主文本段纯文本直出
+ *   （hostWrapperClass 给出时按宿主包装类包 span——标题剩余部分现状）、
+ *   标点段包标点 span——无时间冒号的段落 DOM 零变化
+ * - 有 AI 结果：切句在段序列拼接全文上一次完成（句序号节点内跨 run 连续
+ *   ——sentenceId 冻结；裁定3「跨 run 句序号偏移」经「全文切句＋区间映射」实现，
+ *   切句正则与 id 格式零改动），每句字符区间映射回段：宿主段出句子 span、
+ *   标点段出标点 span（所在句命中时合并高亮类）；切句 trim 丢弃的句间空白
+ *   不渲染（旧渲染口径原样保持）
+ */
+function renderSegmentsWithHighlight(
+  segments: FlowSegment[],
+  block: LayoutParagraphBlock,
+  ai: AIHighlightContext | undefined,
+  hostWrapperClass: string | null
+): React.ReactNode {
+  // 无校对结果：最小 DOM 直出（与旧 renderSentenceHighlight 纯文本退化一致）
+  if (!ai || ai.results.size === 0) {
+    return (
+      <>
+        {segments.map(function (seg, i) {
+          if (seg.punct) {
+            return (
+              <span key={i} className={ROLE_INLINE_CLASS.content.bodyPunct}>
+                {seg.text}
+              </span>
+            )
+          }
+          return hostWrapperClass ? (
+            <span key={i} className={hostWrapperClass}>
+              {seg.text}
+            </span>
+          ) : (
+            seg.text
+          )
+        })}
+      </>
+    )
+  }
+
+  const fullText = segments
+    .map(function (seg) {
+      return seg.text
+    })
+    .join('')
+  const sentences = splitHighlightSentences(fullText)
+  // 无句子（纯空白文本）：整段原文直出（旧口径）
+  if (sentences.length === 0) {
+    return fullText
+  }
+
+  // 各句在全文中的字符区间（trim 只丢句缘空白——句子正文在源流中恒连续，
+  // 顺序 indexOf 定位；被 trim 丢弃的空白不属任何句、不渲染）
+  const sentenceSpans: Array<{ start: number; end: number }> = []
+  let searchFrom = 0
+  for (const sentence of sentences) {
+    const start = fullText.indexOf(sentence, searchFrom)
+    const end = start + sentence.length
+    sentenceSpans.push({ start, end })
+    searchFrom = end
+  }
+
+  // 段边界（全文坐标）
+  const segStarts: number[] = []
+  let segAcc = 0
+  for (const seg of segments) {
+    segStarts.push(segAcc)
+    segAcc += seg.text.length
+  }
+
+  // 逐段把句区间裁剪为片段输出（段序＝文档序，句序单调）
+  const elements: React.ReactNode[] = []
+  let sentenceIdx = 0
+  for (let si = 0; si < segments.length; si++) {
+    const seg = segments[si]
+    const segFrom = segStarts[si]
+    const segTo = segFrom + seg.text.length
+    while (sentenceIdx < sentences.length && sentenceSpans[sentenceIdx].end <= segFrom) {
+      sentenceIdx++
+    }
+    for (; sentenceIdx < sentences.length; sentenceIdx++) {
+      const span = sentenceSpans[sentenceIdx]
+      const from = Math.max(span.start, segFrom)
+      const to = Math.min(span.end, segTo)
+      if (from >= to) {
+        break // 本段与该句无交集（该句在本段之后——下一轮再对位）
+      }
+      const piece = seg.text.slice(from - segFrom, to - segFrom)
+      const result = ai.results.get(sentenceId(block, sentenceIdx + 1))
+      if (seg.punct) {
+        const punctClass = result && result.hasIssue
+          ? ROLE_INLINE_CLASS.content.bodyPunct + ' a4-highlight-sentence'
+          : ROLE_INLINE_CLASS.content.bodyPunct
+        elements.push(
+          <span key={elements.length} className={punctClass}>
+            {piece}
+          </span>
+        )
+      } else if (hostWrapperClass) {
+        elements.push(
+          <span key={elements.length} className={hostWrapperClass}>
+            {renderSentenceSpan(piece, result, ai)}
+          </span>
+        )
+      } else {
+        elements.push(renderSentenceSpan(piece, result, ai))
+      }
+      if (span.end >= segTo) {
+        break // 该句跨到后续段——换下一段继续
+      }
+    }
+  }
+  return <>{elements}</>
 }
 
 /**
@@ -170,15 +336,15 @@ function renderHeadingRuns(
     return groupCount === 1 ? firstElements[0] : <>{firstElements}</>
   }
 
-  // 剩余 run＝首句之后的部分：恒 a4-paragraph-inline 包装 + 句子级高亮叠加
-  // （默认开关下决策层对剩余部分恒输出单个 body run——旧实现单 span 现状）
-  const restElements = runs.slice(groupCount).map(function (run, i) {
-    return (
-      <span key={i} className="a4-paragraph-inline">
-        {renderSentenceHighlight(run.text, block.sourceType, block.sourceLineNumber, ai)}
-      </span>
-    )
-  })
+  // 剩余部分＝首句之后：恒 a4-paragraph-inline 宿主包装 + 句子级高亮叠加
+  // （句序号自 1 重起算——旧实现冻结现状；0022 翻转后剩余部分含时间冒号
+  // 时冒号独立为标点 span，句序号在剩余全文上连续）
+  const restElements = renderSegmentsWithHighlight(
+    mergeRunsToSegments(runs.slice(groupCount)),
+    block,
+    ai,
+    ROLE_INLINE_CLASS.content.body
+  )
 
   return <>{firstElements}{restElements}</>
 }
@@ -256,9 +422,10 @@ function renderParagraphBlock(
     className = NODE_CLASS_MAP[block.sourceType]
     content = renderTitleHighlight(blockText(block), block.sourceType, block.sourceLineNumber, ai)
   } else {
-    // 主送/正文/署名/日期/备注：整段句子级切句高亮（无结果时纯文本）
+    // 主送/正文/署名/日期/备注：run 级渲染（0022 案二）——无时间冒号段落
+    // DOM 零变化，仅冒号处新增标点 span；句序号节点内连续（sentenceId 冻结）
     className = NODE_CLASS_MAP[block.sourceType]
-    content = renderSentenceHighlight(blockText(block), block.sourceType, block.sourceLineNumber, ai)
+    content = renderSegmentsWithHighlight(mergeRunsToSegments(block.runs), block, ai, null)
   }
 
   return (

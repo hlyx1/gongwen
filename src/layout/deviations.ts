@@ -10,7 +10,7 @@
  * 其行为现状由单元5 原样保留。
  *
  * 默认值口径（task-0004 对齐族实施起生效，裁定见 tasks/task-0004/裁定.md）：
- * - 0001/0004 已按裁定翻转为对齐值（对齐方向＝导出/国标口径）；翻转前的
+ * - 0001/0004/0022 已按裁定翻转为对齐值（对齐方向＝导出/国标口径）；翻转前的
  *   两渲染器现状值存档于 task-0004 勘探.md §二（供回滚与差异抽查）
  * - 0002 页码纵向位置维持两渲染器现状（task-0004 裁定1 冻结：导出侧机制
  *   语义未经实测定标前翻转值会引入新偏差，回池待议——定标后再翻转）
@@ -23,8 +23,8 @@
  * - 0003 预览侧：A4Page.css .a4-header-separator { border-bottom: 2px; margin-top: 8px }
  * - 0003 导出侧：docxBuilder.ts 红线段 { size: 15, before: 80 }
  * - 0004 两侧：runs.ts split 分支正则 ^(\d+)([.．])(.*)$（半角/全角句点同法拆分）
- * - 0022 预览侧：A4Page 无时间冒号分段机制（整段单字体渲染）
- * - 0022 导出侧：docxBuilder splitTimeColonText（冒号用正文字体四槽）
+ * - 0022 两侧：runs.ts splitTimeColonRuns（冒号 run 用正文字体四槽）；
+ *   预览侧 renderContentFlow 仅标点 span 渲染（裁定3 案二）
  * - 0023 预览侧：A4Page.css .a4-footer 字体栈 'Times New Roman' 优先（CSS 单源）
  * - 0023 导出侧：docxBuilder 页码四槽全宋体
  *
@@ -78,11 +78,11 @@ export interface DeviationSwitchSet {
   pageNumberFont: Record<RendererKind, PageNumberFontLayout>
 }
 
-/** 待办-0022：时间冒号分段行为 */
+/** 待办-0022：时间冒号分段行为（task-0004 已对齐：两侧均 split） */
 export type TimeColonSplitBehavior =
-  /** 不分段（时间冒号随宿主字体整段渲染）——预览侧现状 */
+  /** 不分段（时间冒号随宿主字体整段渲染）——task-0004 前的预览侧现状 */
   | 'no-split'
-  /** 冒号独立为正文字体四槽 run——导出侧现状 */
+  /** 冒号独立为正文字体四槽 run——导出侧现状＝task-0004 起的两侧默认 */
   | 'split'
 
 /** 待办-0023：页码半角字符字体形态 */
@@ -99,8 +99,8 @@ export type PageNumberFontLayout =
   | { mechanism: 'quad'; eastAsia: string }
 
 /**
- * 偏差开关默认值（task-0004 对齐族：0001/0004 已翻转为对齐值，
- * 其余见文件头「默认值口径」——0002 冻结、0003/0022/0023 按裁定逐项翻转）
+ * 偏差开关默认值（task-0004 对齐族：0001/0004/0022 已翻转为对齐值，
+ * 其余见文件头「默认值口径」——0002 冻结、0003/0023 按裁定逐项翻转）
  */
 export const DEVIATION_SWITCHES_DEFAULT: Readonly<DeviationSwitchSet> = {
   // 待办-0001：三级标题序号句点字体（task-0004 翻转：预览 follow-heading3 → body-font）
@@ -133,9 +133,9 @@ export const DEVIATION_SWITCHES_DEFAULT: Readonly<DeviationSwitchSet> = {
       color: HEADER_RED_COLOR,
     },
   },
-  // 待办-0022（单元5 预览接线补设，裁定 §八）：时间冒号分段
+  // 待办-0022（单元5 预览接线补设，裁定 §八；task-0004 翻转：预览 no-split → split）
   timeColonSplit: {
-    preview: 'no-split',
+    preview: 'split',
     docx: 'split',
   },
   // 待办-0023（单元5 预览接线补设，裁定 §八）：页码半角字符字体

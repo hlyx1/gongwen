@@ -185,7 +185,7 @@ function nodeToParagraphBlock(
 ): LayoutParagraphBlock {
   const baseSpec = roleSpec(nodeFontRole(node.type), config)
   const bodySpec = roleSpec('body', config)
-  // 待办-0022：时间冒号分段按渲染器开关取现状（预览 no-split / 导出 split）
+  // 待办-0022：时间冒号分段按渲染器开关取值（task-0004 起两侧默认 split）
   const colonSplitOn = switches.timeColonSplit[renderer] === 'split'
 
   // runs 分段决策（按节点类型）
@@ -216,11 +216,11 @@ function nodeToParagraphBlock(
       }
     )
   } else if (colonSplitOn) {
-    // 标题/主送/正文/署名/日期/备注：时间冒号拆分（导出侧现状）
+    // 标题/主送/正文/署名/日期/备注：时间冒号拆分（task-0004 起两渲染器默认）
     const colonSpec = bodyPunctSpec(config, baseSpec.sizeHalfPt)
     runs = splitTimeColonRuns(node.content, baseSpec, colonSpec)
   } else {
-    // 0022 预览现状：整段单 run，不做时间冒号拆分
+    // 0022 开关覆写回 no-split 时：整段单 run，不做时间冒号拆分（预览旧现状）
     runs = [makeRun(baseSpec, node.content)]
   }
 
