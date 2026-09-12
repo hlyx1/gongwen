@@ -266,7 +266,7 @@ npm run dev
 # 构建生产版本
 npm run build
 
-# 构建单文件离线版本（SINGLE_FILE=1 npx vite build 等价）
+# 构建单文件离线版本（vite build --mode single，与 SINGLE_FILE=1 npx vite build 双入口等价）
 npm run build:single
 
 # 本地预览构建产物

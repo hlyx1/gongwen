@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "build:single": "tsc -b && SINGLE_FILE=1 vite build",
+    "build:single": "tsc -b && vite build --mode single",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run"
