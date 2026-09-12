@@ -6,7 +6,7 @@
  * 消费 config.headings（单元6 双轨合并后单一真值：h1/h2/h3/addressee
  * 每级中文字体/英数字体/字号——预览与导出同源）。
  */
-import { NodeType } from '../types/ast'
+import { NodeType, assertNever } from '../types/ast'
 import type { DocumentConfig } from '../types/documentConfig'
 import type { FontQuad, FontRole, LayoutRun } from './types'
 import { charSpacingTwips } from './metrics'
@@ -41,13 +41,18 @@ export function nodeFontRole(type: NodeType): FontRole {
       return 'heading3'
     case NodeType.ADDRESSEE:
       return 'addressee'
-    // 四级标题现状落入正文默认分支（与正文同字体）
+    // 四级标题/附件/表格现状返回正文字体（与正文同字体）
     case NodeType.HEADING_4:
     case NodeType.PARAGRAPH:
     case NodeType.SIGNATURE:
     case NodeType.DATE:
     case NodeType.REMARK:
+    case NodeType.ATTACHMENT:
+    case NodeType.TABLE:
+      return 'body'
     default:
+      // 穷尽断言（待办-0029）：新增 NodeType 成员未补分支时 tsc 报错
+      assertNever(type)
       return 'body'
   }
 }

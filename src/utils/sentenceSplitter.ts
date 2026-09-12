@@ -45,19 +45,40 @@ const PAIR_END_TO_START: PairMap = {
   '】': '【',
 };
 
-/** 需要切分的节点类型集合 */
-const SPLITTABLE_TYPES: { [key: string]: boolean } = {
-  [NodeType.PARAGRAPH]: true,
+/**
+ * 需要切分的节点类型集合（待办-0029 Record 封闭）
+ * 全 13 键布尔分摊：可切分=true，其余显式 false——truthiness 分支
+ * 与封闭前（缺键=undefined）逐路径等价，切句边界不变；
+ * 新增 NodeType 成员时本表 tsc 报错（键义务）
+ */
+const SPLITTABLE_TYPES: Record<NodeType, boolean> = {
+  [NodeType.DOCUMENT_TITLE]: false,
   [NodeType.HEADING_1]: true,
   [NodeType.HEADING_2]: true,
   [NodeType.HEADING_3]: true,
   [NodeType.HEADING_4]: true,
+  [NodeType.PARAGRAPH]: true,
   [NodeType.ADDRESSEE]: true,
+  [NodeType.ATTACHMENT]: false,
+  [NodeType.SIGNATURE]: false,
+  [NodeType.DATE]: false,
+  [NodeType.REMARK]: false,
+  [NodeType.TABLE]: false,
 };
 
-/** 不需要切分的节点类型集合 */
-const NON_SPLITTABLE_TYPES: { [key: string]: boolean } = {
+/**
+ * 不需要切分的节点类型集合（待办-0029 Record 封闭）
+ * 与 SPLITTABLE_TYPES 互为反集（逐键取反）；全 13 键布尔分摊，
+ * truthiness 分支与封闭前逐路径等价；新增成员时本表 tsc 报错
+ */
+const NON_SPLITTABLE_TYPES: Record<NodeType, boolean> = {
   [NodeType.DOCUMENT_TITLE]: true,
+  [NodeType.HEADING_1]: false,
+  [NodeType.HEADING_2]: false,
+  [NodeType.HEADING_3]: false,
+  [NodeType.HEADING_4]: false,
+  [NodeType.PARAGRAPH]: false,
+  [NodeType.ADDRESSEE]: false,
   [NodeType.ATTACHMENT]: true,
   [NodeType.SIGNATURE]: true,
   [NodeType.DATE]: true,

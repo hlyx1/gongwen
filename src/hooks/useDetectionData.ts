@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { NodeType, type GongwenAST, type DocumentNode } from '../types/ast'
+import { NodeType, assertNever, type GongwenAST, type DocumentNode } from '../types/ast'
 import {
   DetectionStatus,
   DetectionPointType,
@@ -142,7 +142,11 @@ function calculateBodyStats(body: DocumentNode[]): BodyStats {
 
   for (let i = 0; i < body.length; i++) {
     const node = body[i]
-    switch (node.type) {
+    // 提升判别值（待办-0029）：switch 直接判 node.type 会把 node 收窄为
+    // never、default 内无法再取值断言；提升变量的自然类型＝联合 type 域
+    // （兜底成员保证跟随 NodeType 全集），穷尽断言对新增成员在 tsc 层报错
+    const nodeType = node.type
+    switch (nodeType) {
       case NodeType.HEADING_1:
         headingCounts.h1++
         charCount += node.content.length
@@ -166,7 +170,16 @@ function calculateBodyStats(body: DocumentNode[]): BodyStats {
       case NodeType.ATTACHMENT:
         charCount += node.content.length
         break
+      // 不计入正文统计的成员（现状：直接跳过）
+      case NodeType.DOCUMENT_TITLE:
+      case NodeType.ADDRESSEE:
+      case NodeType.SIGNATURE:
+      case NodeType.DATE:
+      case NodeType.REMARK:
+      case NodeType.TABLE:
+        break
       default:
+        assertNever(nodeType)
         break
     }
   }

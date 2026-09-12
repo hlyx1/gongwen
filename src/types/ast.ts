@@ -34,11 +34,30 @@ interface DocumentNodeBase {
 }
 
 /**
+ * 已进入 DocumentNode 封闭联合的 12 个同形状判别值
+ * （新增 NodeType 成员时无需改这里——兜底成员经 Exclude 自动接住，
+ * 编译压力落在各消费点的 switch 穷尽断言与 Record 表键义务上）
+ */
+type SameShapeNodeTypes =
+  | NodeType.DOCUMENT_TITLE
+  | NodeType.HEADING_1
+  | NodeType.HEADING_2
+  | NodeType.HEADING_3
+  | NodeType.HEADING_4
+  | NodeType.PARAGRAPH
+  | NodeType.ADDRESSEE
+  | NodeType.SIGNATURE
+  | NodeType.DATE
+  | NodeType.REMARK
+
+/**
  * 单个文档节点（按 type 判别的封闭联合，待办-0029）
  *
- * 11 个同形状成员（仅 type 判别值不同）＋附件/表格两个带专属字段的成员。
- * 运行时形状与封闭前完全一致（纯类型层封闭）；新增 NodeType 枚举成员时
- * 须在此联合与各 Record<NodeType, …>/穷尽 switch 同步补齐，tsc 强制报错。
+ * 11 个同形状成员（仅 type 判别值不同）＋附件/表格两个带专属字段的成员；
+ * 末位兜底成员接住 NodeType 中尚未显式归位的枚举成员——现状下
+ * Exclude 结果为 never（兜底不可构造，联合可用值集与显式列举完全一致，
+ * 运行时形状与封闭前一致）；新增枚举成员时消费点的穷尽 switch 与
+ * Record<NodeType, …> 表在 tsc 层强制报错。
  */
 export type DocumentNode =
   | (DocumentNodeBase & { type: NodeType.DOCUMENT_TITLE })
@@ -53,6 +72,7 @@ export type DocumentNode =
   | (DocumentNodeBase & { type: NodeType.REMARK })
   | AttachmentNode
   | TableNode
+  | (DocumentNodeBase & { type: Exclude<NodeType, SameShapeNodeTypes | NodeType.ATTACHMENT | NodeType.TABLE> })
 
 /**
  * switch 穷尽断言辅助（纯类型层，待办-0029）

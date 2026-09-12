@@ -17,7 +17,7 @@ import type {
   DocumentNode,
   TableNode,
 } from '../types/ast'
-import { NodeType } from '../types/ast'
+import { NodeType, assertNever } from '../types/ast'
 import type { DocumentConfig } from '../types/documentConfig'
 import { ptToTwip } from '../types/documentConfig'
 import type {
@@ -126,8 +126,19 @@ function paragraphAlignment(type: NodeType): LayoutAlignment {
       return 'right'
     case NodeType.REMARK:
       return 'left'
+    // 正文与一至四级标题、主送、附件：两端对齐
+    case NodeType.HEADING_1:
+    case NodeType.HEADING_2:
+    case NodeType.HEADING_3:
+    case NodeType.HEADING_4:
+    case NodeType.PARAGRAPH:
+    case NodeType.ADDRESSEE:
+    case NodeType.ATTACHMENT:
+    case NodeType.TABLE:
+      return 'justified'
     default:
-      // 正文与一至四级标题、主送、附件：两端对齐
+      // 穷尽断言（待办-0029）：新增 NodeType 成员未补分支时 tsc 报错
+      assertNever(type)
       return 'justified'
   }
 }
@@ -147,8 +158,18 @@ function paragraphIndent(type: NodeType, config: DocumentConfig): LayoutIndent {
     case NodeType.ATTACHMENT:
       // 附件段（单附件/多附件首行）由附件块另行构造，此处仅为兜底
       return { leftTwips: ATTACHMENT_LEFT_CHARS * charWidth }
+    // 正文与一至四级标题：首行缩进两字
+    case NodeType.HEADING_1:
+    case NodeType.HEADING_2:
+    case NodeType.HEADING_3:
+    case NodeType.HEADING_4:
+    case NodeType.PARAGRAPH:
+    case NodeType.SIGNATURE:
+    case NodeType.TABLE:
+      return { firstLineTwips: firstLineIndentTwips(config), leftTwips: 0 }
     default:
-      // 正文与一至四级标题：首行缩进两字
+      // 穷尽断言（待办-0029）：新增 NodeType 成员未补分支时 tsc 报错
+      assertNever(type)
       return { firstLineTwips: firstLineIndentTwips(config), leftTwips: 0 }
   }
 }
