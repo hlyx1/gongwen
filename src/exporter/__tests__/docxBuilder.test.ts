@@ -87,6 +87,7 @@ async function packParts(ast: GongwenAST, config: DocumentConfig) {
     document: await read('word/document.xml'),
     footerOdd: await read('word/footer1.xml'),
     footerEven: await read('word/footer2.xml'),
+    settings: await read('word/settings.xml'),
   }
 }
 
@@ -249,6 +250,10 @@ describe('buildDocument 导出产物结构（条款1a）', () => {
     expect(parts.footerEven).toContain('—')
     expect(parts.footerEven).toContain('PAGE')
 
+    // settings.xml 奇偶页脚开关（0030 封网：evenAndOddHeaderAndFooters 接线，
+    // 值断言形态——接线被删（元素消失）或误改（值翻转）均红）
+    expect(parts.settings).toContain('<w:evenAndOddHeaders/>')
+
     expect(parts.footerOdd).toMatchSnapshot()
     expect(parts.footerEven).toMatchSnapshot()
   })
@@ -263,6 +268,10 @@ describe('buildDocument 导出产物结构（条款1a）', () => {
     expect(footerFiles).toHaveLength(0)
     expect(parts.document).not.toContain('footerReference')
     expect(parts.document).not.toContain('PAGE')
+
+    // settings.xml 奇偶页脚开关随页码关闭（0030 封网：docx 库恒传布尔 →
+    // 元素恒存在仅取值翻转，值断言能同时捕获接线被删场景）
+    expect(parts.settings).toContain('<w:evenAndOddHeaders w:val="false"/>')
 
     expect(parts.document).toMatchSnapshot()
   })
