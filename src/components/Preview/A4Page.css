@@ -167,10 +167,11 @@
   font-family: var(--body-font, 'FangSong_GB2312'), 'FangSong', 'STFangsong', serif;
 }
 
-/* 三级标题: 段落容器（不设 bold，由 inline 控制首句加粗） */
+/* 三级标题: 段落容器（不设 bold，由 inline 控制首句加粗）
+   字号经 --h3-size 接线设置（0025 对齐：缺省回退正文字号） */
 .a4-h3 {
   font-family: var(--h3-font, 'FangSong_GB2312'), 'FangSong', 'STFangsong', serif;
-  font-size: var(--body-size, 16px);
+  font-size: var(--h3-size, var(--body-size, 16px));
   font-weight: normal;
   text-indent: var(--body-indent-px, 2em);
   text-align: justify;
@@ -212,10 +213,11 @@
   margin: 0;
 }
 
-/* 主送机关: 顶格 仿宋 */
+/* 主送机关: 顶格（字体/字号经 --addressee-* 接线设置，0026 对齐：
+   缺省回退正文；英数字体槽预览不接——待办-0039） */
 .a4-addressee {
-  font-family: var(--body-font, 'FangSong_GB2312'), 'FangSong', 'STFangsong', serif;
-  font-size: var(--body-size, 16px);
+  font-family: var(--addressee-font, var(--body-font, 'FangSong_GB2312')), 'FangSong', 'STFangsong', serif;
+  font-size: var(--addressee-size, var(--body-size, 16px));
   text-indent: 0;
   text-align: justify;
   text-justify: inter-ideograph;

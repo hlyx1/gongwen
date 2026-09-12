@@ -283,4 +283,22 @@ describe('Preview 结构特征快照（度量容器同源化基线）', () => {
       )
     ).toMatchSnapshot()
   })
+
+  it('改三级标题字号后 cssVars 注入 --h3-size（0025 接线）', () => {
+    previewState.config = configWith(function (c) {
+      c.headings.h3.fontSize = 15
+    })
+    const markup = renderToStaticMarkup(React.createElement(Preview, { ast: FULL_AST }))
+    expect(markup).toContain('--h3-size:15px')
+  })
+
+  it('改主送机关字体/字号后 cssVars 注入 --addressee-font/--addressee-size（0026 接线）', () => {
+    previewState.config = configWith(function (c) {
+      c.headings.addressee.fontFamily = '黑体'
+      c.headings.addressee.fontSize = 15
+    })
+    const markup = renderToStaticMarkup(React.createElement(Preview, { ast: FULL_AST }))
+    expect(markup).toContain('--addressee-font:黑体')
+    expect(markup).toContain('--addressee-size:15px')
+  })
 })

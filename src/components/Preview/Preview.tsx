@@ -71,6 +71,11 @@ export function Preview({ ast, aiProofreadResults }: PreviewProps) {
       '--h2-font': config.headings.h2.fontFamily,
       '--h2-size': `${config.headings.h2.fontSize}px`,
       '--h3-font': config.headings.h3.fontFamily,
+      // 三级标题字号接线（0025 对齐：此前预览漏接，改字号导出变预览不变）
+      '--h3-size': `${config.headings.h3.fontSize}px`,
+      // 主送机关字体/字号接线（0026 对齐：仅中文字体槽——英数字体槽全族未接线为待办-0039）
+      '--addressee-font': config.headings.addressee.fontFamily,
+      '--addressee-size': `${config.headings.addressee.fontSize}px`,
       '--page-number-font': config.specialOptions.pageNumberFont,
       // 表格配置
       '--table-font': config.table.fontFamily,
