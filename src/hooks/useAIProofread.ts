@@ -82,8 +82,8 @@ export function useAIProofread(): UseAIProofreadReturn {
         return;
       }
 
-      // 检查 AST 是否有效
-      if (!ast || (!ast.title && !ast.body)) {
+      // 检查 AST 是否有效（title 自 ef2eb62 起为数组，空文档口径＝title/body 均空数组）
+      if (!ast || (ast.title.length === 0 && ast.body.length === 0)) {
         setState({
           status: 'error',
           processedSentences: 0,
