@@ -12,7 +12,7 @@
   display: flex;
   align-items: baseline;
   padding: 12px 12px;
-  background: linear-gradient(to right, #f8fafc, #ffffff);
+  background: linear-gradient(to right, var(--color-bg-hover), var(--color-bg-card));
   border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
 }
@@ -115,7 +115,7 @@
   border-radius: var(--radius-md);
   border-width: 1px;
   border-style: solid;
-  background: rgba(17, 170, 102, 0.06);
+  background: var(--color-status-detected-bg);
   overflow: hidden;
   margin-left: 0;
   min-width: 0;
@@ -130,11 +130,11 @@
 }
 
 .detection-card--missing {
-  background: rgba(153, 153, 153, 0.08);
+  background: var(--color-status-missing-bg);
 }
 
 .detection-card--warning {
-  background: rgba(216, 30, 6, 0.06);
+  background: var(--color-status-warning-bg);
 }
 
 /* 卡片头部 */
@@ -221,8 +221,8 @@
   display: flex;
   align-items: flex-start;
   padding: 8px 12px;
-  background: linear-gradient(to right, #fef2f2, #ffffff);
-  border-top: 1px solid #fecaca;
+  background: linear-gradient(to right, var(--color-error-bg), var(--color-bg-card));
+  border-top: 1px solid var(--color-error-border);
 }
 
 .detection-card-warning > * + * {
@@ -239,15 +239,15 @@
 .detection-heading-warning {
   margin-top: 10px;
   padding: 10px 12px;
-  background: linear-gradient(to right, #fffbeb, #ffffff);
+  background: linear-gradient(to right, var(--color-warning-bg), var(--color-bg-card));
   border-radius: var(--radius-sm);
-  border: 1px solid #fde68a;
+  border: 1px solid var(--color-warning-border);
 }
 
 .detection-heading-warning-title {
   font-size: 12px;
   font-weight: 600;
-  color: #92400e;
+  color: var(--color-warning-text);
   margin-bottom: 8px;
 }
 
@@ -259,7 +259,7 @@
 
 .detection-heading-warning-list li {
   font-size: 12px;
-  color: #78350f;
+  color: var(--color-warning-text-deep);
   padding: 3px 0;
 }
 
@@ -278,7 +278,7 @@
 .detection-standard-hint {
   margin-top: 8px;
   padding: 8px 10px;
-  background: linear-gradient(to right, var(--color-primary-bg), #ffffff);
+  background: linear-gradient(to right, var(--color-primary-bg), var(--color-bg-card));
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-primary-border);
 }
@@ -340,7 +340,7 @@
   display: flex;
   align-items: center;
   padding: 10px 12px;
-  background: linear-gradient(to right, var(--color-primary-bg), #ffffff);
+  background: linear-gradient(to right, var(--color-primary-bg), var(--color-bg-card));
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-primary-border);
 }
@@ -360,7 +360,7 @@
   align-items: center;
   padding: 12px;
   margin-top: 10px;
-  background: linear-gradient(to right, var(--color-primary-bg), #ffffff);
+  background: linear-gradient(to right, var(--color-primary-bg), var(--color-bg-card));
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-primary-border);
 }
@@ -396,9 +396,9 @@
   align-items: flex-start;
   padding: 10px 12px;
   margin-top: 10px;
-  background: linear-gradient(to right, #fef2f2, #ffffff);
+  background: linear-gradient(to right, var(--color-error-bg), var(--color-bg-card));
   border-radius: var(--radius-sm);
-  border: 1px solid #fecaca;
+  border: 1px solid var(--color-error-border);
 }
 
 .ai-error > * + * {
@@ -417,7 +417,7 @@
   align-items: center;
   padding: 10px 12px;
   margin-top: 10px;
-  background: linear-gradient(to right, var(--color-primary-bg), #ffffff);
+  background: linear-gradient(to right, var(--color-primary-bg), var(--color-bg-card));
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-primary-border);
 }
@@ -443,15 +443,15 @@
 /* AI 问题项 */
 .ai-issue-item {
   padding: 10px 12px;
-  background: linear-gradient(to right, #fffbeb, #ffffff);
+  background: linear-gradient(to right, var(--color-warning-bg), var(--color-bg-card));
   border-radius: var(--radius-sm);
-  border: 1px solid #fde68a;
+  border: 1px solid var(--color-warning-border);
   cursor: pointer;
   transition: all var(--transition-fast);
 }
 
 .ai-issue-item:hover {
-  background: linear-gradient(to right, #fef3c7, #fffbeb);
+  background: linear-gradient(to right, var(--color-warning-bg-alt), var(--color-warning-bg));
   border-color: var(--color-warning-light);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
@@ -475,13 +475,13 @@
 .ai-issue-index {
   font-size: 12px;
   font-weight: 600;
-  color: #92400e;
+  color: var(--color-warning-text);
 }
 
 .ai-issue-location {
   font-size: 11px;
-  color: #b45309;
-  background: #fef3c7;
+  color: var(--color-warning-dark);
+  background: var(--color-warning-bg-alt);
   padding: 2px 6px;
   border-radius: var(--radius-sm);
 }
@@ -489,7 +489,7 @@
 /* 问题项原文 */
 .ai-issue-original {
   font-size: 13px;
-  color: #78350f;
+  color: var(--color-warning-text-deep);
   line-height: 1.5;
   margin-bottom: 8px;
   padding-left: 18px;
@@ -512,9 +512,9 @@
   display: flex;
   align-items: flex-start;
   padding: 8px 10px;
-  background: #ffffff;
+  background: var(--color-bg-card);
   border-radius: var(--radius-sm);
-  border: 1px solid #fde68a;
+  border: 1px solid var(--color-warning-border);
 }
 
 .ai-issue-suggestion-label {

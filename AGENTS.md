@@ -319,13 +319,32 @@ CSS 由 esbuild/LightningCSS 按 cssTarget chrome78 处理，但仍有特性需�
 | `--color-primary-light` | 主色调浅色 | `#10b981` |
 | `--color-primary-dark` | 主色调深色 | `#065f46` |
 | `--color-primary-bg` | 主色调背景 | `#ecfdf5` |
+| `--color-primary-bg-alt` | 主色调背景深一档 | `#d1fae5` |
 | `--color-primary-border` | 主色调边框 | `#a7f3d0` |
+| `--color-primary-shadow` | 主色调阴影 | `rgba(4, 120, 87, 0.3)` |
+| `--color-primary-shadow-alt` | 主色调阴影浅色 | `rgba(16, 185, 129, 0.3)` |
+| `--color-primary-overlay` | 主色调遮罩 | `rgba(4, 120, 87, 0.08)` |
+| `--color-primary-overlay-alt` | 主色调遮罩浅色 | `rgba(4, 120, 87, 0.04)` |
 | `--color-success` | 成功状态 | `#059669` |
 | `--color-success-light` | 成功状态浅色 | `#10b981` |
-| `--color-warning` | 警告状态 | `#d97706` |
+| `--color-warning` | 警告状态（琥珀） | `#d97706` |
 | `--color-warning-light` | 警告状态浅色 | `#f59e0b` |
+| `--color-warning-bg` | 警告状态背景 | `#fffbeb` |
+| `--color-warning-bg-alt` | 警告状态背景深一档 | `#fef3c7` |
+| `--color-warning-border` | 警告状态边框 | `#fde68a` |
+| `--color-warning-dark` | 警告状态深色 | `#b45309` |
+| `--color-warning-text` | 警告文字 | `#92400e` |
+| `--color-warning-text-deep` | 警告文字最深档 | `#78350f` |
 | `--color-error` | 错误状态 | `#dc2626` |
 | `--color-error-light` | 错误状态浅色 | `#ef4444` |
+| `--color-error-bg` | 错误状态背景 | `#fef2f2` |
+| `--color-error-border` | 错误状态边框 | `#fecaca` |
+| `--color-status-detected` | 检测状态·已检出 | `#11AA66` |
+| `--color-status-missing` | 检测状态·未检出 | `#999999` |
+| `--color-status-warning` | 检测状态·警告（红——名近值异，勿与琥珀色 `--color-warning` 混用） | `#d81e06` |
+| `--color-status-detected-bg` | 检测状态·已检出淡底 | `rgba(17, 170, 102, 0.06)` |
+| `--color-status-missing-bg` | 检测状态·未检出淡底 | `rgba(153, 153, 153, 0.08)` |
+| `--color-status-warning-bg` | 检测状态·警告淡底 | `rgba(216, 30, 6, 0.06)` |
 | `--color-text-primary` | 主要文字 | `#0f172a` |
 | `--color-text-secondary` | 次要文字 | `#64748b` |
 | `--color-text-muted` | 弱化文字 | `#94a3b8` |
@@ -333,11 +352,18 @@ CSS 由 esbuild/LightningCSS 按 cssTarget chrome78 处理，但仍有特性需�
 | `--color-border-hover` | 边框悬停 | `#cbd5e1` |
 | `--color-bg-main` | 主背景 | `#f1f5f9` |
 | `--color-bg-card` | 卡片背景 | `#ffffff` |
+| `--color-bg-hover` | 悬停背景 | `#f8fafc` |
+| `--shadow-sm` | 小阴影 | `0 1px 2px rgba(0, 0, 0, 0.05)` |
+| `--shadow-md` | 中阴影 | `0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)` |
+| `--shadow-lg` | 大阴影 | `0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)` |
+| `--shadow-card` | 卡片阴影 | `0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04)` |
+| `--shadow-card-hover` | 卡片悬停阴影 | `0 4px 12px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06)` |
 | `--radius-sm` | 小圆角 | `6px` |
 | `--radius-md` | 中圆角 | `8px` |
 | `--radius-lg` | 大圆角 | `12px` |
 | `--transition-fast` | 快速过渡 | `0.15s ease` |
 | `--transition-normal` | 正常过渡 | `0.2s ease` |
+| `--transition-slow` | 慢速过渡 | `0.3s ease` |
 
 ### 使用示例
 

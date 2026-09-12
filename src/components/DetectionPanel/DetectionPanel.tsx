@@ -21,11 +21,11 @@ interface DetectionPanelProps {
   onLocateSentence?: (sentenceId: string) => void
 }
 
-/** 状态颜色映射 */
+/** 状态颜色映射（值经 index.css CSS 变量解析，与原十六进制字面量逐字符一致） */
 const STATUS_COLORS: Record<DetectionStatus, string> = {
-  [DetectionStatus.DETECTED]: '#11AA66',
-  [DetectionStatus.MISSING]: '#999999',
-  [DetectionStatus.WARNING]: '#d81e06',
+  [DetectionStatus.DETECTED]: 'var(--color-status-detected)',
+  [DetectionStatus.MISSING]: 'var(--color-status-missing)',
+  [DetectionStatus.WARNING]: 'var(--color-status-warning)',
 }
 
 /** 状态图标组件 */
@@ -300,17 +300,19 @@ function AIProofreadSection({
 }) {
   // 未配置 AI 服务时显示提示
   if (!isConfigured) {
+    // 颜色与「未检测到」状态一致——统一走 STATUS_COLORS，消灭原 6 处重复色值源
+    const color = STATUS_COLORS[DetectionStatus.MISSING]
     return (
       <div className="detection-item">
         <div className="detection-trunk">
-          <div className="detection-trunk-line" style={{ backgroundColor: '#999999' }} />
-          <div className="detection-branch" style={{ backgroundColor: '#999999' }} />
-          <div className="detection-trunk-line--continue" style={{ backgroundColor: '#999999' }} />
+          <div className="detection-trunk-line" style={{ backgroundColor: color }} />
+          <div className="detection-branch" style={{ backgroundColor: color }} />
+          <div className="detection-trunk-line--continue" style={{ backgroundColor: color }} />
         </div>
-        <div className="detection-card detection-card--missing" style={{ borderColor: '#999999' }}>
-          <div className="detection-card-header" style={{ borderBottomColor: '#999999' }}>
+        <div className="detection-card detection-card--missing" style={{ borderColor: color }}>
+          <div className="detection-card-header" style={{ borderBottomColor: color }}>
             <StatusIcon status={DetectionStatus.MISSING} />
-            <span className="detection-card-label" style={{ color: '#999999' }}>AI校对</span>
+            <span className="detection-card-label" style={{ color: color }}>AI校对</span>
           </div>
           <div className="detection-card-content">
             <div className="ai-not-configured">
@@ -340,17 +342,17 @@ function AIProofreadSection({
   })
 
   let status = DetectionStatus.DETECTED
-  let statusColor = '#047857'
+  let statusColor = 'var(--color-primary)'
   
   // 根据状态确定颜色（使用主题色绿色）
   if (state.status === 'loading') {
-    statusColor = '#047857'
+    statusColor = 'var(--color-primary)'
   } else if (state.status === 'error') {
     status = DetectionStatus.WARNING
-    statusColor = '#dc2626'
+    statusColor = 'var(--color-error)'
   } else if (issues.length > 0) {
     status = DetectionStatus.WARNING
-    statusColor = '#dc2626'
+    statusColor = 'var(--color-error)'
   }
 
   return (

@@ -64,8 +64,24 @@ html {
   --color-success-light: #10b981;
   --color-warning: #d97706;
   --color-warning-light: #f59e0b;
+  --color-warning-bg: #fffbeb;
+  --color-warning-bg-alt: #fef3c7;
+  --color-warning-border: #fde68a;
+  --color-warning-dark: #b45309;
+  --color-warning-text: #92400e;
+  --color-warning-text-deep: #78350f;
   --color-error: #dc2626;
   --color-error-light: #ef4444;
+  --color-error-bg: #fef2f2;
+  --color-error-border: #fecaca;
+  /* 检测状态色族（task-0008 案甲）——注意：--color-status-warning 为红色 #d81e06，
+     与琥珀色 --color-warning（#d97706）名近值异，取用时勿混淆 */
+  --color-status-detected: #11AA66;
+  --color-status-missing: #999999;
+  --color-status-warning: #d81e06;
+  --color-status-detected-bg: rgba(17, 170, 102, 0.06);
+  --color-status-missing-bg: rgba(153, 153, 153, 0.08);
+  --color-status-warning-bg: rgba(216, 30, 6, 0.06);
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
