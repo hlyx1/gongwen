@@ -15,8 +15,9 @@ import { splitHighlightSentences, renderTitleHighlight } from './aiHighlight'
  *
  * 行为保持约束（结构快照基线锁定）：
  * - DOM 类名与层级结构与旧实现逐字节一致（A4Page.css 零改动）——
- *   task-0004 的 0001/0002/0022 为有意行为变更，快照基线随对应提交同步更新，
- *   变更前后差异说明见 tasks/task-0004/工作单元-2.md 实施记录
+ *   task-0004 的 0001/0002/0022 与 task-0005 的度量容器表格同构为有意
+ *   行为变更，快照基线随对应提交同步更新，变更前后差异说明见
+ *   tasks/task-0004 与 tasks/task-0005 的工作单元实施记录
  * - AI 高亮为可选叠加（ai 缺省＝度量容器：无高亮纯渲染）
  * - 右缩进优先取决策层的 em 口径（rightEm，与旧 calculateSignatureIndentEm
  *   逐位一致），缺省时以 twips/charWidthTwips 换算
@@ -444,17 +445,16 @@ function renderParagraphBlock(
  * 块序即旧实现的 DOM 顺序：标题段 → 标题后空行 → 正文节点
  * （署名/备注前空行、附件展开、表格）。
  *
- * mode 按消费方区分两种形态（除表格外逐字节一致）：
- * - 'page'（缺省）：A4Page 视窗——表格渲染结构化 <table>
- * - 'measurer'：Preview 度量容器——表格按段落测量（待办-0005 冻结现状）：
- *   渲染为携带原始 Markdown 源文本的 a4-table 段落（className 承载段距），
- *   保持 usePagination `:scope > p` 选择器与段落高度测量口径不变
+ * task-0005（裁定1 方案 A-简）：表格在两消费方渲染逐字节同构的结构化
+ * <table class="a4-table-element">——度量容器按真表格测高（usePagination
+ * 以 `:scope > p, :scope > table` 收集、表格整块一个 line），消灭旧
+ * 「度量容器把表格按段落测 Markdown 源文本」的失真；双模式仅剩的表格
+ * 分叉消除后 mode 参数随之删除（表格不参与 AI 高亮——现状保持）
  */
 export function renderContentFlow(
   blocks: LayoutBlock[],
   metrics: LayoutMetrics,
-  ai?: AIHighlightContext,
-  mode: 'page' | 'measurer' = 'page'
+  ai?: AIHighlightContext
 ): React.ReactNode {
   return blocks.map(function (block, index) {
     if (block.kind === 'spacer') {
@@ -469,11 +469,8 @@ export function renderContentFlow(
     }
 
     if (block.kind === 'table') {
-      // 度量容器：表格按段落测量（旧 Preview 现状，待办-0005 冻结）
-      if (mode === 'measurer') {
-        return <p key={index} className="a4-table">{block.rawContent}</p>
-      }
-      // 页面：结构化单元格 → <table>（不参与 AI 高亮——旧实现现状）
+      // 结构化单元格 → <table>：页面与度量容器逐字节同构（task-0005 A-简），
+      // 度量容器据此测真实表格高度（不参与 AI 高亮——现状保持）
       return (
         <table key={index} className="a4-table-element">
           <thead>

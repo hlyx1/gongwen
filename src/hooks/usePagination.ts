@@ -15,7 +15,8 @@ export interface PageSlice {
  *
  * 在隐藏的度量容器中渲染全部节点，通过 offsetTop / offsetHeight / lineHeight
  * 逐行计算分页断点。每页只需一个 offsetY 值，配合 CSS overflow:hidden + transform
- * 偏移实现段落内自然跨页断行。
+ * 偏移实现段落内自然跨页断行。表格（task-0005）按元素整块参与——断点不落进
+ * 表格内部（详见行收集处的表格分支）。
  *
  * 关键：首页扣除版头（.a4-header-section）高度，末页扣除版记（.a4-footer-note）高度，
  * 避免 clipHeight 超出父容器实际可用空间导致 overflow:hidden 截断内容。
@@ -155,15 +156,16 @@ export function usePagination(
       // 首页可用高度 = 全量 - 版头占位
       const firstPageAvailable = fullAvailable - headerHeight
 
-      // ⑤ 获取度量容器内所有段落
+      // ⑤ 获取度量容器内所有内容流元素（段落＋表格——task-0005：度量容器
+      //    渲染真实 <table> 结构，表格按元素口径整块参与测量）
       const contentEl = el.querySelector('.a4-measurer-content')
       if (!contentEl) {
         setPages([{ offsetY: 0, clipHeight: firstPageAvailable }])
         return
       }
 
-      const paragraphs = contentEl.querySelectorAll<HTMLParagraphElement>(':scope > p')
-      if (paragraphs.length === 0) {
+      const flowElements = contentEl.querySelectorAll<HTMLElement>(':scope > p, :scope > table')
+      if (flowElements.length === 0) {
         setPages([{ offsetY: 0, clipHeight: firstPageAvailable }])
         return
       }
@@ -172,25 +174,35 @@ export function usePagination(
       interface LinePos { top: number; bottom: number }
       const lines: LinePos[] = []
 
-      for (const p of paragraphs) {
-        const pTop = p.offsetTop
-        const pHeight = p.offsetHeight
-        const computedStyle = getComputedStyle(p)
+      for (const element of flowElements) {
+        const elementTop = element.offsetTop
+        const elementHeight = element.offsetHeight
+
+        if (element.tagName === 'TABLE') {
+          // 表格整块作为一个 line（不可分割，task-0005 裁定1 方案 A-简）：
+          // 分页断点只能落在表格边界外；巨型表格（高于一页可用高）推到
+          // 新页起后仍超高，由视窗 overflow:hidden 截断底部（与单行段落
+          // 超高行为一致——明确不做项，跨页重排须另立任务）
+          lines.push({ top: elementTop, bottom: elementTop + elementHeight })
+          continue
+        }
+
+        const computedStyle = getComputedStyle(element)
         const lineHeight = parseFloat(computedStyle.lineHeight)
 
-        if (isNaN(lineHeight) || lineHeight <= 0 || pHeight <= lineHeight * 1.5) {
+        if (isNaN(lineHeight) || lineHeight <= 0 || elementHeight <= lineHeight * 1.5) {
           // 单行段落（标题等）：整段作为一行
-          lines.push({ top: pTop, bottom: pTop + pHeight })
+          lines.push({ top: elementTop, bottom: elementTop + elementHeight })
         } else {
-          const lineCount = Math.max(1, Math.round(pHeight / lineHeight))
-          // 使用 CSS line-height 定位行边界（而非 pHeight/lineCount），
+          const lineCount = Math.max(1, Math.round(elementHeight / lineHeight))
+          // 使用 CSS line-height 定位行边界（而非 elementHeight/lineCount），
           // 避免混合字体 inline span 导致段落高度偏离 line-height 整数倍时
           // 断点位置与实际渲染不一致（半行字问题）。
           // 最后一行 bottom 取段落实际底部，衔接下一段。
           for (let i = 0; i < lineCount; i++) {
             lines.push({
-              top: pTop + i * lineHeight,
-              bottom: i < lineCount - 1 ? pTop + (i + 1) * lineHeight : pTop + pHeight,
+              top: elementTop + i * lineHeight,
+              bottom: i < lineCount - 1 ? elementTop + (i + 1) * lineHeight : elementTop + elementHeight,
             })
           }
         }

@@ -23,8 +23,8 @@ interface PreviewProps {
  * - 一次性调用决策层 buildLayout（renderer='preview'），A4Page 页面内容
  *   与度量容器消费同一份块序列渲染输出——消灭旧实现中度量容器的
  *   第三次节点遍历复制（勘探 §3.2）
- * - 度量容器 DOM 类名结构保持不变（usePagination 的
- *   `:scope > p` 选择器依赖；表格分支缺失现状保留＝待办-0005 冻结）
+ * - 度量容器与页面渲染完全同构（task-0005：表格亦渲染真表格结构，
+ *   usePagination 以 `:scope > p, :scope > table` 收集行、表格整块一个 line）
  * - CSS 变量读 config.headings（单元6 双轨合并后单一真值：预览与导出同源）
  */
 export function Preview({ ast, aiProofreadResults }: PreviewProps) {
@@ -90,10 +90,10 @@ export function Preview({ ast, aiProofreadResults }: PreviewProps) {
       <div className="preview-scroll" style={cssVars}>
         {/* 隐藏度量容器：渲染与 A4Page 同源的决策层块序列用于高度测量
             （不注入 AI 高亮上下文——测量无需高亮，纯文本渲染；
-            mode='measurer'——表格按段落测量，待办-0005 冻结现状） */}
+            表格与页面同构真表格，task-0005 修复测量失真） */}
         <div ref={measurerRef} className="a4-measurer" aria-hidden="true">
           <div className="a4-measurer-content">
-            {renderContentFlow(layout.blocks, layout.metrics, undefined, 'measurer')}
+            {renderContentFlow(layout.blocks, layout.metrics)}
           </div>
           {/* 隐藏版记：用于度量版记高度，始终渲染以便在分页计算时获取高度 */}
           {layout.footerNote && <A4FooterNote note={layout.footerNote} measurer />}
