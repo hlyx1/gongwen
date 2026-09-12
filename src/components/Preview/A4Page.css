@@ -345,13 +345,14 @@
   margin-top: 20px;
 }
 
-/* 页脚: 页码区域 */
+/* 页脚: 页码区域（0023 案 B 对齐：主字体经 --page-number-font 随设置、
+   去 TNR 优先——页码数字与一字线两侧同源 config.specialOptions.pageNumberFont） */
 .a4-footer {
   position: absolute;
   bottom: 4.2%;
   left: var(--margin-left, 13.33%);
   right: var(--margin-right, 12.38%);
-  font-family: 'Times New Roman', var(--page-number-font, '宋体'), serif;
+  font-family: var(--page-number-font, '宋体'), serif;
   font-size: 14px;
   color: var(--color-text-secondary);
 }
@@ -385,10 +386,12 @@
   letter-spacing: 0;
 }
 
-/* 红色分隔线：单条红线，位于发文字号/签发人之下 */
+/* 红色分隔线：单条红线，位于发文字号/签发人之下
+   （0003 对齐：1.875px＝15/8pt、上方间距 4px＝80twips——与导出侧同口径，
+   预览 72dpi 下 1pt=1px；值与 layout/deviations.ts redSeparator.preview 人肉同步） */
 .a4-header-separator {
-  border-bottom: 2px solid #e00000;
-  margin-top: 8px;
+  border-bottom: 1.875px solid #e00000;
+  margin-top: 4px;
 }
 
 /* 发文字号 / 签发人行 */

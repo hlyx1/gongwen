@@ -17,8 +17,8 @@ import { buildLayout } from '../index'
  * 覆盖每个 NodeType 的决策输出快照＋版头/版记/页码开关场景。
  * 两渲染器（preview/docx）分别快照：默认偏差开关下，
  * docx 快照须体现导出侧现状、preview 快照须体现预览侧现状。
- * task-0004 对齐族实施后差异点：0002/0003 版式参数与 0022 时间冒号分段
- * （0001/0004 已翻转为两侧一致——快照基线随对应提交同步更新）。
+ * task-0004 对齐族实施后唯一剩余差异点：0002 页码纵向位置（裁定1 冻结）；
+ * 0001/0003/0004/0022/0023 已翻转为两侧一致——快照基线随对应提交同步更新。
  * 快照变更即决策行为变化，须走新裁定后由技术负责人确认方可更新。
  */
 
@@ -490,6 +490,21 @@ describe('buildLayout 版头/版记/页码版式参数', () => {
     expect(layout.pageNumber.oddAlignment).toBe('right')
     expect(layout.pageNumber.evenAlignment).toBe('left')
     expect(layout.pageNumber.format).toBe('dash-number-dash')
+  })
+
+  it('页码字体接 config（0023 案 B）：改 pageNumberFont 后四槽随配置、两渲染器同源', () => {
+    const config = configWith((c) => {
+      c.specialOptions.pageNumberFont = '黑体'
+    })
+    const docxLayout = buildLayout(MINIMAL_AST, config, { renderer: 'docx' })
+    const previewLayout = buildLayout(MINIMAL_AST, config, { renderer: 'preview' })
+    expect(docxLayout.pageNumber.font).toEqual({
+      ascii: '黑体',
+      eastAsia: '黑体',
+      hAnsi: '黑体',
+      cs: '黑体',
+    })
+    expect(previewLayout.pageNumber.font).toEqual(docxLayout.pageNumber.font)
   })
 
   it('页码关：enabled 为 false', () => {

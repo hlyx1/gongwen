@@ -16,9 +16,12 @@ import { buildLayout } from '../index'
  * - 0001 三级标题序号句点字体：两侧均=body-font（已对齐，翻转前预览=follow-heading3）
  * - 0002 页码纵向位置：预览=css bottom 4.2% / 导出=footer spacing.before 397
  *   （裁定1 冻结维持现状——定标后再翻转）
- * - 0003 红色分隔线：预览=css 2px+8px / 导出=border size 15 + before 80
+ * - 0003 红色分隔线：预览=css 1.875px+4px / 导出=border size 15 + before 80
+ *   （已对齐：预览改导出口径换算值，翻转前预览=2px+8px）
  * - 0004 三级标题全角句点：两侧均=split（已对齐，翻转前两侧=no-split）
  * - 0022 时间冒号分段：两侧均=split（已对齐，翻转前预览=no-split）
+ * - 0023 页码字体：两侧同源 config.specialOptions.pageNumberFont（默认宋体，
+ *   已对齐案 B；翻转前预览=CSS 栈 TNR 优先/导出=四槽宋体）
  * 取值来源见 deviations.ts 文件头注释。
  */
 
@@ -53,11 +56,11 @@ describe('偏差开关默认值＝两渲染器现状', () => {
     })
   })
 
-  it('0003 redSeparator：预览 css 2px/8px / 导出 paragraph-border 15/80', () => {
+  it('0003 redSeparator：预览 css 1.875px/4px / 导出 paragraph-border 15/80（task-0004 对齐后）', () => {
     expect(DEVIATION_SWITCHES_DEFAULT.redSeparator.preview).toEqual({
       mechanism: 'css',
-      thicknessPx: 2,
-      marginTopPx: 8,
+      thicknessPx: 1.875,
+      marginTopPx: 4,
       color: 'E00000',
     })
     expect(DEVIATION_SWITCHES_DEFAULT.redSeparator.docx).toEqual({
@@ -78,10 +81,10 @@ describe('偏差开关默认值＝两渲染器现状', () => {
     expect(DEVIATION_SWITCHES_DEFAULT.timeColonSplit.docx).toBe('split')
   })
 
-  it('0023 pageNumberFont：预览 CSS 栈（TNR 优先）/ 导出四槽宋体', () => {
+  it('0023 pageNumberFont：两侧同源 config（预览 CSS 栈默认宋体 / 导出四槽宋体）', () => {
     expect(DEVIATION_SWITCHES_DEFAULT.pageNumberFont.preview).toEqual({
       mechanism: 'css-stack',
-      primary: 'Times New Roman',
+      primary: '宋体',
     })
     expect(DEVIATION_SWITCHES_DEFAULT.pageNumberFont.docx).toEqual({
       mechanism: 'quad',
@@ -134,7 +137,7 @@ describe('buildLayout 按开关产出各渲染器决策（默认＝现状）', (
     })
   })
 
-  it('0003：红色分隔线——按渲染器取各自现状参数', () => {
+  it('0003：红色分隔线——预览取导出口径换算值，导出取 paragraph-border 参数', () => {
     const config = configWith((c) => {
       c.header.enabled = true
       c.header.orgName = '某某市人民政府文件'
@@ -143,8 +146,8 @@ describe('buildLayout 按开关产出各渲染器决策（默认＝现状）', (
     const docxLayout = buildLayout(ast, config, { renderer: 'docx' })
     expect(previewLayout.header && previewLayout.header.separator).toEqual({
       mechanism: 'css',
-      thicknessPx: 2,
-      marginTopPx: 8,
+      thicknessPx: 1.875,
+      marginTopPx: 4,
       color: 'E00000',
     })
     expect(docxLayout.header && docxLayout.header.separator).toEqual({

@@ -430,11 +430,13 @@ function buildPageNumberLayout(
   switches: DeviationSwitchSet,
   renderer: RendererKind
 ) {
-  // 页码四槽字体：统一真值取 0023 开关的导出分支（现状四槽全宋体）；
-  // 预览侧半角字符字体为 CSS 栈单源（.a4-footer），预览渲染器不消费本字段
+  // 页码四槽字体：0023 案 B（task-0004 裁定2）——来源改 config.specialOptions.pageNumberFont
+  // （默认 '宋体'＝国标默认，默认产物四槽仍全宋体、导出快照零变化；改设置后两侧
+  // 同源生效）。开关 pageNumberFont 登记 quad 机制形态；预览侧半角字符字体为
+  // CSS 栈单源（.a4-footer，var(--page-number-font) 优先），预览渲染器不消费本字段
   const fontBehavior = switches.pageNumberFont.docx
   const fontFamily =
-    fontBehavior.mechanism === 'quad' ? fontBehavior.eastAsia : PAGE_NUMBER_FONT
+    fontBehavior.mechanism === 'quad' ? config.specialOptions.pageNumberFont : PAGE_NUMBER_FONT
   const quadSong: FontQuad = {
     ascii: fontFamily,
     eastAsia: fontFamily,

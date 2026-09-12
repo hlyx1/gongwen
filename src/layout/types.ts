@@ -197,9 +197,10 @@ export interface FooterNoteLayout {
 export interface PageNumberLayout {
   enabled: boolean
   /**
-   * 页码四槽字体——docx 渲染器直接消费（现状四槽全宋体）
+   * 页码四槽字体——docx 渲染器直接消费（来源 config.specialOptions.pageNumberFont，
+   * 默认四槽全宋体——task-0004 0023 案 B 接线）
    * 预览侧半角字符字体为 CSS 字体栈单源（A4Page.css .a4-footer，
-   * 'Times New Roman' 优先），预览渲染器不消费本字段（待办-0023，
+   * var(--page-number-font) 优先），预览渲染器不消费本字段（待办-0023，
    * 形态登记于 deviations.pageNumberFont）
    */
   font: FontQuad
