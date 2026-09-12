@@ -240,7 +240,10 @@ function renderSegmentsWithHighlight(
           </span>
         )
       } else {
-        elements.push(renderSentenceSpan(piece, result, ai))
+        // 裸句片段（正文族无宿主类）——Fragment 挂 key 消除数组子项警告，不引入额外 DOM
+        elements.push(
+          <React.Fragment key={elements.length}>{renderSentenceSpan(piece, result, ai)}</React.Fragment>
+        )
       }
       if (span.end >= segTo) {
         break // 该句跨到后续段——换下一段继续
