@@ -47,7 +47,7 @@ const PAIR_END_TO_START: PairMap = {
 
 /**
  * 需要切分的节点类型集合（待办-0029 Record 封闭）
- * 全 13 键布尔分摊：可切分=true，其余显式 false——truthiness 分支
+ * 全键布尔分摊：可切分=true，其余显式 false——truthiness 分支
  * 与封闭前（缺键=undefined）逐路径等价，切句边界不变；
  * 新增 NodeType 成员时本表 tsc 报错（键义务）
  */
@@ -68,7 +68,7 @@ const SPLITTABLE_TYPES: Record<NodeType, boolean> = {
 
 /**
  * 不需要切分的节点类型集合（待办-0029 Record 封闭）
- * 与 SPLITTABLE_TYPES 互为反集（逐键取反）；全 13 键布尔分摊，
+ * 与 SPLITTABLE_TYPES 互为反集（逐键取反）；全键布尔分摊，
  * truthiness 分支与封闭前逐路径等价；新增成员时本表 tsc 报错
  */
 const NON_SPLITTABLE_TYPES: Record<NodeType, boolean> = {
