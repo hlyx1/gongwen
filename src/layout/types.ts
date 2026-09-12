@@ -120,8 +120,6 @@ export interface LayoutSpacerBlock {
 export interface LayoutTableBlock {
   kind: 'table'
   sourceType: NodeType.TABLE
-  /** 原始 Markdown 表格源文本（AST TableNode.content 原样保留） */
-  rawContent: string
   headerCells: string[]
   dataRows: string[][]
   /** 单元格对齐（现状：全部居中） */
