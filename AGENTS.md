@@ -85,7 +85,7 @@ src/
 │   ├── fonts.ts          # 字体角色规格（roleSpec/bodyPunctSpec）
 │   ├── runs.ts           # run 分段决策（标题首句/时间冒号/序号句点拆分）
 │   ├── metrics.ts        # 度量与缩进决策（charSpacing/签名缩进）
-│   ├── deviations.ts     # 已知预览/导出偏差显式开关（默认＝现状）
+│   ├── deviations.ts     # 已知预览/导出偏差显式开关（默认＝task-0004 对齐值，0002 除外）
 │   └── constants.ts      # 版式常量单源
 ├── parser/               # 公文文本解析器（行为锚点，有测试锁定）
 │   ├── parser.ts         # 主解析器
@@ -200,7 +200,7 @@ interface HeadingsConfig {
 - 字体角色规格：`fonts.ts` 的 `roleSpec`（节点类型 → 字体四槽/字号/字符间距）
 - run 分段决策：`runs.ts`（标题首句、时间冒号、三级标题序号句点、附件序号句点拆分）
 - 度量与缩进：`metrics.ts`（charSpacing/首行缩进/签名居中缩进）
-- 偏差开关：`deviations.ts` 集中登记已知预览/导出偏差（默认值＝现状）
+- 偏差开关：`deviations.ts` 集中登记已知预览/导出偏差（默认值＝task-0004 对齐值，0002 挂起维持现状）
 - 纯度约束由 `layout/__tests__/purity.test.ts` 锁定（禁止 docx/react/DOM 依赖）
 
 ### 3. 导出器 (exporter/)
