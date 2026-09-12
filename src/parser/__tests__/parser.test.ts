@@ -71,7 +71,6 @@ describe('parseGongwen', () => {
 
   it('第一个非空行识别为公文标题', () => {
     const ast = parseGongwen('关于加强安全生产工作的通知')
-    expect(ast.title).not.toBeNull()
     expect(ast.title.length).toBe(1)
     expect(ast.title[0].type).toBe(NodeType.DOCUMENT_TITLE)
     expect(ast.title[0].content).toBe('关于加强安全生产工作的通知')
