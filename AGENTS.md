@@ -42,7 +42,7 @@ buildLayout() - 排版决策层（layout/，渲染器无关的单一真值纯函
 ```
 
 - **排版决策层是单一真值**：字体角色、run 分段、缩进、空行、版头/版记/页码参数全部决策于 `layout/`；预览与导出均为纯渲染器（详见裁定于 tasks/task-0001）。
-- **已知预览/导出偏差**（待办-0001~0004）以显式开关集中登记于 `layout/deviations.ts`，默认值＝两渲染器现状；修复偏差＝晋升对应待办并翻转开关，禁止散落 if。
+- **已知预览/导出偏差**以显式开关集中登记于 `layout/deviations.ts`（六开关：待办-0001~0004＋接线期补设 0022/0023）。task-0004 起除 0002（页码纵向位置——导出机制语义待实测定标，回池挂起）外均已翻转为两侧对齐值（对齐方向＝导出/国标口径）；修复偏差＝晋升对应待办并翻转开关，禁止散落 if。
 - **AI 校对链路**：`useAIProofread` → `sentenceSplitter`（切句）→ `textBlockSplitter`（分块）→ `aiProofreadService`（SSE 流式请求＋并发＋重试）→ `aiResponseParser`（表格行解析）。sentenceId 格式与切句边界为冻结项（高亮依赖）。
 
 ### 目录结构
@@ -214,15 +214,15 @@ interface HeadingsConfig {
 **特殊字符处理（决策在 layout/runs.ts，导出侧为翻译）：**
 
 1. **时间格式中的半角冒号**（`9:00`）→ 正文字体四槽独立 run（清洗阶段 sanitize 已把全角还原半角）
-2. **三级标题序号后的英文句号**（`1.xxx` 的 `.`）→ 正文字体（受偏差开关控制）
+2. **三级标题序号后的句号**（`1.xxx` 的 `.` 与全角 `1．xxx` 的 `．`）→ 正文字体（0001/0004 开关，task-0004 起两侧一致拆分）
 3. **附件说明序号后的英文句号**（多附件模式）→ 正文字体
 
 ### 4. 预览组件 (components/Preview/)
 
-预览侧为排版决策层渲染器，DOM 类名与层级结构由 `__tests__/previewStructure.test.tsx` 的 14 条结构特征快照锁定（A4Page.css 与快照基线为行为保持红线）。
+预览侧为排版决策层渲染器，DOM 类名与层级结构由 `__tests__/previewStructure.test.tsx` 的 14 条结构特征快照＋2 条 cssVars 注入断言锁定（A4Page.css 与快照基线为行为保持红线）。
 
 - **Preview.tsx**：注入 CSS 自定义属性；一次性调用 buildLayout，页面与度量容器消费同一份块序列；调用 usePagination 分页
-- **renderContentFlow.tsx**：决策块序列 → React 节点共享渲染器（measurer 模式下表格按段落测量＝待办-0005 冻结现状）
+- **renderContentFlow.tsx**：决策块序列 → React 节点共享渲染器（measurer 模式下表格按段落测量＝待办-0005 冻结现状；正文族 run 级渲染＝0022 案二最小 DOM：同宿主 run 合并纯文本、仅标点 run 包 `.a4-body-punctuation` span，句序号节点内跨 run 连续）
 - **aiHighlight.tsx**：AI 高亮包装层（切句正则与 sentenceId 拼接为冻结项）
 - **A4Page.tsx**：单页装配（offsetY + clipHeight 分页裁剪，AI 悬停浮层状态）
 - **usePagination.ts**：隐藏度量容器中 DOM 度量逐行计算分页断点（首页扣版头、末页避让版记），ResizeObserver 监听重算
@@ -409,7 +409,7 @@ CSS 由 esbuild/LightningCSS 按 cssTarget chrome78 处理，但仍有特性需�
 
 ## 测试
 
-测试文件位于各模块 `__tests__/` 目录（共 16 个测试文件、340 个用例：parser 42 / sanitize 36 / aiResponseParser 14 / layout 六件套 134 / styleFactory 60 / docxBuilder 10（含 13 条导出快照）/ previewStructure 14（结构快照）/ documentConfigMigration 19 / Toolbar 6 / useAIProofread 3 / sourceGovernance 2），使用 Vitest 框架（environment=node）：
+测试文件位于各模块 `__tests__/` 目录（共 16 个测试文件、344 个用例：parser 42 / sanitize 36 / aiResponseParser 14 / layout 六件套 136 / styleFactory 60 / docxBuilder 10（含 13 条导出快照）/ previewStructure 16（14 条结构快照＋2 条 cssVars 断言）/ documentConfigMigration 19 / Toolbar 6 / useAIProofread 3 / sourceGovernance 2），使用 Vitest 框架（environment=node）：
 
 ```bash
 # 运行测试

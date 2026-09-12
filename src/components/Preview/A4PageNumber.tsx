@@ -7,7 +7,8 @@ import type { PageNumberLayout } from '../../layout/types'
  * 消费决策层页码版式参数（buildLayout.pageNumber）：奇数页居右空一字、
  * 偶数页居左空一字（由 a4-footer-odd/even 类配合 CSS 实现），
  * 格式为「— X —」一字线。字体与纵向位置均为 CSS 单源（.a4-footer），
- * 决策层的每渲染器参数（font/vertical）为 0022/0023 偏差的集中登记。
+ * 决策层的每渲染器参数（font/vertical）为 0002/0023 偏差的集中登记
+ * （纵向位置＝待办-0002；字体＝待办-0023 案 B，两侧同源 config）。
  */
 export function A4PageNumber(props: {
   number: number
