@@ -43,7 +43,7 @@ buildLayout() - 排版决策层（layout/，渲染器无关的单一真值纯函
 
 - **排版决策层是单一真值**：字体角色、run 分段、缩进、空行、版头/版记/页码参数全部决策于 `layout/`；预览与导出均为纯渲染器（详见裁定于 tasks/task-0001）。
 - **已知预览/导出偏差**以显式开关集中登记于 `layout/deviations.ts`（六开关：待办-0001~0004＋接线期补设 0022/0023）。task-0004 起除 0002（页码纵向位置——导出机制语义待实测定标，回池挂起）外均已翻转为两侧对齐值（对齐方向＝导出/国标口径）；修复偏差＝晋升对应待办并翻转开关，禁止散落 if。
-- **AI 校对链路**：`useAIProofread` → `sentenceSplitter`（切句）→ `textBlockSplitter`（分块）→ `aiProofreadService`（SSE 流式请求＋并发＋重试）→ `aiResponseParser`（表格行解析）。sentenceId 格式与切句边界为冻结项（高亮依赖）。
+- **AI 校对链路**：`useAIProofread` → `sentenceSplitter`（切句）→ `textBlockSplitter`（分块）→ `aiProofreadService`（SSE 流式请求＋并发＋重试）→ `aiResponseParser`（表格行解析）。sentenceId 格式为冻结项（高亮依赖）；切句以 sentenceSplitter 为单一真值——高亮侧经 splitNodeIntoSentences 同源消费（task-0007/0013 对齐），改切句行为须双侧同变。
 
 ### 目录结构
 
@@ -59,7 +59,7 @@ src/
 │   │   ├── A4Page.tsx            # 单页装配（分页裁剪 + AI 悬停浮层状态）
 │   │   ├── Preview.tsx           # 预览容器 + CSS 变量注入 + 度量容器
 │   │   ├── renderContentFlow.tsx # 内容流共享渲染器（页面与度量容器同源）
-│   │   ├── aiHighlight.tsx       # AI 高亮包装层（切句正则/sentenceId 冻结现状）
+│   │   ├── aiHighlight.tsx       # AI 高亮包装层（切句以 sentenceSplitter 为单一真值，task-0007 对齐）
 │   │   ├── A4HeaderSection.tsx   # 版头子组件
 │   │   ├── A4FooterNote.tsx      # 版记子组件
 │   │   └── A4PageNumber.tsx      # 页码子组件
@@ -223,7 +223,7 @@ interface HeadingsConfig {
 
 - **Preview.tsx**：注入 CSS 自定义属性；一次性调用 buildLayout，页面与度量容器消费同一份块序列；调用 usePagination 分页
 - **renderContentFlow.tsx**：决策块序列 → React 节点共享渲染器（表格页面/度量容器双消费方同构渲染结构化 `a4-table-element`＝task-0005 度量修复，旧 measurer 表格按段落测量分叉与 mode 参数已删；正文族 run 级渲染＝0022 案二最小 DOM：同宿主 run 合并纯文本、仅标点 run 包 `.a4-body-punctuation` span，句序号节点内跨 run 连续）
-- **aiHighlight.tsx**：AI 高亮包装层（切句正则与 sentenceId 拼接为冻结项）
+- **aiHighlight.tsx**：AI 高亮包装层（上下文类型＋公文标题高亮查询；切句已对齐复用 sentenceSplitter——task-0007/0013，renderContentFlow 经 sentencesForBlock 消费：正文族逐句同源、标题体 seq 连续、整节点族整段 seq=1、多段标题查合并句 id）
 - **A4Page.tsx**：单页装配（offsetY + clipHeight 分页裁剪，AI 悬停浮层状态）
 - **usePagination.ts**：隐藏度量容器中 DOM 度量逐行计算分页断点（首页扣版头、末页避让版记）；行收集含 `:scope > p, :scope > table`，表格整块一个 line 不可分割（task-0005，断点不落表格内部）；ResizeObserver 监听重算
 

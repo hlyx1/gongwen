@@ -1,10 +1,12 @@
 import React, { type CSSProperties } from 'react'
 import { NodeType } from '../../types/ast'
-import type { AIProofreadResult } from '../../types/aiProofread'
+import type { DocumentNode } from '../../types/ast'
+import type { AIProofreadResult, Sentence } from '../../types/aiProofread'
 import type { LayoutBlock, LayoutMetrics, LayoutParagraphBlock, LayoutRun } from '../../layout/types'
 import { twipsToEm } from '../../layout/metrics'
+import { splitNodeIntoSentences, NON_SPLITTABLE_TYPES } from '../../utils/sentenceSplitter'
 import type { AIHighlightContext } from './aiHighlight'
-import { splitHighlightSentences, renderTitleHighlight } from './aiHighlight'
+import { renderTitleHighlight } from './aiHighlight'
 
 /**
  * 预览内容流共享渲染器（工作单元-5 交付物）
@@ -81,9 +83,43 @@ function blockText(block: LayoutParagraphBlock): string {
   }).join('')
 }
 
-/** sentenceId：nodeType-lineNumber-localSeq（与 AI 校对链路一致，冻结格式） */
-function sentenceId(block: LayoutParagraphBlock, seq: number): string {
-  return block.sourceType + '-' + block.sourceLineNumber + '-' + seq
+/**
+ * 块的送审句集合（task-0007 条款1/3：高亮查询键与切句边界的单一真值）
+ *
+ * 切分族（一至四级标题/主送/正文）经 utils/sentenceSplitter 的
+ * splitNodeIntoSentences 取句——sentenceId（type-line-seq，冻结格式）
+ * 与句文本两侧逐句一致；整节点族（SIGNATURE/DATE/REMARK）镜像送审
+ * NON_SPLITTABLE 门：整段单句 seq=1（REMARK 含「；」等分隔符时
+ * 不再切句分配 seq——命中罩全段）。ATTACHMENT/TABLE/DOCUMENT_TITLE
+ * 不走本函数（附件/表格无高亮展示；公文标题走 renderTitleHighlight
+ * 的送审合并句查询）。
+ */
+export function sentencesForBlock(block: LayoutParagraphBlock): Sentence[] {
+  const fullText = blockText(block)
+  if (NON_SPLITTABLE_TYPES[block.sourceType]) {
+    // 整节点族：整段 seq=1（镜像 sentenceSplitter 的非切分分支；trim 后为空则无句）
+    const trimmed = fullText.trim()
+    if (trimmed.length === 0) {
+      return []
+    }
+    return [
+      {
+        id: block.sourceType + '-' + block.sourceLineNumber + '-1',
+        nodeId: block.sourceType + '-' + block.sourceLineNumber,
+        seqNum: 1,
+        text: trimmed,
+        nodeType: block.sourceType,
+        lineNumber: block.sourceLineNumber,
+      },
+    ]
+  }
+  // 切分族：合成送审切句输入节点（as 收窄惯例同 parser.ts）
+  const synthNode = {
+    type: block.sourceType,
+    content: fullText,
+    lineNumber: block.sourceLineNumber,
+  } as DocumentNode
+  return splitNodeIntoSentences(synthNode, { value: 0 })
 }
 
 /**
@@ -135,22 +171,22 @@ function renderSentenceSpan(
 }
 
 /**
- * 段序列 → 句子级高亮 DOM（0022 案二）
+ * 段序列 → 句子级高亮 DOM（0022 案二；task-0007 切句换轨）
  *
  * - 无 AI 结果（ai 缺省＝度量容器或结果为空）：宿主文本段纯文本直出
  *   （hostWrapperClass 给出时按宿主包装类包 span——标题剩余部分现状）、
- *   标点段包标点 span——无时间冒号的段落 DOM 零变化
- * - 有 AI 结果：切句在段序列拼接全文上一次完成（句序号节点内跨 run 连续
- *   ——sentenceId 冻结；裁定3「跨 run 句序号偏移」经「全文切句＋区间映射」实现，
- *   切句正则与 id 格式零改动），每句字符区间映射回段：宿主段出句子 span、
- *   标点段出标点 span（所在句命中时合并高亮类）；切句 trim 丢弃的句间空白
+ *   标点段出标点 span——无时间冒号的段落 DOM 零变化
+ * - 有 AI 结果：句集合由调用方传入（sentencesForBlock 送审同源——
+ *   句序号节点内跨 run 连续，sentenceId 冻结格式直接取 Sentence.id），
+ *   每句字符区间顺序 indexOf 映射回段：宿主段出句子 span、标点段出
+ *   标点 span（所在句命中时合并高亮类）；切句 trim 丢弃的句间空白
  *   不渲染（旧渲染口径原样保持）
  */
 function renderSegmentsWithHighlight(
   segments: FlowSegment[],
-  block: LayoutParagraphBlock,
   ai: AIHighlightContext | undefined,
-  hostWrapperClass: string | null
+  hostWrapperClass: string | null,
+  sentences: Sentence[]
 ): React.ReactNode {
   // 无校对结果：最小 DOM 直出（与旧 renderSentenceHighlight 纯文本退化一致）
   if (!ai || ai.results.size === 0) {
@@ -181,7 +217,6 @@ function renderSegmentsWithHighlight(
       return seg.text
     })
     .join('')
-  const sentences = splitHighlightSentences(fullText)
   // 无句子（纯空白文本）：整段原文直出（旧口径）
   if (sentences.length === 0) {
     return fullText
@@ -192,8 +227,8 @@ function renderSegmentsWithHighlight(
   const sentenceSpans: Array<{ start: number; end: number }> = []
   let searchFrom = 0
   for (const sentence of sentences) {
-    const start = fullText.indexOf(sentence, searchFrom)
-    const end = start + sentence.length
+    const start = fullText.indexOf(sentence.text, searchFrom)
+    const end = start + sentence.text.length
     sentenceSpans.push({ start, end })
     searchFrom = end
   }
@@ -224,7 +259,7 @@ function renderSegmentsWithHighlight(
         break // 本段与该句无交集（该句在本段之后——下一轮再对位）
       }
       const piece = seg.text.slice(from - segFrom, to - segFrom)
-      const result = ai.results.get(sentenceId(block, sentenceIdx + 1))
+      const result = ai.results.get(sentences[sentenceIdx].id)
       if (seg.punct) {
         const punctClass = result && result.hasIssue
           ? ROLE_INLINE_CLASS.content.bodyPunct + ' a4-highlight-sentence'
@@ -277,13 +312,15 @@ function rightIndentStyle(
  *
  * 由决策层 runs 驱动字体分段（0001 翻转后三级标题首句拆为
  * [序号(heading3), '.'(bodyPunct), 内容(heading3)]）；AI 高亮按句子叠加：
- * - 首句聚合：seq=1 的高亮查询域＝首句全文本域（聚合覆盖至第一个「。」含的
- *   全部 runs——0001 翻转后首 run 仅序号数字，不得退化为仅首 run/序号）
+ * - 首句聚合：seq=1 的高亮查询域＝首句全文本域——边界取送审切句首句
+ *   （？！；……同入边界，task-0007 条款2；决策层 run 只按「。」分段，
+ *   边界先至时跨界 run 就地拆两段：前段归首句组、后段归剩余）
  * - 首句组：首 run 类名按段落源类型（HEADING_4 角色＝body 的冻结现状），
  *   组内后续 run 按角色经 ROLE_INLINE_CLASS 映射；seq=1 命中时组内类名
  *   合并高亮类（旧单 run 结构下即旧「类名＋高亮」合并现状）
  * - 剩余 run 恒 a4-paragraph-inline 包装，内部做句子级切句高亮
- *   （切句从 seq=1 重新起算——旧实现冻结现状，见 aiHighlight 文件头）
+ *   （句序号接续送审 localSeq 自 2 起连续——首句占 seq=1，消灭旧
+ *   「剩余自 1 重起算」的 id 碰撞与剩余第 k 句对送审 k+1 的错位）
  * - ai 缺省（度量容器）或结果为空时退化为纯 span/文本，与旧无高亮实现一致
  */
 function renderHeadingRuns(
@@ -294,24 +331,43 @@ function renderHeadingRuns(
   // 首 run 类名按段落源类型（见 HEADING_FIRST_INLINE_CLASS 注释）
   const firstClass = HEADING_FIRST_INLINE_CLASS[block.sourceType] || 'a4-paragraph-inline'
 
-  // 首句聚合：计算覆盖首句（至第一个「。」含；无「。」则整段）的 run 数
-  // （决策层现状：标题首「。」恒落在 run 边界上，组按整 run 粒度聚合）
+  // 首句边界＝送审切句首句（trim 只削句缘空白——首句在全文中的结束位置）
   const fullText = blockText(block)
-  const firstStop = fullText.indexOf('。')
-  const firstSentenceLength = firstStop === -1 ? fullText.length : firstStop + 1
-  let covered = 0
-  let groupCount = 0
-  while (groupCount < runs.length && covered < firstSentenceLength) {
-    covered += runs[groupCount].text.length
-    groupCount++
+  const sentences = sentencesForBlock(block)
+  let firstSentenceEnd = fullText.length
+  if (sentences.length > 0) {
+    const firstStart = fullText.indexOf(sentences[0].text)
+    if (firstStart !== -1) {
+      firstSentenceEnd = firstStart + sentences[0].text.length
+    }
   }
 
-  // seq=1 高亮查询（首句全文本域整体查询——sentenceId 冻结格式）
+  // run 序列按首句边界分组：跨界 run 就地拆两段（同规格，仅文本一分为二）
+  const firstRuns: LayoutRun[] = []
+  const restRuns: LayoutRun[] = []
+  let covered = 0
+  for (let r = 0; r < runs.length; r++) {
+    const run = runs[r]
+    const runEnd = covered + run.text.length
+    if (runEnd <= firstSentenceEnd) {
+      firstRuns.push(run)
+    } else if (covered >= firstSentenceEnd) {
+      restRuns.push(run)
+    } else {
+      const cut = firstSentenceEnd - covered
+      firstRuns.push({ ...run, text: run.text.slice(0, cut) })
+      restRuns.push({ ...run, text: run.text.slice(cut) })
+    }
+    covered = runEnd
+  }
+
+  // seq=1 高亮查询（首句全文本域整体查询——sentenceId 冻结格式，送审同源）
   const hasResults = !!ai && ai.results.size > 0
-  const firstResult = hasResults ? ai.results.get(sentenceId(block, 1)) : undefined
+  const firstResult =
+    hasResults && sentences.length > 0 ? ai.results.get(sentences[0].id) : undefined
   const firstHighlighted = !!(ai && firstResult && firstResult.hasIssue)
 
-  const firstElements = runs.slice(0, groupCount).map(function (run, i) {
+  const firstElements = firstRuns.map(function (run, i) {
     const base =
       i === 0
         ? firstClass
@@ -336,18 +392,17 @@ function renderHeadingRuns(
     )
   })
 
-  if (groupCount >= runs.length) {
-    return groupCount === 1 ? firstElements[0] : <>{firstElements}</>
+  if (restRuns.length === 0) {
+    return firstRuns.length === 1 ? firstElements[0] : <>{firstElements}</>
   }
 
   // 剩余部分＝首句之后：恒 a4-paragraph-inline 宿主包装 + 句子级高亮叠加
-  // （句序号自 1 重起算——旧实现冻结现状；0022 翻转后剩余部分含时间冒号
-  // 时冒号独立为标点 span，句序号在剩余全文上连续）
+  // （句序号接续送审 localSeq：剩余句＝sentences[1..]，seq 自 2 连续）
   const restElements = renderSegmentsWithHighlight(
-    mergeRunsToSegments(runs.slice(groupCount)),
-    block,
+    mergeRunsToSegments(restRuns),
     ai,
-    ROLE_INLINE_CLASS.content.body
+    ROLE_INLINE_CLASS.content.body,
+    sentences.slice(1)
   )
 
   return <>{firstElements}{restElements}</>
@@ -393,12 +448,13 @@ function attachmentClassName(block: LayoutParagraphBlock): string {
   return 'a4-attachment a4-attachment--single'
 }
 
-/** 段落块 → <p> 元素 */
+/** 段落块 → <p> 元素（titleLineNumber＝公文标题送审合并句行号，条款4） */
 function renderParagraphBlock(
   block: LayoutParagraphBlock,
   index: number,
   metrics: LayoutMetrics,
-  ai: AIHighlightContext | undefined
+  ai: AIHighlightContext | undefined,
+  titleLineNumber: number
 ): React.ReactNode {
   const isHeading =
     block.sourceType === NodeType.HEADING_1 ||
@@ -422,14 +478,19 @@ function renderParagraphBlock(
     className = NODE_CLASS_MAP[block.sourceType]
     content = renderHeadingRuns(block, ai)
   } else if (block.sourceType === NodeType.DOCUMENT_TITLE) {
-    // 公文标题：整段单一高亮查询（seq=1），不切句
+    // 公文标题：整段单一高亮查询（seq=1）——多段标题统一查送审合并句 id
+    // DOCUMENT_TITLE-<首标题块源行号>-1（行号自 blocks 序列推导——task-0007
+    // 条款4；单段标题＝自身行号，行为不变）
     className = NODE_CLASS_MAP[block.sourceType]
-    content = renderTitleHighlight(blockText(block), block.sourceType, block.sourceLineNumber, ai)
+    const line = titleLineNumber > 0 ? titleLineNumber : block.sourceLineNumber
+    content = renderTitleHighlight(blockText(block), block.sourceType, line, ai)
   } else {
     // 主送/正文/署名/日期/备注：run 级渲染（0022 案二）——无时间冒号段落
-    // DOM 零变化，仅冒号处新增标点 span；句序号节点内连续（sentenceId 冻结）
+    // DOM 零变化，仅冒号处新增标点 span；句集合与查询键经送审切句同源
+    // （整节点族整段 seq=1——task-0007 条款1/3；sentenceId 冻结格式）
     className = NODE_CLASS_MAP[block.sourceType]
-    content = renderSegmentsWithHighlight(mergeRunsToSegments(block.runs), block, ai, null)
+    const sentences = ai && ai.results.size > 0 ? sentencesForBlock(block) : []
+    content = renderSegmentsWithHighlight(mergeRunsToSegments(block.runs), ai, null, sentences)
   }
 
   return (
@@ -456,6 +517,18 @@ export function renderContentFlow(
   metrics: LayoutMetrics,
   ai?: AIHighlightContext
 ): React.ReactNode {
+  // 公文标题送审合并句行号：blocks 序列中首个标题块的源行号
+  // （sentenceSplitter 标题合并句 DOCUMENT_TITLE-<首行>-1 的行号推导，
+  // 渲染器内可算——task-0007 条款4，layout 零改动）
+  let titleLineNumber = 0
+  for (let i = 0; i < blocks.length; i++) {
+    const block = blocks[i]
+    if (block.kind === 'paragraph' && block.sourceType === NodeType.DOCUMENT_TITLE) {
+      titleLineNumber = block.sourceLineNumber
+      break
+    }
+  }
+
   return blocks.map(function (block, index) {
     if (block.kind === 'spacer') {
       // 空行指令：每行一个固定行距空段落（零宽空格占位）
@@ -495,6 +568,6 @@ export function renderContentFlow(
       )
     }
 
-    return renderParagraphBlock(block, index, metrics, ai)
+    return renderParagraphBlock(block, index, metrics, ai, titleLineNumber)
   })
 }

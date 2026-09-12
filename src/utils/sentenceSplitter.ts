@@ -337,6 +337,7 @@ function splitIntoSentences(ast: GongwenAST): { sentences: Sentence[]; sentenceM
 
 export {
   splitIntoSentences,
+  splitNodeIntoSentences,
   isInQuoteOrBracket,
   DELIMITERS,
   SPLITTABLE_TYPES,
