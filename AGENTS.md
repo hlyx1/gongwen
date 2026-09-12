@@ -409,7 +409,7 @@ CSS 由 esbuild/LightningCSS 按 cssTarget chrome78 处理，但仍有特性需�
 
 ## 测试
 
-测试文件位于各模块 `__tests__/` 目录（共 14 个测试文件、331 个用例：parser 42 / sanitize 36 / aiResponseParser 14 / layout 六件套 134 / styleFactory 60 / docxBuilder 10（含 13 条导出快照）/ previewStructure 14（结构快照）/ documentConfigMigration 19 / sourceGovernance 2），使用 Vitest 框架（environment=node）：
+测试文件位于各模块 `__tests__/` 目录（共 16 个测试文件、340 个用例：parser 42 / sanitize 36 / aiResponseParser 14 / layout 六件套 134 / styleFactory 60 / docxBuilder 10（含 13 条导出快照）/ previewStructure 14（结构快照）/ documentConfigMigration 19 / Toolbar 6 / useAIProofread 3 / sourceGovernance 2），使用 Vitest 框架（environment=node）：
 
 ```bash
 # 运行测试
