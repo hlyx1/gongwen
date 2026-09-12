@@ -145,6 +145,8 @@ enum NodeType {
 }
 ```
 
+- **DocumentNode 为按 `type` 判别的封闭联合**（task-0002/待办-0029）：11 个同形状成员＋AttachmentNode＋TableNode＋Exclude 兜底成员（接住未来新增枚举值，保证联合 type 域跟随 NodeType 全集）。新增 NodeType 枚举成员时，4 处 switch 穷尽断言（layout/fonts.ts、layout/index.ts×2、hooks/useDetectionData.ts，经 types/ast.ts 的 `assertNever`）与各 `Record<NodeType, …>` 表（renderContentFlow 的 NODE_CLASS_MAP、detection 的 NODE_TO_DETECTION_MAP、sentenceSplitter 的两张切句表）会在 tsc 层强制报错——新增分支须同步补齐，禁止绕过。
+
 ### DocumentConfig (文档配置——合并后单一真值结构)
 
 ```typescript
