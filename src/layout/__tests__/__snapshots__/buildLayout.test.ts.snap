@@ -1133,7 +1133,31 @@ exports[`buildLayout 全节点样例快照 > preview 渲染器：体现预览侧
           },
           "role": "heading3",
           "sizeHalfPt": 32,
-          "text": "1.加强组织领导。",
+          "text": "1",
+        },
+        {
+          "characterSpacingTwips": -5,
+          "font": {
+            "ascii": "仿宋_GB2312",
+            "cs": "仿宋_GB2312",
+            "eastAsia": "仿宋_GB2312",
+            "hAnsi": "仿宋_GB2312",
+          },
+          "role": "bodyPunct",
+          "sizeHalfPt": 32,
+          "text": ".",
+        },
+        {
+          "characterSpacingTwips": -5,
+          "font": {
+            "ascii": "Times New Roman",
+            "cs": "Times New Roman",
+            "eastAsia": "仿宋_GB2312",
+            "hAnsi": "仿宋_GB2312",
+          },
+          "role": "heading3",
+          "sizeHalfPt": 32,
+          "text": "加强组织领导。",
         },
         {
           "characterSpacingTwips": -5,

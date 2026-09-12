@@ -9,15 +9,20 @@
  * 待办-0005（表格分页测量失真）不设开关（裁定 §七）——它属分页测量层，
  * 其行为现状由单元5 原样保留。
  *
- * 现状值来源（默认值须与这些位置逐字段一致，禁止顺手修正）：
- * - 0001 预览侧：A4Page.tsx 无三级标题序号句点拆分（renderHeading3 仅按「。」拆首句）
- * - 0001 导出侧：docxBuilder.ts splitHeading3Text（句点用 getHeading3PunctuationRunStyle 正文字体）
- * - 0002 预览侧：A4Page.css .a4-footer { bottom: 4.2% }
+ * 默认值口径（task-0004 对齐族实施起生效，裁定见 tasks/task-0004/裁定.md）：
+ * - 0001/0004 已按裁定翻转为对齐值（对齐方向＝导出/国标口径）；翻转前的
+ *   两渲染器现状值存档于 task-0004 勘探.md §二（供回滚与差异抽查）
+ * - 0002 页码纵向位置维持两渲染器现状（task-0004 裁定1 冻结：导出侧机制
+ *   语义未经实测定标前翻转值会引入新偏差，回池待议——定标后再翻转）
+ *
+ * 取值来源（默认值须与这些位置逐字段一致，禁止顺手修正）：
+ * - 0001 两侧：runs.ts splitHeading3NumberDotRuns 拆分（句点 run 用 bodyPunct
+ *   正文字体四槽）；预览侧 renderContentFlow 按 run.role 映射 .a4-body-punctuation
+ * - 0002 预览侧：A4Page.css .a4-footer { bottom: 4.2% }（现状未动）
  * - 0002 导出侧：docxBuilder.ts PAGE_NUM_SPACING_BEFORE = cmToTwip(0.7) = 397 twips
  * - 0003 预览侧：A4Page.css .a4-header-separator { border-bottom: 2px; margin-top: 8px }
  * - 0003 导出侧：docxBuilder.ts 红线段 { size: 15, before: 80 }
- * - 0004 预览侧：无句点拆分机制（全角句点自然跟随标题字体）
- * - 0004 导出侧：splitHeading3Text 正则 ^(\d+)(\.)(.*)$ 只认半角句点
+ * - 0004 两侧：runs.ts split 分支正则 ^(\d+)([.．])(.*)$（半角/全角句点同法拆分）
  * - 0022 预览侧：A4Page 无时间冒号分段机制（整段单字体渲染）
  * - 0022 导出侧：docxBuilder splitTimeColonText（冒号用正文字体四槽）
  * - 0023 预览侧：A4Page.css .a4-footer 字体栈 'Times New Roman' 优先（CSS 单源）
@@ -43,18 +48,18 @@ import {
   PAGE_NUMBER_GAP_TWIPS,
 } from './constants'
 
-/** 待办-0001：三级标题序号后句点字体 */
+/** 待办-0001：三级标题序号后句点字体（task-0004 已对齐：两侧均 body-font） */
 export type Heading3DotFontBehavior =
-  /** 句点跟随三级标题字体（不产生独立标点 run）——预览侧现状 */
+  /** 句点跟随三级标题字体（不产生独立标点 run）——task-0004 前的预览侧现状 */
   | 'follow-heading3'
-  /** 句点拆分并用正文字体四槽——导出侧现状 */
+  /** 句点拆分并用正文字体四槽——导出侧现状＝task-0004 起的两侧默认 */
   | 'body-font'
 
-/** 待办-0004：三级标题全角句点（如「1．」）是否参与序号句点拆分 */
+/** 待办-0004：三级标题全角句点（如「1．」）是否参与序号句点拆分（task-0004 已对齐：两侧均 split） */
 export type Heading3FullwidthDotBehavior =
-  /** 不拆分（全角句点跟随标题字体）——两渲染器现状 */
+  /** 不拆分（全角句点跟随标题字体）——task-0004 前的两渲染器现状 */
   | 'no-split'
-  /** 全角句点与半角同法拆分（修复目标，待裁定确认） */
+  /** 全角句点与半角同法拆分——task-0004 起的两侧默认 */
   | 'split'
 
 /** 偏差开关集合（0001~0004 四项已知偏差＋接线期补设的 0022/0023，每个开关按渲染器各持一槽） */
@@ -94,19 +99,19 @@ export type PageNumberFontLayout =
   | { mechanism: 'quad'; eastAsia: string }
 
 /**
- * 偏差开关默认值＝两渲染器现状（冻结：详细需求条款9，
- * 重构期间不得顺手修正任何已知偏差）
+ * 偏差开关默认值（task-0004 对齐族：0001/0004 已翻转为对齐值，
+ * 其余见文件头「默认值口径」——0002 冻结、0003/0022/0023 按裁定逐项翻转）
  */
 export const DEVIATION_SWITCHES_DEFAULT: Readonly<DeviationSwitchSet> = {
-  // 待办-0001：三级标题序号句点字体
+  // 待办-0001：三级标题序号句点字体（task-0004 翻转：预览 follow-heading3 → body-font）
   heading3DotFont: {
-    preview: 'follow-heading3',
+    preview: 'body-font',
     docx: 'body-font',
   },
-  // 待办-0004：三级标题全角句点拆分（预览无拆分机制；导出正则只认半角）
+  // 待办-0004：三级标题全角句点拆分（task-0004 翻转：两侧 no-split → split）
   heading3FullwidthDot: {
-    preview: 'no-split',
-    docx: 'no-split',
+    preview: 'split',
+    docx: 'split',
   },
   // 待办-0002：页码纵向位置
   pageNumberVertical: {

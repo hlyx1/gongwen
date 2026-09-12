@@ -12,12 +12,13 @@ import { buildLayout } from '../index'
 /**
  * 四项偏差开关断言（工作单元-3 交付物；裁定 §一/§七）
  *
- * 默认值＝两渲染器现状（详细需求条款9 冻结——不得顺手修正）：
- * - 0001 三级标题序号句点字体：预览=follow-heading3 / 导出=body-font
+ * task-0004 对齐族起默认值口径（裁定见 tasks/task-0004/裁定.md）：
+ * - 0001 三级标题序号句点字体：两侧均=body-font（已对齐，翻转前预览=follow-heading3）
  * - 0002 页码纵向位置：预览=css bottom 4.2% / 导出=footer spacing.before 397
+ *   （裁定1 冻结维持现状——定标后再翻转）
  * - 0003 红色分隔线：预览=css 2px+8px / 导出=border size 15 + before 80
- * - 0004 三级标题全角句点：两侧均=no-split
- * 现状值来源见 deviations.ts 文件头注释（A4Page.css / docxBuilder.ts 行号）。
+ * - 0004 三级标题全角句点：两侧均=split（已对齐，翻转前两侧=no-split）
+ * 取值来源见 deviations.ts 文件头注释。
  */
 
 /** 构造普通 AST 节点（as 收窄：宽松 NodeType 参数 → 判别联合，待办-0029） */
@@ -32,11 +33,11 @@ function configWith(patch: (c: DocumentConfig) => void): DocumentConfig {
   return cloned
 }
 
-// ---- 默认值＝两渲染器现状 ----
+// ---- 默认值（task-0004 起：0001/0004 已对齐，其余＝两渲染器现状） ----
 
 describe('偏差开关默认值＝两渲染器现状', () => {
-  it('0001 heading3DotFont：预览 follow-heading3 / 导出 body-font', () => {
-    expect(DEVIATION_SWITCHES_DEFAULT.heading3DotFont.preview).toBe('follow-heading3')
+  it('0001 heading3DotFont：两侧均 body-font（task-0004 对齐后）', () => {
+    expect(DEVIATION_SWITCHES_DEFAULT.heading3DotFont.preview).toBe('body-font')
     expect(DEVIATION_SWITCHES_DEFAULT.heading3DotFont.docx).toBe('body-font')
   })
 
@@ -66,9 +67,9 @@ describe('偏差开关默认值＝两渲染器现状', () => {
     })
   })
 
-  it('0004 heading3FullwidthDot：两侧均 no-split', () => {
-    expect(DEVIATION_SWITCHES_DEFAULT.heading3FullwidthDot.preview).toBe('no-split')
-    expect(DEVIATION_SWITCHES_DEFAULT.heading3FullwidthDot.docx).toBe('no-split')
+  it('0004 heading3FullwidthDot：两侧均 split（task-0004 对齐后）', () => {
+    expect(DEVIATION_SWITCHES_DEFAULT.heading3FullwidthDot.preview).toBe('split')
+    expect(DEVIATION_SWITCHES_DEFAULT.heading3FullwidthDot.docx).toBe('split')
   })
 
   it('0022 timeColonSplit：预览 no-split / 导出 split（单元5 接线补设，裁定 §八）', () => {
@@ -153,7 +154,7 @@ describe('buildLayout 按开关产出各渲染器决策（默认＝现状）', (
     })
   })
 
-  it('0001：三级标题句点——预览决策不拆分（单 run），导出决策拆分（句点为正文字体）', () => {
+  it('0001：三级标题句点——两渲染器决策均拆分（句点为正文字体，task-0004 对齐后）', () => {
     const previewLayout = buildLayout(ast, DEFAULT_CONFIG, { renderer: 'preview' })
     const docxLayout = buildLayout(ast, DEFAULT_CONFIG, { renderer: 'docx' })
 
@@ -165,7 +166,9 @@ describe('buildLayout 按开关产出各渲染器决策（默认＝现状）', (
     )
     if (previewH3 && docxH3 && previewH3.kind === 'paragraph' && docxH3.kind === 'paragraph') {
       expect(previewH3.runs.map((r) => r.text)).toEqual([
-        '1.三级标题内容。',
+        '1',
+        '.',
+        '三级标题内容。',
         '后续句子。',
       ])
       expect(docxH3.runs.map((r) => r.text)).toEqual([
@@ -174,6 +177,8 @@ describe('buildLayout 按开关产出各渲染器决策（默认＝现状）', (
         '三级标题内容。',
         '后续句子。',
       ])
+      expect(previewH3.runs[1].role).toBe('bodyPunct')
+      expect(previewH3.runs[1].font.ascii).toBe('仿宋_GB2312')
       expect(docxH3.runs[1].role).toBe('bodyPunct')
       expect(docxH3.runs[1].font.ascii).toBe('仿宋_GB2312')
     } else {
@@ -181,16 +186,20 @@ describe('buildLayout 按开关产出各渲染器决策（默认＝现状）', (
     }
   })
 
-  it('0004：全角句点三级标题——导出决策不拆分（正则只认半角，现状）', () => {
+  it('0004：全角句点三级标题——两渲染器决策均拆分（task-0004 对齐后）', () => {
     const fullwidthAst: GongwenAST = {
       title: [],
       body: [makeNode(NodeType.HEADING_3, '1．全角句点标题', 1)],
     }
+    const previewLayout = buildLayout(fullwidthAst, DEFAULT_CONFIG, { renderer: 'preview' })
     const docxLayout = buildLayout(fullwidthAst, DEFAULT_CONFIG, { renderer: 'docx' })
-    const block = docxLayout.blocks[0]
-    if (block.kind === 'paragraph') {
-      expect(block.runs.map((r) => r.text)).toEqual(['1．全角句点标题'])
-      expect(block.runs[0].role).toBe('heading3')
+    const previewBlock = previewLayout.blocks[0]
+    const docxBlock = docxLayout.blocks[0]
+    if (previewBlock.kind === 'paragraph' && docxBlock.kind === 'paragraph') {
+      expect(previewBlock.runs.map((r) => r.text)).toEqual(['1', '．', '全角句点标题'])
+      expect(previewBlock.runs[1].role).toBe('bodyPunct')
+      expect(docxBlock.runs.map((r) => r.text)).toEqual(['1', '．', '全角句点标题'])
+      expect(docxBlock.runs[1].role).toBe('bodyPunct')
     } else {
       throw new Error('首块应为段落')
     }
@@ -255,25 +264,24 @@ describe('buildLayout 按开关产出各渲染器决策（默认＝现状）', (
     }
   })
 
-  it('开关翻转生效：0001 预览翻为 body-font 后句点拆分（偏差修复演示）', () => {
+  it('开关覆盖生效：0001 预览覆写回 follow-heading3 后不拆分（旧现状可回滚）', () => {
     const layout = buildLayout(ast, DEFAULT_CONFIG, {
       renderer: 'preview',
       deviations: {
-        heading3DotFont: { preview: 'body-font', docx: 'body-font' },
+        heading3DotFont: { preview: 'follow-heading3', docx: 'body-font' },
       },
     })
     const h3 = layout.blocks.find(
       (b) => b.kind === 'paragraph' && b.sourceType === NodeType.HEADING_3
     )
     if (h3 && h3.kind === 'paragraph') {
-      expect(h3.runs.map((r) => r.text)).toEqual(['1', '.', '三级标题内容。', '后续句子。'])
-      expect(h3.runs[1].role).toBe('bodyPunct')
+      expect(h3.runs.map((r) => r.text)).toEqual(['1.三级标题内容。', '后续句子。'])
     } else {
       throw new Error('未找到三级标题块')
     }
   })
 
-  it('开关翻转生效：0004 导出翻为 split 后全角句点拆分（偏差修复演示）', () => {
+  it('开关覆盖生效：0004 覆写回 no-split 后全角句点不拆分（旧现状可回滚）', () => {
     const fullwidthAst: GongwenAST = {
       title: [],
       body: [makeNode(NodeType.HEADING_3, '1．全角句点标题', 1)],
@@ -282,13 +290,13 @@ describe('buildLayout 按开关产出各渲染器决策（默认＝现状）', (
       renderer: 'docx',
       deviations: {
         heading3DotFont: { preview: 'body-font', docx: 'body-font' },
-        heading3FullwidthDot: { preview: 'no-split', docx: 'split' },
+        heading3FullwidthDot: { preview: 'no-split', docx: 'no-split' },
       },
     })
     const block = layout.blocks[0]
     if (block.kind === 'paragraph') {
-      expect(block.runs.map((r) => r.text)).toEqual(['1', '．', '全角句点标题'])
-      expect(block.runs[1].role).toBe('bodyPunct')
+      expect(block.runs.map((r) => r.text)).toEqual(['1．全角句点标题'])
+      expect(block.runs[0].role).toBe('heading3')
     } else {
       throw new Error('首块应为段落')
     }

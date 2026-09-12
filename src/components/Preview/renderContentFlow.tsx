@@ -13,7 +13,9 @@ import { renderSentenceHighlight, renderTitleHighlight } from './aiHighlight'
  * 消灭旧实现里 A4Page / 度量容器各自的节点遍历复制（勘探 §3.1/§3.2）。
  *
  * 行为保持约束（结构快照基线锁定）：
- * - DOM 类名与层级结构与旧实现逐字节一致（A4Page.css 零改动）
+ * - DOM 类名与层级结构与旧实现逐字节一致（A4Page.css 零改动）——
+ *   task-0004 的 0001/0002/0022 为有意行为变更，快照基线随对应提交同步更新，
+ *   变更前后差异说明见 tasks/task-0004/工作单元-2.md 实施记录
  * - AI 高亮为可选叠加（ai 缺省＝度量容器：无高亮纯渲染）
  * - 右缩进优先取决策层的 em 口径（rightEm，与旧 calculateSignatureIndentEm
  *   逐位一致），缺省时以 twips/charWidthTwips 换算
@@ -36,13 +38,12 @@ const NODE_CLASS_MAP: Record<NodeType, string> = {
 }
 
 /**
- * 标题段（一至四级）首句 inline CSS 类名——按段落源类型映射（冻结现状）
+ * 标题段（一至四级）首句首 run 的 inline CSS 类名——按段落源类型映射（冻结现状）
  *
  * 注意不按 run 字体角色映射：四级标题首 run 的角色是 body（与正文同字体），
  * 但旧 A4Page.renderHeading4 按节点类型给首句 a4-h4-inline 类（该类承载
  * 字距/全角形态等 CSS 表现）——行为由结构快照锁定，不能因角色相同而合并。
- * 首句之后的部分一律 a4-paragraph-inline（默认开关下决策层对剩余部分
- * 恒输出单个 body run，与旧实现单 span 包裹现状一致）。
+ * 首句组内后续 run 与首句之后的部分按角色经 ROLE_INLINE_CLASS 映射。
  */
 const HEADING_FIRST_INLINE_CLASS: Partial<Record<NodeType, string>> = {
   [NodeType.HEADING_1]: 'a4-h1-inline',
@@ -51,10 +52,24 @@ const HEADING_FIRST_INLINE_CLASS: Partial<Record<NodeType, string>> = {
   [NodeType.HEADING_4]: 'a4-h4-inline',
 }
 
-/** 附件 run 角色 → inline CSS 类名（数字英文 TNR / 英文句号仿宋） */
-const ATTACHMENT_INLINE_CLASS: Record<string, string> = {
-  body: 'a4-attachment-text',
-  bodyPunct: 'a4-attachment-punctuation',
+/**
+ * run 角色 → inline CSS 类名·全角色共用表（task-0004 裁定4）
+ *
+ * 附件/标题/正文三处渲染消费同一登记——新增角色一处登记、三处同步生效：
+ * - content 槽：内容流（标题段 run 级渲染消费）；
+ *   bodyPunct＝0001 接线新增语义化类 .a4-body-punctuation（正文字体标点）
+ * - attachment 槽：附件说明语境沿用既有类名（值不变——附件路径 DOM 字节保持）
+ */
+const ROLE_INLINE_CLASS: Record<'content' | 'attachment', Record<string, string>> = {
+  content: {
+    body: 'a4-paragraph-inline',
+    bodyPunct: 'a4-body-punctuation',
+    heading3: 'a4-h3-inline',
+  },
+  attachment: {
+    body: 'a4-attachment-text',
+    bodyPunct: 'a4-attachment-punctuation',
+  },
 }
 
 /** 拼接块的全部 run 文本 */
@@ -90,9 +105,14 @@ function rightIndentStyle(
 /**
  * 标题段（一至四级）内容渲染——旧 8 个标题渲染函数的参数化合并实现
  *
- * 由决策层 runs 驱动字体分段；AI 高亮按句子叠加：
- * - 首 run 整体参与 seq=1 的高亮查询（默认开关下 run 边界＝首句「。」边界）
- * - 后续 run 各自包一层 inline 类 span，内部做句子级切句高亮
+ * 由决策层 runs 驱动字体分段（0001 翻转后三级标题首句拆为
+ * [序号(heading3), '.'(bodyPunct), 内容(heading3)]）；AI 高亮按句子叠加：
+ * - 首句聚合：seq=1 的高亮查询域＝首句全文本域（聚合覆盖至第一个「。」含的
+ *   全部 runs——0001 翻转后首 run 仅序号数字，不得退化为仅首 run/序号）
+ * - 首句组：首 run 类名按段落源类型（HEADING_4 角色＝body 的冻结现状），
+ *   组内后续 run 按角色经 ROLE_INLINE_CLASS 映射；seq=1 命中时组内类名
+ *   合并高亮类（旧单 run 结构下即旧「类名＋高亮」合并现状）
+ * - 剩余 run 恒 a4-paragraph-inline 包装，内部做句子级切句高亮
  *   （切句从 seq=1 重新起算——旧实现冻结现状，见 aiHighlight 文件头）
  * - ai 缺省（度量容器）或结果为空时退化为纯 span/文本，与旧无高亮实现一致
  */
@@ -101,35 +121,58 @@ function renderHeadingRuns(
   ai: AIHighlightContext | undefined
 ): React.ReactNode {
   const runs = block.runs
-  const first = runs[0]
-  // 首 run＝首句（含「。」）：类名按段落源类型（见 HEADING_FIRST_INLINE_CLASS 注释）
+  // 首 run 类名按段落源类型（见 HEADING_FIRST_INLINE_CLASS 注释）
   const firstClass = HEADING_FIRST_INLINE_CLASS[block.sourceType] || 'a4-paragraph-inline'
 
-  // 首 run：标题体 inline 类；命中问题时与高亮类合并
+  // 首句聚合：计算覆盖首句（至第一个「。」含；无「。」则整段）的 run 数
+  // （决策层现状：标题首「。」恒落在 run 边界上，组按整 run 粒度聚合）
+  const fullText = blockText(block)
+  const firstStop = fullText.indexOf('。')
+  const firstSentenceLength = firstStop === -1 ? fullText.length : firstStop + 1
+  let covered = 0
+  let groupCount = 0
+  while (groupCount < runs.length && covered < firstSentenceLength) {
+    covered += runs[groupCount].text.length
+    groupCount++
+  }
+
+  // seq=1 高亮查询（首句全文本域整体查询——sentenceId 冻结格式）
   const hasResults = !!ai && ai.results.size > 0
   const firstResult = hasResults ? ai.results.get(sentenceId(block, 1)) : undefined
-  let firstElement: React.ReactNode
-  if (ai && firstResult && firstResult.hasIssue) {
-    firstElement = (
-      <span
-        className={firstClass + ' a4-highlight-sentence'}
-        onMouseEnter={function () { ai.onEnter(firstResult) }}
-        onMouseLeave={ai.onLeave}
-      >
-        {first.text}
+  const firstHighlighted = !!(ai && firstResult && firstResult.hasIssue)
+
+  const firstElements = runs.slice(0, groupCount).map(function (run, i) {
+    const base =
+      i === 0
+        ? firstClass
+        : ROLE_INLINE_CLASS.content[run.role] || ROLE_INLINE_CLASS.content.body
+    // seq=1 命中时组内每 run 类名合并高亮类＋悬停（旧单 run 结构的合并现状）
+    if (firstHighlighted && ai && firstResult) {
+      return (
+        <span
+          key={i}
+          className={base + ' a4-highlight-sentence'}
+          onMouseEnter={function () { ai.onEnter(firstResult) }}
+          onMouseLeave={ai.onLeave}
+        >
+          {run.text}
+        </span>
+      )
+    }
+    return (
+      <span key={i} className={base}>
+        {run.text}
       </span>
     )
-  } else {
-    firstElement = <span className={firstClass}>{first.text}</span>
+  })
+
+  if (groupCount >= runs.length) {
+    return groupCount === 1 ? firstElements[0] : <>{firstElements}</>
   }
 
-  if (runs.length === 1) {
-    return firstElement
-  }
-
-  // 后续 run＝首句之后的部分：恒 a4-paragraph-inline 包装 + 句子级高亮叠加
+  // 剩余 run＝首句之后的部分：恒 a4-paragraph-inline 包装 + 句子级高亮叠加
   // （默认开关下决策层对剩余部分恒输出单个 body run——旧实现单 span 现状）
-  const restElements = runs.slice(1).map(function (run, i) {
+  const restElements = runs.slice(groupCount).map(function (run, i) {
     return (
       <span key={i} className="a4-paragraph-inline">
         {renderSentenceHighlight(run.text, block.sourceType, block.sourceLineNumber, ai)}
@@ -137,7 +180,7 @@ function renderHeadingRuns(
     )
   })
 
-  return <>{firstElement}{restElements}</>
+  return <>{firstElements}{restElements}</>
 }
 
 /**
@@ -157,7 +200,9 @@ function renderAttachmentContent(
         return (
           <span
             key={i}
-            className={ATTACHMENT_INLINE_CLASS[run.role] || ATTACHMENT_INLINE_CLASS.body}
+            className={
+              ROLE_INLINE_CLASS.attachment[run.role] || ROLE_INLINE_CLASS.attachment.body
+            }
           >
             {run.text}
           </span>

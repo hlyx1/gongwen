@@ -16,8 +16,9 @@ import { buildLayout } from '../index'
  *
  * 覆盖每个 NodeType 的决策输出快照＋版头/版记/页码开关场景。
  * 两渲染器（preview/docx）分别快照：默认偏差开关下，
- * docx 快照须体现导出侧现状、preview 快照须体现预览侧现状
- * （差异点：0001 三级标题句点拆分、0002/0003 版式参数）。
+ * docx 快照须体现导出侧现状、preview 快照须体现预览侧现状。
+ * task-0004 对齐族实施后差异点：0002/0003 版式参数与 0022 时间冒号分段
+ * （0001/0004 已翻转为两侧一致——快照基线随对应提交同步更新）。
  * 快照变更即决策行为变化，须走新裁定后由技术负责人确认方可更新。
  */
 
@@ -188,15 +189,34 @@ describe('buildLayout 各 NodeType 决策输出', () => {
     expect(block.runs[0].role).toBe('heading3')
   })
 
-  it('HEADING_3：preview 决策不拆分序号句点（0001 预览现状）', () => {
+  it('HEADING_3：preview 决策拆分序号句点（0001 对齐后，与 docx 同形态）', () => {
     const ast: GongwenAST = {
       title: [],
       body: [makeNode(NodeType.HEADING_3, '1.加强组织领导。', 1)],
     }
     const layout = buildLayout(ast, DEFAULT_CONFIG, { renderer: 'preview' })
     const block = paragraphBlocksOf(layout, NodeType.HEADING_3)[0]
-    expect(block.runs.map((r) => r.text)).toEqual(['1.加强组织领导。'])
+    expect(block.runs.map((r) => r.text)).toEqual(['1', '.', '加强组织领导。'])
+    expect(block.runs[0].font.eastAsia).toBe('仿宋_GB2312')
     expect(block.runs[0].role).toBe('heading3')
+    expect(block.runs[1].role).toBe('bodyPunct')
+    expect(block.runs[1].font.ascii).toBe('仿宋_GB2312')
+  })
+
+  it('HEADING_3 全角句点（0004 对齐后）：docx/preview 均拆分 [序号, ．(bodyPunct), 内容]', () => {
+    const ast: GongwenAST = {
+      title: [],
+      body: [makeNode(NodeType.HEADING_3, '1．加强组织领导。', 1)],
+    }
+    const docxLayout = buildLayout(ast, DEFAULT_CONFIG, { renderer: 'docx' })
+    const previewLayout = buildLayout(ast, DEFAULT_CONFIG, { renderer: 'preview' })
+    const docxBlock = paragraphBlocksOf(docxLayout, NodeType.HEADING_3)[0]
+    const previewBlock = paragraphBlocksOf(previewLayout, NodeType.HEADING_3)[0]
+    expect(docxBlock.runs.map((r) => r.text)).toEqual(['1', '．', '加强组织领导。'])
+    expect(docxBlock.runs[1].role).toBe('bodyPunct')
+    expect(docxBlock.runs[1].sizeHalfPt).toBe(32) // 字号随三级标题（16pt）
+    expect(previewBlock.runs.map((r) => r.text)).toEqual(['1', '．', '加强组织领导。'])
+    expect(previewBlock.runs[1].role).toBe('bodyPunct')
   })
 
   it('HEADING_4：正文字体（现状落入默认分支）、首句拆分', () => {

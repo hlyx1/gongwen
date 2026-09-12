@@ -635,9 +635,10 @@ describe('run 分段序列（导出侧现状）', () => {
     expect(block.runs[1].role).toBe('bodyPunct')
   })
 
-  it('三级标题（全角句点序号）：不拆分（待办-0004 导出现状）', () => {
+  it('三级标题（全角句点序号）：与半角同法拆分（待办-0004 对齐后）', () => {
     const block = paragraphBlockOf(NodeType.HEADING_3, '1．加强组织领导。')
-    expect(block.runs.map((r) => r.text)).toEqual(['1．加强组织领导。'])
+    expect(block.runs.map((r) => r.text)).toEqual(['1', '．', '加强组织领导。'])
+    expect(block.runs[1].role).toBe('bodyPunct')
   })
 
   it('三级标题含句号：首句序号拆分 + 剩余时间冒号拆分', () => {

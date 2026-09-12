@@ -151,6 +151,12 @@
   font-weight: normal;
 }
 
+/* 正文字体标点: 三级标题序号句点/时间冒号（决策层 bodyPunct 角色的预览接线,
+   0001/0022 对齐——字号与字距继承宿主段落, 与导出侧 run 规格同构） */
+.a4-body-punctuation {
+  font-family: var(--body-font, 'FangSong_GB2312'), 'FangSong', 'STFangsong', serif;
+}
+
 /* 三级标题 inline: 仿宋（首句用） */
 .a4-h3-inline {
   font-family: var(--h3-font, 'FangSong_GB2312'), 'FangSong', 'STFangsong', serif;
