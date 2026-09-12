@@ -27,14 +27,19 @@ import {
  *
  * 手算口径（DEFAULT_CONFIG）：可用宽度 8844、charSpacing=−5、charWidth=315、
  * 署名缩进 = (印章?4:2)×315 + (日期宽−署名宽)/2，下限 0；
- * 中文 1×315、ASCII/〇 0.69×315。
+ * 中文/〇 1×315、ASCII 0.69×315（task-0006：〇 补入全宽判定）。
  */
 
-/** 参考实现＝迁移前 A4Page.calculateTextWidthEm（预览侧现状公式，行为锚） */
+/**
+ * 参考实现＝迁移前 A4Page.calculateTextWidthEm 公式（行为锚），
+ * task-0006 起字符类独立补 \u3007（〇 按汉字全宽计）——刻意不 import
+ * 主谓词：参考实现与主实现共用一份会使等价对照失去独立价值
+ * （同一 bug 两处同步错则测试恒绿）。
+ */
 function referenceTextWidthEm(text: string): number {
   let width = 0
   for (const char of text) {
-    if (/[\u4e00-\u9fff\u3400-\u4dbf]/.test(char)) {
+    if (/[\u4e00-\u9fff\u3400-\u4dbf\u3007]/.test(char)) {
       width += 1
     } else {
       width += 0.69
@@ -120,9 +125,9 @@ describe('决策层文本宽度计量（双口径）', () => {
     )
   })
 
-  it('〇（U+3007）按 0.69 窄字符计宽（现状特征，两版一致）', () => {
-    expect(textWidthEm('〇')).toBeCloseTo(0.69, 9)
-    expect(textWidthTwips('〇', 315)).toBeCloseTo(217.35, 9)
+  it('〇（U+3007）按汉字全宽计（两版一致）', () => {
+    expect(textWidthEm('〇')).toBe(1)
+    expect(textWidthTwips('〇', 315)).toBe(315)
   })
 })
 
@@ -138,8 +143,8 @@ describe('决策层签名缩进 twip 版（手算锚点）', () => {
     { sig: '某某市人民政府办公室', date: '二零二六年九月一日', noStamp: 472.5, stamp: 1102.5 },
     // 20×10：负偏移钳制 0
     { sig: '某某市人民政府办公室政务公开与法治建设科', date: '二零二六年九月十一日', noStamp: 0, stamp: 0 },
-    // 〇 按 0.69 计：日期宽 9×315+217.35=3052.35 → 630−48.825=581.175；1260−48.825=1211.175
-    { sig: '某某市人民政府办公室', date: '二〇二六年九月十一日', noStamp: 581.175, stamp: 1211.175 },
+    // 〇 按汉字全宽计：10×10 等宽，与「二零二六」同值（无印 630、有印 1260）
+    { sig: '某某市人民政府办公室', date: '二〇二六年九月十一日', noStamp: 630, stamp: 1260 },
     // 混合字符：署名 2.38em、日期 7.83em → 630+858.375=1488.375；1260+858.375=2118.375
     { sig: 'AB局', date: '2026年9月11日', noStamp: 1488.375, stamp: 2118.375 },
     // 署名 3.69em、日期 8.52em（2026/12/31 共 8 个 ASCII）→ 630+760.725=1390.725；1260+760.725=2020.725

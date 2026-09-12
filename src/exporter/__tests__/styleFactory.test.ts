@@ -575,11 +575,11 @@ describe('签名缩进基线（导出侧，经决策层）', () => {
     ).toEqual({ right: 0 })
   })
 
-  it('含〇日期（〇 按 0.69 计）：630 − 48.825 = 581.175', () => {
+  it('含〇日期（〇 按汉字全宽计）：10×10 等宽 = 630（与全汉字日期同值）', () => {
     const indent = paragraphOptions(
       signatureBlockOf('某某市人民政府办公室', '二〇二六年九月十一日')
     ).indent
-    expect(indent && indent.right).toBeCloseTo(581.175, 6)
+    expect(indent && indent.right).toBeCloseTo(630, 6)
   })
 
   it('混合字符：数字字母按 0.69 系数计宽（≈1488.375）', () => {

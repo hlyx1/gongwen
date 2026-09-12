@@ -40,15 +40,25 @@ export function firstLineIndentTwips(config: DocumentConfig): number {
 }
 
 /**
+ * CJK 宽度判定单源谓词（task-0006 抽出，裁定1）
+ * - CJK 统一汉字 + 兼容区 + 〇（U+3007，汉字数字「零」——Unicode 分类为表意
+ *   文字 Lo，实际中文字体占满一个全宽位，故按汉字全宽计）
+ * - textWidthTwips / textWidthEm 两函数消费同一谓词：判定口径单一真值，
+ *   将来〇类字符扩展（如 0045 中文数字日期支持）一处生效
+ */
+function isCJKWidth(char: string): boolean {
+  return /[\u4e00-\u9fff\u3400-\u4dbf\u3007]/.test(char)
+}
+
+/**
  * 计算文本的实际宽度（twips）
- * - 中文字符（CJK 统一汉字 + 兼容区）：宽度 = 1 个汉字宽度
+ * - 中文字符（CJK 统一汉字 + 兼容区 + 〇）：宽度 = 1 个汉字宽度
  * - 其他字符（数字、字母等）：约为汉字的 0.69 倍
- * 注意：「〇」(U+3007) 不在 CJK 判定范围，按窄字符计宽（现状特征，两版一致）
  */
 export function textWidthTwips(text: string, charWidth: number): number {
   let width = 0
   for (const char of text) {
-    if (/[\u4e00-\u9fff\u3400-\u4dbf]/.test(char)) {
+    if (isCJKWidth(char)) {
       width += charWidth * CJK_CHAR_WIDTH_RATIO
     } else {
       width += charWidth * ASCII_CHAR_WIDTH_RATIO
@@ -61,7 +71,7 @@ export function textWidthTwips(text: string, charWidth: number): number {
 export function textWidthEm(text: string): number {
   let width = 0
   for (const char of text) {
-    if (/[\u4e00-\u9fff\u3400-\u4dbf]/.test(char)) {
+    if (isCJKWidth(char)) {
       width += CJK_CHAR_WIDTH_RATIO
     } else {
       width += ASCII_CHAR_WIDTH_RATIO
