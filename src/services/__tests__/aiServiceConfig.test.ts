@@ -1,6 +1,6 @@
 /**
  * AI 服务配置运行时覆盖契约测试
- * 三方契约共引：gongwen-docker/docker-entrypoint.d/40-runtime-config.sh（生成端）、
+ * 三方契约共引：backend/nginx/docker-entrypoint.d/40-runtime-config.sh（生成端）、
  * src/services/aiServiceConfig.ts（读取端）、本测试（行为锁定）。
  * vitest 环境下 import.meta.env.DEV=true，走 DEV 编译默认组（外网 DeepSeek）。
  */

@@ -6,7 +6,7 @@
 ## 目录结构
 
 ```
-gongwen-docker/
+backend/nginx/
 ├── Dockerfile                        # 前端镜像（构建上下文＝项目根目录）
 ├── default-prod.conf                 # 烘焙进镜像的 nginx 配置（/llm 反代 vllm-proxy、/api 反代统计后端）
 └── docker-entrypoint.d/
@@ -20,7 +20,7 @@ gongwen-docker/
 npm run build
 
 # 2) 构建前端镜像（注意构建上下文是项目根目录，-f 指定本目录 Dockerfile）
-docker build -t gongwen-web:2.0.0 -f gongwen-docker/Dockerfile .
+docker build -t gongwen-web:2.0.0 -f backend/nginx/Dockerfile .
 
 # 3) 构建统计后端镜像
 docker build -t gongwen-stats:1.0.0 backend/
