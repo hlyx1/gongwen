@@ -1,12 +1,16 @@
-# Docker 镜像构建指南（fojian-ai 同款烘焙体例）
+# Docker 镜像构建指南
 
-本目录只放**镜像构建材料**；生产部署用自包含部署包 [../gongwen-deploy/](../gongwen-deploy/README.txt)，
-开发调试用根目录 `docker-compose-dev.yml`。
+容器镜像材料的职责划分（前端/后端各归各家）：
+
+- **本目录 `docker/`** ＝ 前端 nginx 镜像（静态文件 + 反代分发）的构建材料；
+- **`backend/Dockerfile`** ＝ 统计后端镜像的构建材料（贴着后端源码，`docker build backend/` 即可）；
+- 生产部署用自包含部署包 [../gongwen-deploy/](../gongwen-deploy/README.txt)，
+  开发调试用根目录 `docker-compose-dev.yml`。
 
 ## 目录结构
 
 ```
-backend/nginx/
+docker/
 ├── Dockerfile                        # 前端镜像（构建上下文＝项目根目录）
 ├── default-prod.conf                 # 烘焙进镜像的 nginx 配置（/llm 反代 vllm-proxy、/api 反代统计后端）
 └── docker-entrypoint.d/
@@ -20,7 +24,7 @@ backend/nginx/
 npm run build
 
 # 2) 构建前端镜像（注意构建上下文是项目根目录，-f 指定本目录 Dockerfile）
-docker build -t gongwen-web:2.0.0 -f backend/nginx/Dockerfile .
+docker build -t gongwen-web:2.0.0 -f docker/Dockerfile .
 
 # 3) 构建统计后端镜像
 docker build -t gongwen-stats:1.0.0 backend/

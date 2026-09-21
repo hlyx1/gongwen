@@ -116,7 +116,8 @@ src/
 └── main.tsx / App.tsx / index.css / App.css
 
 backend/                  # FastAPI 统计服务（使用行为记录/防抖/汇总，供 statsReporter 上报）
-backend/nginx/           # 前端镜像构建材料（Dockerfile + 烘焙 nginx conf + entrypoint 脚本）
+                          #  含 backend/Dockerfile＝统计后端镜像构建材料
+docker/                   # 前端镜像构建材料（Dockerfile + 烘焙 nginx conf + entrypoint 脚本）
 gongwen-deploy/           # 生产自包含部署包（compose + 镜像 tar + 部署手册，拷贝即部署）
 docker-compose-dev.yml    # 开发环境（统计后端容器 8026，前端本地 npm run dev）
 ai-keys.local.example.json # dev 密钥占位（复制为 ai-keys.local.json 填 DeepSeek 密钥，gitignored）
@@ -500,7 +501,7 @@ dev 走 vite 代理转发 DeepSeek，密钥由 dev server 从 gitignored 的 `ai
 - 部署包：`gongwen-deploy/`（自包含，拷贝整个目录到生产机，见其 `README.txt`）
 - 架构：前端 nginx 容器（88:80）+ 统计后端容器；`/llm/` 经外部网络 `vllm-proxy-net` 直连 `vllm-proxy:8000` 容器（SSE 流式，`proxy_buffering off`）
 - 起序：先起 vllm-proxy（它创建 `vllm-proxy-net`，且 nginx conf 启动期解析容器名），再起本服务
-- 镜像构建：见 `backend/nginx/README.md`（构建上下文＝项目根目录，`docker build -f backend/nginx/Dockerfile .`）
+- 镜像构建：见 `docker/README.md`（构建上下文＝项目根目录，`docker build -f docker/Dockerfile .`）
 - 开发环境：根目录 `docker-compose-dev.yml`（统计后端容器 8026）+ 本地 `npm run dev`
 
 ## 注意事项

@@ -4,11 +4,11 @@
 #
 # 架构：gongwen 容器（前端静态文件 + /llm 反代 vllm-proxy + /api 反代统计后端）
 # + gongwen-stats 容器（FastAPI 统计）。nginx 配置烘焙进前端镜像
-# （backend/nginx/default-prod.conf），不再挂载宿主配置文件（自包含，改配置需重打镜像）。
+# （docker/default-prod.conf），不再挂载宿主配置文件（自包含，改配置需重打镜像）。
 #
 # 开发机构建并导出镜像（需先 npm run build 产出 dist/；镜像 tar 放 images/）：
 #   docker build -t gongwen-stats:1.0.0 backend/
-#   docker build -t gongwen-web:2.0.0 -f backend/nginx/Dockerfile .
+#   docker build -t gongwen-web:2.0.0 -f docker/Dockerfile .
 #   docker save -o gongwen-deploy/images/gongwen-stats-1.0.0.tar gongwen-stats:1.0.0
 #   docker save -o gongwen-deploy/images/gongwen-web-2.0.0.tar gongwen-web:2.0.0
 #

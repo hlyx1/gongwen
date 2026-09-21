@@ -56,7 +56,7 @@ npm run preview        # 本地预览构建产物
 
 AI 配置（模型名/密钥/采样参数）为**运行时配置**：改 `gongwen-deploy/docker-compose-prod.yml` 的 `environment`（`AI_MODEL` 等）后 `docker compose up -d` 即生效，**无需重打镜像**。
 
-镜像构建方法见 [backend/nginx/README.md](backend/nginx/README.md)。
+镜像构建方法见 [docker/README.md](docker/README.md)。
 
 ## 项目结构
 

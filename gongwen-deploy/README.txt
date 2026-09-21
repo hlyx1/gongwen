@@ -74,13 +74,13 @@
   1) 升版本号：本目录 docker-compose-prod.yml 的两处 image: 行改版本号
   2) npm run build（dist 过期则镜像装旧产物）
   3) 构建并导出变更镜像（文件名带版本号，放入 images/）：
-     docker build -t gongwen-web:<新版本> -f backend/nginx/Dockerfile .
+     docker build -t gongwen-web:<新版本> -f docker/Dockerfile .
      docker save -o images/gongwen-web-<新版本>.tar gongwen-web:<新版本>
      （统计后端变更时同理 build gongwen-stats:<新版本> 并 save）
   4) 同步本目录到生产机，重跑步骤 2、4（未变更镜像无需重新 load）
 
   ⚠️ nginx conf 与 runtime-config 生成脚本均烘焙在前端镜像内
-     （backend/nginx/default-prod.conf、backend/nginx/docker-entrypoint.d/）：
+     （docker/default-prod.conf、docker/docker-entrypoint.d/）：
      改这两者必须重打前端镜像，只改 compose 或只 reload 不会生效。
 
 ----------------------------------------
