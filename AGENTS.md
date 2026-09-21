@@ -92,7 +92,7 @@ src/
 │   └── matchers.ts       # 正则匹配规则
 ├── services/             # AI 服务
 │   ├── aiProofreadService.ts  # 请求管线（提示词构建/SSE 流式解析/并发/重试）
-│   └── aiServiceConfig.ts     # AI 服务配置（环境变量读取与校验）
+│   └── aiServiceConfig.ts     # AI 配置单源（编译默认组 + runtime-config.js 运行时覆盖）
 ├── types/                # TypeScript 类型定义
 │   ├── aiProofread.ts    # AI 校对类型（配置/状态/结果）
 │   ├── ast.ts            # AST 节点类型
@@ -111,10 +111,15 @@ src/
 ├── data/                 # 国标数据
 │   ├── gb9704.ts         # GB/T 9704 规范数据
 │   └── gb33476.ts        # GB/T 33476 规范数据
+├── public/               # 静态资源
+│   └── runtime-config.js # 运行时部署配置默认 no-op（生产容器启动时按 AI_* env 重新生成）
 └── main.tsx / App.tsx / index.css / App.css
 
 backend/                  # FastAPI 统计服务（使用行为记录/防抖/汇总，供 statsReporter 上报）
-gongwen-docker/           # docker-compose 部署配置（nginx 反代前端+统计后端）
+gongwen-docker/           # 前端镜像构建材料（Dockerfile + 烘焙 nginx conf + entrypoint 脚本）
+gongwen-deploy/           # 生产自包含部署包（compose + 镜像 tar + 部署手册，拷贝即部署）
+docker-compose-dev.yml    # 开发环境（统计后端容器 8026，前端本地 npm run dev）
+ai-keys.local.example.json # dev 密钥占位（复制为 ai-keys.local.json 填 DeepSeek 密钥，gitignored）
 tasks/                    # 任务档案（llm-tech-lead 工作流：详细需求/勘探/裁定/工作单元，
                           #  ctl 命令管理派工与验收；问题一律先入 待办池.md 分诊）
 ```
@@ -435,7 +440,7 @@ CSS 由 esbuild/LightningCSS 按 cssTarget chrome78 处理，但仍有特性需�
 
 ## 测试
 
-测试文件位于各模块 `__tests__/` 目录（共 16 个测试文件、344 个用例：parser 42 / sanitize 36 / aiResponseParser 14 / layout 六件套 136 / styleFactory 60 / docxBuilder 10（含 13 条导出快照）/ previewStructure 16（14 条结构快照＋2 条 cssVars 断言）/ documentConfigMigration 19 / Toolbar 6 / useAIProofread 3 / sourceGovernance 2），使用 Vitest 框架（environment=node）：
+测试文件位于各模块 `__tests__/` 目录（共 17 个测试文件、349 个用例：parser 42 / sanitize 36 / aiResponseParser 14 / layout 六件套 136 / styleFactory 60 / docxBuilder 10（含 13 条导出快照）/ previewStructure 16（14 条结构快照＋2 条 cssVars 断言）/ documentConfigMigration 19 / Toolbar 6 / useAIProofread 3 / sourceGovernance 2 / aiServiceConfig 5（运行时覆盖三态契约）），使用 Vitest 框架（environment=node）：
 
 ```bash
 # 运行测试
@@ -449,26 +454,54 @@ npm test -- --watch
 - `exporter/__tests__/__snapshots__/` 的导出产物结构快照与 `components/Preview/__tests__/__snapshots__/` 的预览结构快照是行为保持基线，快照变更即意味着渲染行为改变，须确认有意为之。
 - `utils/__tests__/sourceGovernance.test.ts` 锁定源码治理口径：调试 console.log 仅允许存在于 statsPrinter.ts、死文件不得复活。
 
+## AI 审核配置（fojian-ai 同款三层体例）
+
+**重要**: AI 配置**不在 `.env` 文件**（旧 VITE_AI_* 构建注入机制已废除），单源在 `src/services/aiServiceConfig.ts`。
+
+### 配置合成（优先级从低到高）
+
+1. **编译默认组**：`import.meta.env.DEV` 编译期二选一——DEV 组（外网 DeepSeek）/ 生产组（内网 vllm-proxy）。两组 `baseUrl` 恒为同源相对路径 `/llm/v1/chat/completions`（**路径前缀是部署面契约**，dev 由 vite 代理转发、生产由前端 nginx 容器反代）。
+2. **运行时覆盖**：生产容器每次启动由镜像内 `/docker-entrypoint.d/40-runtime-config.sh` 按 `AI_*` env 生成 `runtime-config.js`，设置 `window.__GONGWEN_RUNTIME_CONFIG__`（`index.html` 的 script 标签先于入口模块求值），前端逐字段覆盖；缺席/坏值回落编译默认。**改模型名/密钥/采样参数只需改 `gongwen-deploy/docker-compose-prod.yml` 的 environment 再 `up -d`，不重打镜像**。
+
+### 可用的运行时 env（compose environment）
+
+| 变量 | 说明 |
+|------|------|
+| `AI_ENABLED` | 仅字面 `false` 关闭 AI 功能（其余值/缺席＝开启） |
+| `AI_MODEL` | 模型名，**须为 vllm-proxy `backends.yaml` 别名表中存在的别名** |
+| `AI_API_KEY` | 代理侧鉴权密钥（不鉴权不设；前端 apiKey 为空时不发 Authorization 头） |
+| `AI_BASE_URL` | 一般不设（默认同源 `/llm/v1/chat/completions`） |
+| `AI_TEMPERATURE` / `AI_MAX_TOKENS` / `AI_TOP_P` / `AI_TOP_K` / `AI_MIN_P` / `AI_PRESENCE_PENALTY` / `AI_REPETITION_PENALTY` | 采样参数（数字以字符串写入，前端 parseFloat 校验） |
+
+### dev 环境密钥
+
+dev 走 vite 代理转发 DeepSeek，密钥由 dev server 从 gitignored 的 `ai-keys.local.json`（占位 `ai-keys.local.example.json`，字段 `deepseekApiKey`）注入 `Authorization` 头——**前端零密钥，密钥绝不入 git**。
+
 ## 部署
 
 ### GitHub Pages
 
 - 自动部署：推送到 main 分支触发 GitHub Actions
 - 路径前缀：`/gongwen/`
+- 注意：Pages 版无 `/llm` 反代，AI 审核不可用（已知边界）
 
 ### Vercel
 
 - 支持 One-Click Deploy
 - 无需路径前缀
 
-### Docker（gongwen-docker/）
-
-- docker-compose 编排 nginx（前端）＋ FastAPI 统计后端
-
 ### 离线版本
 
 - 运行 `npm run build:single` 生成 `dist/index.html`
-- 双击 HTML 文件即可使用
+- 双击 HTML 文件即可使用（AI 审核依赖网络与同源反代，离线版不可用）
+
+### 内网 Docker（生产）
+
+- 部署包：`gongwen-deploy/`（自包含，拷贝整个目录到生产机，见其 `README.txt`）
+- 架构：前端 nginx 容器（88:80）+ 统计后端容器；`/llm/` 经外部网络 `vllm-proxy-net` 直连 `vllm-proxy:8000` 容器（SSE 流式，`proxy_buffering off`）
+- 起序：先起 vllm-proxy（它创建 `vllm-proxy-net`，且 nginx conf 启动期解析容器名），再起本服务
+- 镜像构建：见 `gongwen-docker/README.md`（构建上下文＝项目根目录，`docker build -f gongwen-docker/Dockerfile .`）
+- 开发环境：根目录 `docker-compose-dev.yml`（统计后端容器 8026）+ 本地 `npm run dev`
 
 ## 注意事项
 

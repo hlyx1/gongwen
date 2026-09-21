@@ -1,0 +1,33 @@
+# 开发环境配置 - 快速开发调试（fojian-ai 同款体例）
+# 前端不进容器：本地 `npm run dev`（Vite HMR，http://localhost:3001），vite.config.ts 的
+# proxy 把 /api 转发到本 compose 的统计容器（8026）、/llm 转发到外网 DeepSeek
+# （密钥由 dev server 从 ai-keys.local.json 注入，前端零密钥）。
+#
+# 使用：
+#   docker compose -f docker-compose-dev.yml up -d --build    # 首次或改了 backend 后
+#   docker compose -f docker-compose-dev.yml restart stats-backend-dev  # 仅重启（代码没变，跳过 build）
+#   docker compose -f docker-compose-dev.yml logs -f          # 看日志
+#   docker compose -f docker-compose-dev.yml down             # 停止
+#
+# 然后另开终端：
+#   npm run dev    # 前端跑在 http://localhost:3001
+#
+# 端口约定（>8000，规避 Windows 对小端口号的保护）：
+#   8026 = stats-backend（统计后端，dev 级容器）
+
+services:
+  stats-backend-dev:
+    container_name: stats-backend-dev-container
+    build:
+      context: ./backend
+      dockerfile: ./Dockerfile
+    image: gongwen-stats:dev
+    volumes:
+      # 日志挂载到本机 backend/data（路径按实际机器修改）
+      - ./backend/data:/data
+    ports:
+      - "8026:8000"
+    environment:
+      - TZ=Asia/Shanghai
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "*"]
+    restart: unless-stopped

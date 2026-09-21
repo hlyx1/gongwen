@@ -28,14 +28,14 @@ dist-ssr
 !public/*.png
 gongwen-latest.tar
 
-# AI服务配置（包含敏感信息，不提交git）
-.env.development
-.env.production
-.env.local
+# AI dev 密钥（本地文件，不入 git；仓库只留 ai-keys.local.example.json 占位）
+ai-keys.local.json
 
 # Docker 部署配置（包含敏感信息，不提交git）
 gongwen-docker/.env
 gongwen-docker/data/
+gongwen-deploy/stats-logs/
+backend/data/
 *.tar
 *.pyc
 .qoder/

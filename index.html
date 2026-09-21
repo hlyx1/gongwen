@@ -8,6 +8,10 @@
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>公文排版工具 - GB/T 9704</title>
+    <!-- 运行时部署配置：生产容器每次启动由 /docker-entrypoint.d/40-runtime-config.sh 按 AI_* env
+         重新生成（改配置免重打镜像）；默认 public/runtime-config.js 是 no-op，dev 原样服务。
+         必须先于入口模块求值（普通 script 立即执行，模块 script 默认 defer）。 -->
+    <script src="/runtime-config.js"></script>
   </head>
   <body>
     <div id="root"></div>
