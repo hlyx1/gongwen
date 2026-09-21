@@ -36,8 +36,11 @@
 
 ```bash
 npm install
-npm run dev
+docker compose -f docker-compose-dev.yml up -d     # 启动统计后端容器（8026）
+npm run dev                                        # 前端 http://localhost:3001
 ```
+
+AI 审核走 `/llm` 同源代理转发外网 DeepSeek（生产则反代内网 vllm-proxy）。首次使用需配置密钥：复制 `ai-keys.local.example.json` 为 `ai-keys.local.json`，填入 DeepSeek 密钥后重启 `npm run dev`（该文件已被 gitignore，密钥不入 git）。
 
 ## 构建
 
@@ -49,35 +52,11 @@ npm run preview        # 本地预览构建产物
 
 ## Docker 部署
 
-### 快速部署
+生产部署采用自包含部署包 `gongwen-deploy/`（拷贝整个目录到生产机即可），前端 nginx 容器经外部网络 `vllm-proxy-net` 直连 vllm-proxy 容器提供 AI 审核能力。详见 [gongwen-deploy/README.txt](gongwen-deploy/README.txt)。
 
-```bash
-cd gongwen-docker
-docker-compose up -d --build
-```
+AI 配置（模型名/密钥/采样参数）为**运行时配置**：改 `gongwen-deploy/docker-compose-prod.yml` 的 `environment`（`AI_MODEL` 等）后 `docker compose up -d` 即生效，**无需重打镜像**。
 
-访问 `http://localhost:88` 即可使用。
-
-### 启用 AI 审核功能
-
-如需启用 AI 审核功能，在 `gongwen-docker` 目录下创建 `.env` 文件：
-
-```bash
-VITE_AI_BASE_URL=https://api.openai.com/v1/chat/completions
-VITE_AI_MODEL=gpt-4o
-VITE_AI_API_KEY=your-api-key-here
-```
-
-然后重新构建：
-
-```bash
-docker-compose up -d --build
-```
-
-**注意**：
-- AI 配置在构建时注入，修改后需重新构建镜像
-- `.env` 文件包含敏感信息，切勿提交到 Git
-- 详细配置说明请参阅 [gongwen-docker/README.md](gongwen-docker/README.md)
+镜像构建方法见 [gongwen-docker/README.md](gongwen-docker/README.md)。
 
 ## 项目结构
 

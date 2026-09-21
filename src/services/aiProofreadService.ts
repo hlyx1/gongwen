@@ -182,13 +182,18 @@ export function sendBlockStreaming(
       repetition_penalty: config.repetitionPenalty,
     };
 
+    // 构建请求头：apiKey 为空时不附加 Authorization（同源代理形态下密钥由代理侧注入/托管）
+    var headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (config.apiKey.length > 0) {
+      headers['Authorization'] = 'Bearer ' + config.apiKey;
+    }
+
     // 发送请求
     fetch(config.baseUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: 'Bearer ' + config.apiKey,
-      },
+      headers: headers,
       body: JSON.stringify(requestBody),
     })
       .then(function (response) {

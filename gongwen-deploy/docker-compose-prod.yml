@@ -1,0 +1,87 @@
+# 生产环境配置 - 预构建镜像（离线内网部署，fojian-ai 同款自包含部署包体例）
+# 本文件属于 gongwen-deploy/ 自包含部署包：镜像 tar 在 images/、部署手册在 README.txt，
+# 拷贝整个目录到生产机即可部署。
+#
+# 架构：gongwen 容器（前端静态文件 + /llm 反代 vllm-proxy + /api 反代统计后端）
+# + gongwen-stats 容器（FastAPI 统计）。nginx 配置烘焙进前端镜像
+# （gongwen-docker/default-prod.conf），不再挂载宿主配置文件（自包含，改配置需重打镜像）。
+#
+# 开发机构建并导出镜像（需先 npm run build 产出 dist/；镜像 tar 放 images/）：
+#   docker build -t gongwen-stats:1.0.0 backend/
+#   docker build -t gongwen-web:2.0.0 -f gongwen-docker/Dockerfile .
+#   docker save -o gongwen-deploy/images/gongwen-stats-1.0.0.tar gongwen-stats:1.0.0
+#   docker save -o gongwen-deploy/images/gongwen-web-2.0.0.tar gongwen-web:2.0.0
+#
+# 端口约定（沿生产真实配置）：
+#   50088 = 前端 nginx 容器（宿主 nginx 的上游；对外统一入口是宿主 nginx 的 88 端口，
+#           见 host_nginx.conf——宿主 nginx 层透传真实客户端 IP，绕过容器丢 IP 问题）
+
+services:
+  # --- 前端 nginx 容器（静态文件 + 反代分发）---
+  gongwen:
+    restart: unless-stopped
+    container_name: gongwen-web
+    image: gongwen-web:2.0.0
+    ports:
+      # 容器 80 映射宿主 50088；对外访问经宿主 nginx :88 → 127.0.0.1:50088（host_nginx.conf）
+      - "50088:80"
+    # AI 运行时覆盖（fojian-ai 同款机制）：容器每次启动由镜像内
+    # /docker-entrypoint.d/40-runtime-config.sh 按下列 env 生成 runtime-config.js，
+    # 前端读 window.__GONGWEN_RUNTIME_CONFIG__ 逐字段覆盖编译默认组。
+    # 换模型名/密钥/采样参数＝改 environment → docker compose up -d（容器重建即生效，
+    # 不再重打镜像）。
+    environment:
+      # AI_MODEL：模型别名——vllm-proxy 按请求体 model 字段查 backends.yaml 别名表路由，
+      # 该名必须是别名表中存在的别名（等于后端真实模型名不会直通）。
+      # 换模型只改这一行再 up -d。
+      # 当前指向思考引擎（Qwen3.6-35B-A3B-AWQ-4bit，think_fix=off 完全透传，
+      # 与旧版直连 vLLM 的输出形态一致）。
+      - AI_MODEL=Qwen3.6-35B-Thinking
+      # 其余可选项（默认注释形态＝走镜像内编译默认组）：
+      # - AI_API_KEY=your-proxy-key      # 代理加鉴权时设置；不鉴权不设
+      # - AI_ENABLED=false               # 整体关闭 AI 功能（AI 审核按钮隐藏）
+      # - AI_BASE_URL=http://...         # 一般不设（默认同源 /llm/v1/chat/completions）
+      # - AI_TEMPERATURE=1.0
+      # - AI_MAX_TOKENS=35536
+      # - AI_TOP_P=0.95
+      # - AI_TOP_K=20
+      # - AI_MIN_P=0.0
+      # - AI_PRESENCE_PENALTY=1.5
+      # - AI_REPETITION_PENALTY=1.0
+    depends_on:
+      - gongwen-stats
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    # 连接外部网络访问 vllm-proxy 容器（/llm/ 反代上游）
+    networks:
+      - default
+      - vllm-proxy-net
+
+  # --- 统计后端容器 ---
+  gongwen-stats:
+    restart: unless-stopped
+    container_name: gongwen-stats
+    image: gongwen-stats:1.0.0
+    volumes:
+      # 日志持久化到部署目录（随部署包走，拷贝即用，跨机无需改路径）
+      - ./stats-logs:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+# --- 外部网络声明 ---
+# 由 VLLM-Proxy 部署包（其 vllm-proxy-deploy/docker-compose-prod.yml）创建并拥有，
+# compose 显式命名 vllm-proxy-net（不随部署目录派生）。
+# 启动顺序：先起 vllm-proxy（它创建该网络，且本镜像 conf 启动期解析容器名 vllm-proxy，
+# vllm-proxy 未起则 nginx 容器起不来），再起本服务。
+networks:
+  vllm-proxy-net:
+    name: vllm-proxy-net
+    external: true

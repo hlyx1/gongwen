@@ -83,11 +83,8 @@ function App() {
       console.log('  存在惩罚:', debugAIConfig.presencePenalty)
       console.log('  重复惩罚:', debugAIConfig.repetitionPenalty)
     } else {
-      console.log('%c[AI服务配置] 未配置或配置不完整', 'color: red; font-weight: bold')
-      console.log('  请检查 .env.production 文件中的以下必填项:')
-      console.log('  - VITE_AI_BASE_URL')
-      console.log('  - VITE_AI_MODEL')
-      console.log('  - VITE_AI_API_KEY')
+      console.log('%c[AI服务配置] AI 功能已禁用（AI_ENABLED=false）', 'color: red; font-weight: bold')
+      console.log('  生产环境：删除 gongwen-deploy/docker-compose-prod.yml 中 gongwen.environment 的 AI_ENABLED=false 后重启容器')
     }
   }
 
