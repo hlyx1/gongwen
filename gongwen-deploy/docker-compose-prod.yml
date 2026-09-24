@@ -51,7 +51,7 @@ services:
     depends_on:
       - gongwen-stats
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -70,7 +70,9 @@ services:
       # 日志持久化到部署目录（随部署包走，拷贝即用，跨机无需改路径）
       - ./stats-logs:/data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      # 镜像为 python:slim 系（无 curl/wget），必须用自带 python 探测；127.0.0.1 避免 IPv6 解析
+      # （旧配置用 curl，命令找不到导致容器长期显示 unhealthy，应用实际正常；2026-09-24 修复）
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health').read()"]
       interval: 30s
       timeout: 10s
       retries: 3
