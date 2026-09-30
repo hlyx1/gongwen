@@ -2,9 +2,12 @@
  * 标点净化工具
  *
  * 将常见的半角标点替换为全角标点（中文排版规范），
+ * 英文直引号按保守配对策略规范化为中文引号（严格成对才转换），
  * 并清理多余空白（不间断空格、连续空行、行首尾空格）。
  * 同时清理 Markdown 语法标记。
  */
+
+import { normalizeQuotes } from './quoteNormalizer'
 
 /** 半角句号仅在中文字符后替换为全角（避免误伤英文缩写 / 小数） */
 const CJK_BEFORE_DOT = /([\u4e00-\u9fff\u3000-\u303f\uff00-\uffef])\./g
@@ -160,6 +163,12 @@ export function sanitizeText(text: string): SanitizeResult {
     count++
     return hour + ':' + minute
   })
+
+  // 1.6 直引号规范化为中文引号（保守配对：严格成对才转换，配不上的原样保留）
+  // 此步骤在标点替换之后执行，此时冒号/句号等已是全角，引号上下文判定更可靠
+  const quoteResult = normalizeQuotes(result)
+  result = quoteResult.text
+  count += quoteResult.count
 
   // 2. 不间断空格 → 普通空格
   result = result.replace(/\u00A0/g, () => { count++; return ' ' })

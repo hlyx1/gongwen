@@ -27,7 +27,7 @@
 ```
 用户输入文本
     ↓
-sanitizeText() - 标点净化、空白清理（utils/sanitize.ts）
+sanitizeText() - 标点净化、引号配对规范化、空白清理（utils/sanitize.ts）
     ↓
 parseGongwen() - 文本解析为 AST（parser/）
     ↓
@@ -103,6 +103,7 @@ src/
 │   ├── aiResponseParser.ts    # AI 流式响应表格行解析（状态机）
 │   ├── fileImporter.ts        # 文件导入（mammoth/txt）
 │   ├── historyStorage.ts      # 历史记录 localStorage 存取
+│   ├── quoteNormalizer.ts     # 直引号→中文引号（保守栈式配对：严格成对才转换，奇数个/配不上的原样保留，防连环错配）
 │   ├── sanitize.ts            # 标点净化（行为锚点，有测试锁定）
 │   ├── sentenceSplitter.ts    # AI 校对用切句（含配对符号保护）
 │   ├── statsPrinter.ts        # 使用统计控制台打印（刻意保留，勿删）
@@ -441,7 +442,7 @@ CSS 由 esbuild/LightningCSS 按 cssTarget chrome78 处理，但仍有特性需�
 
 ## 测试
 
-测试文件位于各模块 `__tests__/` 目录（共 17 个测试文件、349 个用例：parser 42 / sanitize 36 / aiResponseParser 14 / layout 六件套 136 / styleFactory 60 / docxBuilder 10（含 13 条导出快照）/ previewStructure 16（14 条结构快照＋2 条 cssVars 断言）/ documentConfigMigration 19 / Toolbar 6 / useAIProofread 3 / sourceGovernance 2 / aiServiceConfig 5（运行时覆盖三态契约）），使用 Vitest 框架（environment=node）：
+测试文件位于各模块 `__tests__/` 目录（共 20 个测试文件、399 个用例：parser 42 / sanitize 39 / quoteNormalizer 18 / aiResponseParser 14 / layout 六件套 136 / styleFactory 60 / docxBuilder 10（含 13 条导出快照）/ previewStructure 16（14 条结构快照＋2 条 cssVars 断言）/ aiHighlight 28 / colorGovernance 1 / documentConfigMigration 19 / Toolbar 6 / useAIProofread 3 / sourceGovernance 2 / aiServiceConfig 5（运行时覆盖三态契约）），使用 Vitest 框架（environment=node）：
 
 ```bash
 # 运行测试

@@ -239,3 +239,25 @@ describe('sanitizeText 综合与边界', () => {
     expect(r.count).toBe(8) // 标题1 + 列表2 + 冒号3（时间:9:00 两处 + 地点: 一处） + 时间还原1 + 空行合并1
   })
 })
+
+// ---- 直引号规范化（全链路，经 sanitizeText） ----
+
+describe('sanitizeText 直引号规范化', () => {
+  it('冒号先转全角后，讲话引号配对转换为中文引号', () => {
+    const r = sanitizeText('他说:"好。"')
+    expect(r.text).toBe('他说：“好。”')
+    expect(r.count).toBe(3) // 冒号1 + 引号一对2
+  })
+
+  it('奇数个引号：已配对部分正常转换，多余引号保留半角，不连环错配', () => {
+    const r = sanitizeText('说:"甲."说:"乙')
+    expect(r.text).toBe('说：“甲。”说："乙')
+    expect(r.count).toBe(5) // 冒号2 + 句号1 + 引号一对2
+  })
+
+  it('引号内时间格式不受转换影响', () => {
+    const r = sanitizeText('他说:"3:00 开会。"')
+    expect(r.text).toBe('他说：“3:00 开会。”')
+    expect(r.count).toBe(5) // 冒号2 + 时间还原1 + 引号一对2
+  })
+})
