@@ -36,7 +36,7 @@
 
 ```bash
 npm install
-docker compose -f docker-compose-dev.yml up -d     # 启动统计后端容器（8026）
+docker compose -f docker-compose-dev.yml up -d     # 启动统计后端容器（8126）
 npm run dev                                        # 前端 http://localhost:3001
 ```
 

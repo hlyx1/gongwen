@@ -117,9 +117,9 @@ export default defineConfig(({ mode }) => {
       port: 3001,
       host: '0.0.0.0',
       proxy: {
-        // 统计后端：根目录 docker-compose-dev.yml 的 stats-backend-dev 容器（8026→容器 8000）
+        // 统计后端：根目录 docker-compose-dev.yml 的 stats-backend-dev 容器（8126→容器 8000）
         '/api': {
-          target: 'http://localhost:8026',
+          target: 'http://localhost:8126',
           changeOrigin: true,
         },
         // AI 同源前缀（部署面契约，与生产 nginx 容器的 /llm/ location 同名）：
